@@ -95,7 +95,7 @@ export default function NurseAvailabilityPage() {
 
     const handleSaveAvailability = async () => {
         setIsSaving(true)
-        try {
+        try {   
             const token = localStorage.getItem("token")
             const response = await fetch(`${API_BASE_URL}/nurse/update`, {
                 method: "PATCH",

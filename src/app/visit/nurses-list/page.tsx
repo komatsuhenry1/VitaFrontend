@@ -1,12 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Header } from "@/components/Header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
+import { ChevronDown, ChevronUp, Filter, X } from "lucide-react"
 import Link from "next/link"
 
 const heroStyle = {
@@ -19,6 +21,7 @@ const heroStyle = {
   color: "white",
   padding: "5rem 0",
 }
+
 interface Nurse {
   id: string
   name: string
@@ -31,6 +34,14 @@ interface Nurse {
   available: boolean
   location: string
   neighborhood: string
+  city: string
+  uf: string
+  street: string
+  max_patients_per_day: number
+  days_available: string[] | null
+  services: string[] | null
+  available_neighborhoods: string[] | null
+  rating?: number
 }
 
 interface ApiResponse {
@@ -39,29 +50,45 @@ interface ApiResponse {
   success: boolean
 }
 
+const DAYS_OF_WEEK = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
+
 export default function PatientDashboard() {
   const [nurses, setNurses] = useState<Nurse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
 
-  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedDays, setSelectedDays] = useState<string[]>([])
+  const [selectedServices, setSelectedServices] = useState<string[]>([])
+  const [selectedAvailableNeighborhoods, setSelectedAvailableNeighborhoods] = useState<string[]>([])
   const [specializationFilter, setSpecializationFilter] = useState("")
-  const [shiftFilter, setShiftFilter] = useState("")
-  const [availabilityFilter, setAvailabilityFilter] = useState("")
-  const [priceRange, setPriceRange] = useState("")
-  const [neighborhoodFilter, setNeighborhoodFilter] = useState("")
+  const [minPrice, setMinPrice] = useState(0)
+  const [maxPrice, setMaxPrice] = useState(500)
+
+  const [sortBy, setSortBy] = useState("default")
+
+  const [serviceInput, setServiceInput] = useState("")
+  const [neighborhoodInput, setNeighborhoodInput] = useState("")
+  const [showServiceSuggestions, setShowServiceSuggestions] = useState(false)
+  const [showNeighborhoodSuggestions, setShowNeighborhoodSuggestions] = useState(false)
+
+  const serviceInputRef = useRef<HTMLDivElement>(null)
+  const neighborhoodInputRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const fetchNurses = async () => {
       try {
         setLoading(true)
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/user/all_nurses`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"}/user/all_nurses`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
           },
-        })
+        )
 
         if (!response.ok) {
           throw new Error("Falha ao carregar enfermeiros")
@@ -85,46 +112,134 @@ export default function PatientDashboard() {
     fetchNurses()
   }, [])
 
+  useEffect(() => {
+    if (nurses.length > 0) {
+      const prices = nurses.map((n) => n.price).filter((p) => p > 0)
+      if (prices.length > 0) {
+        const min = Math.floor(Math.min(...prices))
+        const max = Math.ceil(Math.max(...prices))
+        setMinPrice(min)
+        setMaxPrice(max)
+      }
+    }
+  }, [nurses])
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (serviceInputRef.current && !serviceInputRef.current.contains(event.target as Node)) {
+        setShowServiceSuggestions(false)
+      }
+      if (neighborhoodInputRef.current && !neighborhoodInputRef.current.contains(event.target as Node)) {
+        setShowNeighborhoodSuggestions(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
   const filteredNurses = nurses.filter((nurse) => {
-    const matchesSearch =
-      nurse.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      nurse.specialization.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesSpecialization =
-      !specializationFilter || nurse.specialization.toLowerCase() === specializationFilter.toLowerCase()
-    const matchesShift = !shiftFilter || nurse.shift.toLowerCase() === shiftFilter.toLowerCase()
-    const matchesAvailability =
-      !availabilityFilter ||
-      (availabilityFilter === "available" && nurse.available) ||
-      (availabilityFilter === "unavailable" && !nurse.available)
-    const matchesPrice =
-      !priceRange ||
-      (priceRange === "low" && nurse.price <= 80) ||
-      (priceRange === "medium" && nurse.price > 80 && nurse.price <= 100) ||
-      (priceRange === "high" && nurse.price > 100)
+      !specializationFilter ||
+      specializationFilter === "all" ||
+      nurse.specialization.toLowerCase() === specializationFilter.toLowerCase()
 
-    // [MUDANÇA] Aqui usamos nurse.neighborhood para a lógica de filtro
-    const matchesNeighborhood =
-      !neighborhoodFilter || nurse.neighborhood.toLowerCase() === neighborhoodFilter.toLowerCase()
+    const matchesPrice = nurse.price >= minPrice && nurse.price <= maxPrice
 
-    return matchesSearch && matchesSpecialization && matchesShift && matchesAvailability && matchesPrice && matchesNeighborhood
+    const matchesDays =
+      selectedDays.length === 0 ||
+      (nurse.days_available && selectedDays.some((day) => nurse.days_available?.includes(day)))
+
+    const matchesServices =
+      selectedServices.length === 0 ||
+      (nurse.services && selectedServices.some((service) => nurse.services?.includes(service)))
+
+    const matchesAvailableNeighborhoods =
+      selectedAvailableNeighborhoods.length === 0 ||
+      (nurse.available_neighborhoods &&
+        selectedAvailableNeighborhoods.some((neighborhood) => nurse.available_neighborhoods?.includes(neighborhood)))
+
+    return matchesSpecialization && matchesPrice && matchesDays && matchesServices && matchesAvailableNeighborhoods
+  })
+
+  const sortedNurses = [...filteredNurses].sort((a, b) => {
+    switch (sortBy) {
+      case "price-high":
+        return b.price - a.price
+      case "price-low":
+        return a.price - b.price
+      case "rating":
+        const ratingA = a.rating ?? 0
+        const ratingB = b.rating ?? 0
+        return ratingB - ratingA
+      case "popular":
+        return b.years_experience - a.years_experience
+      default:
+        return 0
+    }
   })
 
   const uniqueSpecializations = Array.from(new Set(nurses.map((nurse) => nurse.specialization))).filter(Boolean)
-  const uniqueShifts = Array.from(new Set(nurses.map((nurse) => nurse.shift))).filter(Boolean)
+  const allServices = Array.from(new Set(nurses.flatMap((nurse) => nurse.services || []))).filter(Boolean)
+  const allAvailableNeighborhoods = Array.from(
+    new Set(nurses.flatMap((nurse) => nurse.available_neighborhoods || [])),
+  ).filter(Boolean)
 
-  // [MUDANÇA] Aqui usamos nurse.neighborhood para popular o dropdown
-  const uniqueNeighborhoods = Array.from(new Set(nurses.map((nurse) => nurse.neighborhood))).filter(Boolean)
+  const filteredServiceSuggestions = allServices.filter(
+    (service) => service.toLowerCase().includes(serviceInput.toLowerCase()) && !selectedServices.includes(service),
+  )
+
+  const filteredNeighborhoodSuggestions = allAvailableNeighborhoods.filter(
+    (neighborhood) =>
+      neighborhood.toLowerCase().includes(neighborhoodInput.toLowerCase()) &&
+      !selectedAvailableNeighborhoods.includes(neighborhood),
+  )
 
   const clearFilters = () => {
-    setSearchTerm("")
     setSpecializationFilter("")
-    setShiftFilter("")
-    setAvailabilityFilter("")
-    setPriceRange("")
-    setNeighborhoodFilter("")
+    setSelectedDays([])
+    setSelectedServices([])
+    setSelectedAvailableNeighborhoods([])
+    setServiceInput("")
+    setNeighborhoodInput("")
+    setSortBy("default")
+    if (nurses.length > 0) {
+      const prices = nurses.map((n) => n.price).filter((p) => p > 0)
+      if (prices.length > 0) {
+        setMinPrice(Math.floor(Math.min(...prices)))
+        setMaxPrice(Math.ceil(Math.max(...prices)))
+      }
+    }
   }
 
-  // ... O restante do seu código (JSX para renderização) permanece exatamente o mesmo ...
+  const toggleDay = (day: string) => {
+    setSelectedDays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]))
+  }
+
+  const addService = (service: string) => {
+    if (!selectedServices.includes(service)) {
+      setSelectedServices((prev) => [...prev, service])
+      setServiceInput("")
+      setShowServiceSuggestions(false)
+    }
+  }
+
+  const removeService = (service: string) => {
+    setSelectedServices((prev) => prev.filter((s) => s !== service))
+  }
+
+  const addNeighborhood = (neighborhood: string) => {
+    if (!selectedAvailableNeighborhoods.includes(neighborhood)) {
+      setSelectedAvailableNeighborhoods((prev) => [...prev, neighborhood])
+      setNeighborhoodInput("")
+      setShowNeighborhoodSuggestions(false)
+    }
+  }
+
+  const removeNeighborhood = (neighborhood: string) => {
+    setSelectedAvailableNeighborhoods((prev) => prev.filter((n) => n !== neighborhood))
+  }
+
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
@@ -170,10 +285,7 @@ export default function PatientDashboard() {
     <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
       <Header />
 
-      {/* Hero Section */}
-      <section
-        style={heroStyle}
-      >
+      <section style={heroStyle}>
         <div style={{ maxWidth: "1200px", margin: "0 auto", textAlign: "center" }}>
           <h1 style={{ fontSize: "2.5rem", fontWeight: "bold", marginBottom: "1rem" }}>Encontre o Enfermeiro Ideal</h1>
           <p style={{ fontSize: "1.25rem", opacity: 0.9, maxWidth: "600px", margin: "0 auto" }}>
@@ -183,103 +295,375 @@ export default function PatientDashboard() {
       </section>
 
       <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem" }}>
-        {/* Filters Section */}
         <Card style={{ marginBottom: "2rem" }}>
           <CardHeader>
-            <CardTitle style={{ color: "#15803d" }}>Filtros de Busca</CardTitle>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <CardTitle style={{ color: "#15803d" }}>Filtros de Busca</CardTitle>
+              <Button
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                variant="outline"
+                style={{ borderColor: "#15803d", color: "#15803d" }}
+              >
+                <Filter style={{ width: "16px", height: "16px", marginRight: "0.5rem" }} />
+                {showAdvancedFilters ? "Ocultar Filtros" : "Mostrar Filtros"}
+                {showAdvancedFilters ? (
+                  <ChevronUp style={{ width: "16px", height: "16px", marginLeft: "0.5rem" }} />
+                ) : (
+                  <ChevronDown style={{ width: "16px", height: "16px", marginLeft: "0.5rem" }} />
+                )}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                gap: "1rem",
-                marginBottom: "1rem",
-              }}
-            >
-              <Input
-                placeholder="Buscar por nome ou especialização..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+            {showAdvancedFilters && (
+              <div
+                style={{
+                  padding: "1.5rem",
+                  backgroundColor: "#f9fafb",
+                  borderRadius: "8px",
+                  marginBottom: "1rem",
+                }}
+              >
+                <h3 style={{ fontSize: "1.125rem", fontWeight: "600", marginBottom: "1.5rem", color: "#15803d" }}>
+                  Filtros Avançados
+                </h3>
 
-              <Select value={specializationFilter} onValueChange={setSpecializationFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Especialização" />
-                </SelectTrigger>
-                <SelectContent>
-                  {uniqueSpecializations.map((spec) => (
-                    <SelectItem key={spec} value={spec}>
-                      {spec.charAt(0).toUpperCase() + spec.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <div style={{ marginBottom: "1.5rem" }}>
+                  <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500", color: "#374151" }}>
+                    Especialização
+                  </label>
+                  <Select value={specializationFilter} onValueChange={setSpecializationFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione uma especialização" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas</SelectItem>
+                      {uniqueSpecializations.map((spec) => (
+                        <SelectItem key={spec} value={spec}>
+                          {spec.charAt(0).toUpperCase() + spec.slice(1)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <Select value={shiftFilter} onValueChange={setShiftFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Turno" />
-                </SelectTrigger>
-                <SelectContent>
-                  {uniqueShifts.map((shift) => (
-                    <SelectItem key={shift} value={shift}>
-                      {shift.charAt(0).toUpperCase() + shift.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <div style={{ marginBottom: "1.5rem" }}>
+                  <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500", color: "#374151" }}>
+                    Faixa de Preço
+                  </label>
+                  <div style={{ padding: "1rem 0" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
+                      <div>
+                        <span style={{ fontSize: "0.875rem", color: "#6b7280" }}>Mínimo</span>
+                        <div style={{ fontSize: "1.25rem", fontWeight: "600", color: "#15803d" }}>R$ {minPrice}</div>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <span style={{ fontSize: "0.875rem", color: "#6b7280" }}>Máximo</span>
+                        <div style={{ fontSize: "1.25rem", fontWeight: "600", color: "#15803d" }}>R$ {maxPrice}+</div>
+                      </div>
+                    </div>
 
-              <Select value={neighborhoodFilter} onValueChange={setNeighborhoodFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Bairro" />
-                </SelectTrigger>
-                <SelectContent>
-                  {uniqueNeighborhoods.map((neighborhood) => (
-                    <SelectItem key={neighborhood} value={neighborhood}>
-                      {neighborhood}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    <div style={{ position: "relative", height: "40px" }}>
+                      <input
+                        type="range"
+                        min="0"
+                        max="500"
+                        value={minPrice}
+                        onChange={(e) => {
+                          const value = Number(e.target.value)
+                          if (value < maxPrice) {
+                            setMinPrice(value)
+                          }
+                        }}
+                        style={{
+                          position: "absolute",
+                          width: "100%",
+                          height: "6px",
+                          background: "transparent",
+                          pointerEvents: "all",
+                          appearance: "none",
+                          WebkitAppearance: "none",
+                          zIndex: 2,
+                        }}
+                      />
+                      <input
+                        type="range"
+                        min="0"
+                        max="500"
+                        value={maxPrice}
+                        onChange={(e) => {
+                          const value = Number(e.target.value)
+                          if (value > minPrice) {
+                            setMaxPrice(value)
+                          }
+                        }}
+                        style={{
+                          position: "absolute",
+                          width: "100%",
+                          height: "6px",
+                          background: "transparent",
+                          pointerEvents: "all",
+                          appearance: "none",
+                          WebkitAppearance: "none",
+                          zIndex: 2,
+                        }}
+                      />
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "17px",
+                          left: "0",
+                          right: "0",
+                          height: "6px",
+                          backgroundColor: "#e5e7eb",
+                          borderRadius: "3px",
+                          zIndex: 1,
+                        }}
+                      >
+                        <div
+                          style={{
+                            position: "absolute",
+                            left: `${(minPrice / 500) * 100}%`,
+                            right: `${100 - (maxPrice / 500) * 100}%`,
+                            height: "100%",
+                            backgroundColor: "#15803d",
+                            borderRadius: "3px",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-              <Select value={availabilityFilter} onValueChange={setAvailabilityFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Disponibilidade" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="available">Disponível</SelectItem>
-                  <SelectItem value="unavailable">Indisponível</SelectItem>
-                </SelectContent>
-              </Select>
+                {/* Days Available */}
+                <div style={{ marginBottom: "1.5rem" }}>
+                  <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500", color: "#374151" }}>
+                    Dias Disponíveis
+                  </label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                    {DAYS_OF_WEEK.map((day) => (
+                      <label
+                        key={day}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                          padding: "0.5rem 1rem",
+                          backgroundColor: selectedDays.includes(day) ? "#dcfce7" : "white",
+                          border: `1px solid ${selectedDays.includes(day) ? "#15803d" : "#d1d5db"}`,
+                          borderRadius: "6px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <Checkbox checked={selectedDays.includes(day)} onCheckedChange={() => toggleDay(day)} />
+                        <span style={{ fontSize: "0.875rem" }}>{day}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
 
-              <Select value={priceRange} onValueChange={setPriceRange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Faixa de Preço" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Até R$ 80</SelectItem>
-                  <SelectItem value="medium">R$ 81 - R$ 100</SelectItem>
-                  <SelectItem value="high">Acima de R$ 100</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                {/* Services */}
+                {allServices.length > 0 && (
+                  <div style={{ marginBottom: "1.5rem" }}>
+                    <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500", color: "#374151" }}>
+                      Serviços Oferecidos
+                    </label>
 
-            <Button onClick={clearFilters} variant="outline" style={{ borderColor: "#15803d", color: "#15803d" }}>
-              Limpar Filtros
-            </Button>
+                    {selectedServices.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                        {selectedServices.map((service) => (
+                          <Badge
+                            key={service}
+                            style={{
+                              backgroundColor: "#dcfce7",
+                              color: "#15803d",
+                              padding: "0.5rem 0.75rem",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "0.5rem",
+                            }}
+                          >
+                            {service}
+                            <X
+                              style={{ width: "14px", height: "14px", cursor: "pointer" }}
+                              onClick={() => removeService(service)}
+                            />
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+
+                    <div ref={serviceInputRef} style={{ position: "relative" }}>
+                      <Input
+                        placeholder="Digite para buscar serviços..."
+                        value={serviceInput}
+                        onChange={(e) => {
+                          setServiceInput(e.target.value)
+                          setShowServiceSuggestions(true)
+                        }}
+                        onFocus={() => setShowServiceSuggestions(true)}
+                      />
+
+                      {showServiceSuggestions && filteredServiceSuggestions.length > 0 && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "100%",
+                            left: 0,
+                            right: 0,
+                            backgroundColor: "white",
+                            border: "1px solid #d1d5db",
+                            borderRadius: "6px",
+                            marginTop: "0.25rem",
+                            maxHeight: "200px",
+                            overflowY: "auto",
+                            zIndex: 10,
+                            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                          }}
+                        >
+                          {filteredServiceSuggestions.map((service) => (
+                            <div
+                              key={service}
+                              onClick={() => addService(service)}
+                              style={{
+                                padding: "0.75rem 1rem",
+                                cursor: "pointer",
+                                borderBottom: "1px solid #f3f4f6",
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f9fafb")}
+                              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "white")}
+                            >
+                              {service}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Neighborhoods */}
+                {allAvailableNeighborhoods.length > 0 && (
+                  <div style={{ marginBottom: "1.5rem" }}>
+                    <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500", color: "#374151" }}>
+                      Bairros Atendidos
+                    </label>
+
+                    {selectedAvailableNeighborhoods.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                        {selectedAvailableNeighborhoods.map((neighborhood) => (
+                          <Badge
+                            key={neighborhood}
+                            style={{
+                              backgroundColor: "#dcfce7",
+                              color: "#15803d",
+                              padding: "0.5rem 0.75rem",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "0.5rem",
+                            }}
+                          >
+                            {neighborhood}
+                            <X
+                              style={{ width: "14px", height: "14px", cursor: "pointer" }}
+                              onClick={() => removeNeighborhood(neighborhood)}
+                            />
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+
+                    <div ref={neighborhoodInputRef} style={{ position: "relative" }}>
+                      <Input
+                        placeholder="Digite para buscar bairros..."
+                        value={neighborhoodInput}
+                        onChange={(e) => {
+                          setNeighborhoodInput(e.target.value)
+                          setShowNeighborhoodSuggestions(true)
+                        }}
+                        onFocus={() => setShowNeighborhoodSuggestions(true)}
+                      />
+
+                      {showNeighborhoodSuggestions && filteredNeighborhoodSuggestions.length > 0 && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "100%",
+                            left: 0,
+                            right: 0,
+                            backgroundColor: "white",
+                            border: "1px solid #d1d5db",
+                            borderRadius: "6px",
+                            marginTop: "0.25rem",
+                            maxHeight: "200px",
+                            overflowY: "auto",
+                            zIndex: 10,
+                            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                          }}
+                        >
+                          {filteredNeighborhoodSuggestions.map((neighborhood) => (
+                            <div
+                              key={neighborhood}
+                              onClick={() => addNeighborhood(neighborhood)}
+                              style={{
+                                padding: "0.75rem 1rem",
+                                cursor: "pointer",
+                                borderBottom: "1px solid #f3f4f6",
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f9fafb")}
+                              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "white")}
+                            >
+                              {neighborhood}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <Button onClick={clearFilters} variant="outline" style={{ borderColor: "#15803d", color: "#15803d" }}>
+                  Limpar Todos os Filtros
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Results Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "1.5rem",
+            flexWrap: "wrap",
+            gap: "1rem",
+          }}
+        >
           <h2 style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#15803d" }}>
-            {filteredNurses.length} Enfermeiros Encontrados
+            {sortedNurses.length} Enfermeiros Encontrados
           </h2>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span style={{ fontSize: "0.875rem", color: "#6b7280" }}>Ordenar por:</span>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger style={{ width: "200px" }}>
+                <SelectValue placeholder="Selecione" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Padrão</SelectItem>
+                <SelectItem value="price-high">Maior Preço</SelectItem>
+                <SelectItem value="price-low">Menor Preço</SelectItem>
+                <SelectItem value="popular">Mais Populares</SelectItem>
+                <SelectItem value="rating">Melhor Avaliação</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Nurses Grid */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))", gap: "1.5rem" }}>
-          {filteredNurses.map((nurse) => (
+          {sortedNurses.map((nurse) => (
             <Card
               key={nurse.id}
               style={{ transition: "transform 0.2s", cursor: "pointer" }}
@@ -289,7 +673,12 @@ export default function PatientDashboard() {
               <CardContent style={{ padding: "1.5rem" }}>
                 <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
                   <img
-                    src={nurse.image ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/user/file/${nurse.image}` : "/placeholder.svg?height=80&width=80&query=nurse professional"} alt={nurse.name}
+                    src={
+                      nurse.image
+                        ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/user/file/${nurse.image}`
+                        : "/nurse-professional.jpg"
+                    }
+                    alt={nurse.name}
                     style={{ width: "80px", height: "80px", borderRadius: "50%", objectFit: "cover" }}
                   />
                   <div style={{ flex: 1 }}>
@@ -329,24 +718,40 @@ export default function PatientDashboard() {
                     <span style={{ color: "#6b7280" }}>Experiência:</span>
                     <span style={{ marginLeft: "0.25rem", fontWeight: "600" }}>{nurse.years_experience} anos</span>
                   </div>
-                  <div>
-                    <span style={{ color: "#6b7280" }}>Turno:</span>
-                    <span style={{ marginLeft: "0.25rem", fontWeight: "600" }}>
-                      {nurse.shift.charAt(0).toUpperCase() + nurse.shift.slice(1)}
-                    </span>
-                  </div>
+                  {nurse.shift && (
+                    <div>
+                      <span style={{ color: "#6b7280" }}>Turno:</span>
+                      <span style={{ marginLeft: "0.25rem", fontWeight: "600" }}>
+                        {nurse.shift.charAt(0).toUpperCase() + nurse.shift.slice(1)}
+                      </span>
+                    </div>
+                  )}
                   <div style={{ gridColumn: "1 / -1" }}>
                     <span style={{ color: "#6b7280" }}>Localização:</span>
-                    <span style={{ marginLeft: "0.25rem", fontWeight: "600" }}>{nurse.location}</span>
+                    <span style={{ marginLeft: "0.25rem", fontWeight: "600" }}>
+                      {nurse.neighborhood}, {nurse.city} - {nurse.uf?.toUpperCase()}
+                    </span>
                   </div>
+                  {nurse.days_available && nurse.days_available.length > 0 && (
+                    <div style={{ gridColumn: "1 / -1" }}>
+                      <span style={{ color: "#6b7280" }}>Dias:</span>
+                      <span style={{ marginLeft: "0.25rem", fontWeight: "600" }}>
+                        {nurse.days_available.join(", ")}
+                      </span>
+                    </div>
+                  )}
+                  {nurse.services && nurse.services.length > 0 && (
+                    <div style={{ gridColumn: "1 / -1" }}>
+                      <span style={{ color: "#6b7280" }}>Serviços:</span>
+                      <span style={{ marginLeft: "0.25rem", fontWeight: "600" }}>{nurse.services.join(", ")}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
-                    <span style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#15803d" }}>
-                      {nurse.price > 0 ? `R$ ${nurse.price}` : "A combinar"}
-                    </span>
-                    {nurse.price > 0 && <span style={{ color: "#6b7280", fontSize: "0.875rem" }}>/hora</span>}
+                    <span style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#15803d" }}>R$ {nurse.price}</span>
+                    <span style={{ color: "#6b7280", fontSize: "0.875rem" }}>/hora</span>
                   </div>
 
                   <Link href={`/visit/nurses-list/${nurse.id}`}>
@@ -366,7 +771,7 @@ export default function PatientDashboard() {
           ))}
         </div>
 
-        {filteredNurses.length === 0 && !loading && (
+        {sortedNurses.length === 0 && !loading && (
           <div style={{ textAlign: "center", padding: "3rem", color: "#6b7280" }}>
             <h3 style={{ fontSize: "1.25rem", marginBottom: "0.5rem" }}>Nenhum enfermeiro encontrado</h3>
             <p>Tente ajustar os filtros para encontrar mais opções.</p>
@@ -382,6 +787,35 @@ export default function PatientDashboard() {
           100% {
             transform: rotate(360deg);
           }
+        }
+        
+        input[type="range"] {
+          -webkit-appearance: none;
+          appearance: none;
+          background: transparent;
+          cursor: pointer;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: #15803d;
+          cursor: pointer;
+          border: 2px solid white;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: #15803d;
+          cursor: pointer;
+          border: 2px solid white;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
       `}</style>
     </div>
