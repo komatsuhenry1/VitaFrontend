@@ -151,18 +151,18 @@ export function Header() {
     <>
       <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
         {/* [MUDANÇA] Adicionado 'relative' para servir de referência para a navegação */}
-        <div className="relative flex h-16 w-full items-center justify-between px-6 sm:px-8">          <Link href={logoUrl} className="flex items-center space-x-2">
-            <Image src="/logo.png" alt="Vita Logo" width={40} height={40} className="object-cover pl-2" />
-            <span className="text-lg font-semibold hidden sm:block text-[#15803d]">Vita</span>
-          </Link>
+        <div className="flex h-16 w-full items-center justify-between px-4">       
+          <Link href={logoUrl} className="flex items-center space-x-2">
+          <Image src="/logo.png" alt="Vita Logo" width={40} height={40} className="object-cove" />
+          <span className="text-lg font-semibold hidden sm:block text-[#15803d]">Vita</span>
+        </Link>
 
           {/* [MUDANÇA] Adicionadas classes para centralizar a navegação de forma absoluta */}
-          <nav className="hidden md:flex items-center space-x-8 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            {currentNavLinks.map((link) => (
-              <Link key={link.href} href={link.href} className="text-sm font-medium hover:text-primary transition-colors">
-                {link.label}
-              </Link>
-            ))}
+          <nav className="hidden md:flex items-center space-x-8">            {currentNavLinks.map((link) => (
+            <Link key={link.href} href={link.href} className="text-sm font-medium hover:text-primary transition-colors">
+              {link.label}
+            </Link>
+          ))}
           </nav>
 
           <div className="flex items-center">
