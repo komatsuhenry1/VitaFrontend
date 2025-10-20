@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
-import { Clock, DollarSign, Calendar, Loader2, Plus, X } from "lucide-react"
+import { Clock, DollarSign, Calendar, Loader2, Plus, X, MapPin } from "lucide-react" // Adicionado MapPin
 import { toast } from "sonner"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
@@ -43,32 +43,33 @@ export default function NurseAvailabilityPage() {
     const [services, setServices] = useState<string[]>([])
     const [selectedService, setSelectedService] = useState("")
 
+    // ✅ NOVO: State para os bairros
+    const [neighborhoods, setNeighborhoods] = useState<string[]>([])
+    const [selectedNeighborhood, setSelectedNeighborhood] = useState("")
+
     useEffect(() => {
         const fetchNurseData = async () => {
             try {
                 const token = localStorage.getItem("token")
-                const user = JSON.parse(localStorage.getItem("user") || "{}")
-                const nurseId = user._id || user.id
-
-                if (!token || !nurseId) {
+                if (!token) {
                     router.push("/login")
                     return
                 }
 
-                const response = await fetch(`${API_BASE_URL}/user/nurse/${nurseId}`, {
+                const response = await fetch(`${API_BASE_URL}/nurse/availability`, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },
                 })
 
                 if (!response.ok) {
-                    throw new Error("Erro ao carregar dados do enfermeiro")
+                    throw new Error("Erro ao carregar dados de disponibilidade")
                 }
 
                 const result = await response.json()
 
                 if (result.success && result.data) {
-                    setAvailability(result.data.available)
+                    setAvailability(result.data.online)
                     setAvailabilityForm({
                         start_time: result.data.start_time || "08:00",
                         end_time: result.data.end_time || "18:00",
@@ -78,17 +79,19 @@ export default function NurseAvailabilityPage() {
                         days_available: result.data.days_available || [],
                     })
                     setServices(result.data.services || [])
+                    // ✅ NOVO: Popula os bairros com dados da API
+                    setNeighborhoods(result.data.available_neighborhoods || [])
                 }
             } catch (err) {
                 console.error("Error fetching nurse data:", err)
-                toast.error("Erro ao carregar dados")
+                toast.error("Erro ao carregar seus dados.")
             } finally {
                 setLoading(false)
             }
         }
 
         fetchNurseData()
-    }, [router])
+    }, [])
 
     const handleSaveAvailability = async () => {
         setIsSaving(true)
@@ -107,8 +110,10 @@ export default function NurseAvailabilityPage() {
                     price: availabilityForm.price_per_hour,
                     max_patients_per_day: availabilityForm.max_patients_per_day,
                     days_available: availabilityForm.days_available,
-                    available: availability,
+                    online: availability,
                     services: services,
+                    // ✅ NOVO: Envia os bairros para a API
+                    available_neighborhoods: neighborhoods,
                 }),
             })
 
@@ -149,6 +154,23 @@ export default function NurseAvailabilityPage() {
         toast.success("Serviço removido!")
     }
 
+    // ✅ NOVO: Funções para adicionar e remover bairros
+    const addNeighborhood = () => {
+        if (selectedNeighborhood && !neighborhoods.includes(selectedNeighborhood)) {
+            setNeighborhoods([...neighborhoods, selectedNeighborhood])
+            setSelectedNeighborhood("")
+            toast.success("Bairro adicionado!")
+        } else if (neighborhoods.includes(selectedNeighborhood)) {
+            toast.error("Este bairro já foi adicionado")
+        }
+    }
+
+    const removeNeighborhood = (neighborhoodToRemove: string) => {
+        setNeighborhoods(neighborhoods.filter((neighborhood) => neighborhood !== neighborhoodToRemove))
+        toast.success("Bairro removido!")
+    }
+
+
     if (loading) {
         return (
             <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
@@ -187,26 +209,6 @@ export default function NurseAvailabilityPage() {
             {/* Main Content */}
             <section style={{ padding: "2rem 1rem", maxWidth: "1200px", margin: "0 auto" }}>
                 <div className="space-y-6">
-                    {/* Availability Toggle Card */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Status de Disponibilidade</CardTitle>
-                            <CardDescription>Controle se você está disponível para receber novos atendimentos</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                <div>
-                                    <Label htmlFor="availability-toggle" style={{ fontSize: "1rem", fontWeight: "medium" }}>
-                                        Disponível para novos atendimentos
-                                    </Label>
-                                    <p style={{ fontSize: "0.875rem", color: "#6b7280", marginTop: "0.25rem" }}>
-                                        Ative para receber solicitações de novos pacientes
-                                    </p>
-                                </div>
-                                <Switch id="availability-toggle" checked={availability} onCheckedChange={setAvailability} />
-                            </div>
-                        </CardContent>
-                    </Card>
 
                     {/* Working Hours Card */}
                     <Card>
@@ -336,6 +338,78 @@ export default function NurseAvailabilityPage() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* ✅ NOVO: Card de Bairros */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <MapPin size={20} />
+                                Bairros de Atendimento
+                            </CardTitle>
+                            <CardDescription>Selecione os bairros onde você pode realizar atendimentos</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex gap-2">
+                                <Select value={selectedNeighborhood} onValueChange={setSelectedNeighborhood}>
+                                    <SelectTrigger className="flex-1">
+                                        <SelectValue placeholder="Selecione um bairro..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Centro">Centro</SelectItem>
+                                        <SelectItem value="Vila Prudente">Vila Prudente</SelectItem>
+                                        <SelectItem value="Tatuapé">Tatuapé</SelectItem>
+                                        <SelectItem value="Mooca">Mooca</SelectItem>
+                                        <SelectItem value="Ipiranga">Ipiranga</SelectItem>
+                                        <SelectItem value="Vila Mariana">Vila Mariana</SelectItem>
+                                        <SelectItem value="Pinheiros">Pinheiros</SelectItem>
+                                        <SelectItem value="Jardins">Jardins</SelectItem>
+                                        <SelectItem value="Moema">Moema</SelectItem>
+                                        <SelectItem value="Itaim Bibi">Itaim Bibi</SelectItem>
+                                        <SelectItem value="Brooklin">Brooklin</SelectItem>
+                                        <SelectItem value="Santo Amaro">Santo Amaro</SelectItem>
+                                        <SelectItem value="Butantã">Butantã</SelectItem>
+                                        <SelectItem value="Lapa">Lapa</SelectItem>
+                                        <SelectItem value="Santana">Santana</SelectItem>
+                                        <SelectItem value="Vila Guilherme">Vila Guilherme</SelectItem>
+                                        <SelectItem value="Penha">Penha</SelectItem>
+                                        <SelectItem value="São Miguel">São Miguel</SelectItem>
+                                        <SelectItem value="Outro">Outro</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <Button onClick={addNeighborhood} disabled={!selectedNeighborhood} className="bg-[#15803d] hover:bg-[#166534]">
+                                    <Plus size={20} />
+                                    Adicionar
+                                </Button>
+                            </div>
+
+                            {neighborhoods.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                    {neighborhoods.map((neighborhood, index) => (
+                                        <Badge
+                                            key={index}
+                                            variant="secondary"
+                                            className="text-sm py-2 px-3 flex items-center gap-2"
+                                            style={{ backgroundColor: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0" }}
+                                        >
+                                            {neighborhood}
+                                            <button
+                                                onClick={() => removeNeighborhood(neighborhood)}
+                                                className="hover:text-red-600"
+                                                style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </Badge>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p style={{ textAlign: "center", color: "#9ca3af", padding: "2rem", fontSize: "0.875rem" }}>
+                                    Nenhum bairro adicionado ainda. Adicione os bairros que você atende acima.
+                                </p>
+                            )}
+                        </CardContent>
+                    </Card>
+
 
                     {/* Services Card */}
                     <Card>
