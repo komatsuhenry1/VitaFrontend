@@ -39,7 +39,13 @@ export default function NursesMapPage() {
         const fetchNurses = async () => {
             try {
                 setLoading(true)
-                const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/user/all_nurses`)
+                const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/user/all_nurses`, {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${localStorage.getItem("token")}`,
+                    },
+                })
 
                 if (!response.ok) {
                     throw new Error("Falha ao carregar enfermeiros")
@@ -394,7 +400,7 @@ export default function NursesMapPage() {
                                     </div>
 
                                     <div style={{ display: "flex", gap: "0.5rem" }}>
-                                        <Link href={`/patient/nurse/${selectedNurse.id}`} style={{ flex: 1 }}>
+                                        <Link href={`/visit/nurses-list/${selectedNurse.id}`} style={{ flex: 1 }}>
                                             <Button style={{ backgroundColor: "#15803d", color: "white", width: "100%" }}>
                                                 Ver Perfil Completo
                                             </Button>

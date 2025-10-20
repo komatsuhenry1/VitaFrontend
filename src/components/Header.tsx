@@ -50,6 +50,7 @@ const navLinksConfig = {
     { href: "/visit/nurses-list", label: "Enfermeiros" },
     { href: "/confirmed-visits", label: "Minhas Visitas" },
     { href: "/sobre", label: "Sobre" },
+    { href: "/patient/map", label: "Mapa" },
   ],
   NURSE: [
     { href: "/sobre", label: "Sobre" },
