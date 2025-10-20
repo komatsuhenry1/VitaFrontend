@@ -56,6 +56,7 @@ const navLinksConfig = {
     { href: "/dashboard/nurse", label: "Dashboard" },
     { href: "/visit/all-visits-patient", label: "Visitas" },
     { href: "/chat/nurse-chats", label: "Conversas" },
+    { href: "/availability", label: "Disponibilidade" },
   ],
   ADMIN: [
     { href: "/dashboard/admin", label: "Dashboard" },
@@ -149,13 +150,14 @@ export function Header() {
   return (
     <>
       <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
-        <div className="container flex h-16 items-center justify-between">
-          <Link href={logoUrl} className="flex items-center space-x-2">
+        {/* [MUDANÇA] Adicionado 'relative' para servir de referência para a navegação */}
+        <div className="relative flex h-16 w-full items-center justify-between px-6 sm:px-8">          <Link href={logoUrl} className="flex items-center space-x-2">
             <Image src="/logo.png" alt="Vita Logo" width={40} height={40} className="object-cover pl-2" />
             <span className="text-lg font-semibold hidden sm:block text-[#15803d]">Vita</span>
           </Link>
 
-          <nav className="hidden md:flex items-center space-x-8">
+          {/* [MUDANÇA] Adicionadas classes para centralizar a navegação de forma absoluta */}
+          <nav className="hidden md:flex items-center space-x-8 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             {currentNavLinks.map((link) => (
               <Link key={link.href} href={link.href} className="text-sm font-medium hover:text-primary transition-colors">
                 {link.label}
@@ -278,7 +280,6 @@ export function Header() {
                 <SheetContent side="right" className="w-64">
                   <div className="flex flex-col gap-6 mt-8">
                     {isAuthenticated && userData && (
-                      // [MUDANÇA] Adicionado 'flex-col' para empilhar e 'items-center' para centralizar.
                       <div className="flex flex-col items-center gap-2 pb-4 border-b text-center">
                         <Avatar className="h-10 w-10">
                           {avatarUrl && <AvatarImage src={avatarUrl} alt={userData.name} />}

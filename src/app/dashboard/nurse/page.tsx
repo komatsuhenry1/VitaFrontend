@@ -6,11 +6,7 @@ import { Header } from "@/components/Header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
-import { Wifi, WifiOff, Loader2, Clock, DollarSign, Calendar } from "lucide-react"
+import { Wifi, WifiOff, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
@@ -244,9 +240,7 @@ export default function NurseDashboard() {
       <Header />
 
       {/* Hero Section */}
-      <section
-        style={heroStyle}
-      >
+      <section style={heroStyle}>
         <div style={{ maxWidth: "1200px", margin: "0 auto", textAlign: "center" }}>
           <h1 style={{ fontSize: "2.5rem", fontWeight: "bold", marginBottom: "1rem" }}>Dashboard do Enfermeiro</h1>
           <p style={{ fontSize: "1.25rem", opacity: 0.9, marginBottom: "2rem" }}>
@@ -353,11 +347,10 @@ export default function NurseDashboard() {
       {/* Dashboard Content */}
       <section style={{ padding: "3rem 1rem", maxWidth: "1200px", margin: "0 auto" }}>
         <Tabs defaultValue="schedule" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="schedule">Agenda</TabsTrigger>
             <TabsTrigger value="patients">Pacientes</TabsTrigger>
             <TabsTrigger value="history">Histórico</TabsTrigger>
-            <TabsTrigger value="availability">Disponibilidade</TabsTrigger>
           </TabsList>
           {/* </CHANGE> */}
 
@@ -398,156 +391,6 @@ export default function NurseDashboard() {
               </CardHeader>
               <CardContent>
                 <p style={{ textAlign: "center", color: "#6b7280", padding: "2rem" }}>Nenhum atendimento concluído</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="availability" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Configurar Disponibilidade</CardTitle>
-                <CardDescription>Defina seus horários de trabalho e disponibilidade</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Availability Toggle */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div>
-                    <Label htmlFor="availability-toggle" style={{ fontSize: "1rem", fontWeight: "medium" }}>
-                      Disponível para novos atendimentos
-                    </Label>
-                    <p style={{ fontSize: "0.875rem", color: "#6b7280", marginTop: "0.25rem" }}>
-                      Ative para receber solicitações de novos pacientes
-                    </p>
-                  </div>
-                  <Switch id="availability-toggle" checked={availability} onCheckedChange={setAvailability} />
-                </div>
-
-                {/* Working Hours */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="start-time" className="flex items-center gap-2">
-                      <Clock size={16} />
-                      Horário de Início
-                    </Label>
-                    <Input
-                      id="start-time"
-                      type="time"
-                      value={availabilityForm.start_time}
-                      onChange={(e) => setAvailabilityForm({ ...availabilityForm, start_time: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="end-time" className="flex items-center gap-2">
-                      <Clock size={16} />
-                      Horário de Término
-                    </Label>
-                    <Input
-                      id="end-time"
-                      type="time"
-                      value={availabilityForm.end_time}
-                      onChange={(e) => setAvailabilityForm({ ...availabilityForm, end_time: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                {/* Days of the Week */}
-                <div>
-                  <Label className="flex items-center gap-2 mb-3">
-                    <Calendar size={16} />
-                    Dias Disponíveis
-                  </Label>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"].map((day) => (
-                      <Button
-                        key={day}
-                        type="button"
-                        variant={availabilityForm.days_available.includes(day) ? "default" : "outline"}
-                        onClick={() => toggleDayAvailability(day)}
-                        className={
-                          availabilityForm.days_available.includes(day) ? "bg-[#15803d] hover:bg-[#166534]" : ""
-                        }
-                      >
-                        {day}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="specialization">Especialização</Label>
-                  <Select
-                    value={availabilityForm.specialization}
-                    onValueChange={(value) => setAvailabilityForm({ ...availabilityForm, specialization: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione sua especialização" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pediatria">Pediatria</SelectItem>
-                      <SelectItem value="geriatria">Geriatria</SelectItem>
-                      <SelectItem value="cardiologia">Cardiologia</SelectItem>
-                      <SelectItem value="oncologia">Oncologia</SelectItem>
-                      <SelectItem value="geral">Enfermagem Geral</SelectItem>
-                      <SelectItem value="uti">UTI</SelectItem>
-                      <SelectItem value="emergencia">Emergência</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Price and Max Patients */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="price" className="flex items-center gap-2">
-                      <DollarSign size={16} />
-                      Valor por Hora (R$)
-                    </Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={availabilityForm.price_per_hour}
-                      onChange={(e) =>
-                        setAvailabilityForm({
-                          ...availabilityForm,
-                          price_per_hour: Number.parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      placeholder="150.00"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="max-patients">Máximo de Pacientes por Dia</Label>
-                    <Input
-                      id="max-patients"
-                      type="number"
-                      min="1"
-                      max="50"
-                      value={availabilityForm.max_patients_per_day}
-                      onChange={(e) =>
-                        setAvailabilityForm({
-                          ...availabilityForm,
-                          max_patients_per_day: Number.parseInt(e.target.value) || 10,
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-
-                <Button
-                  onClick={handleSaveAvailability}
-                  disabled={isSavingAvailability}
-                  className="w-full bg-[#15803d] hover:bg-[#166534]"
-                >
-                  {isSavingAvailability ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Salvando...
-                    </>
-                  ) : (
-                    "Salvar Configurações"
-                  )}
-                </Button>
               </CardContent>
             </Card>
           </TabsContent>
