@@ -46,6 +46,8 @@ interface NurseData {
   qualifications: string[]
   services: string[]
   schedules: Schedule[]
+  total_patients: number
+  earnings: number
   reviews: Array<{
     patient: string
     rating: number
@@ -388,15 +390,17 @@ export default function NurseDashboard() {
           >
             <Card style={{ backgroundColor: "rgba(255, 255, 255, 0.1)", border: "none" }}>
               <CardContent style={{ padding: "1.5rem", textAlign: "center" }}>
-                <div style={{ fontSize: "2rem", fontWeight: "bold", color: "white" }}>24</div>
+                <div style={{ fontSize: "2rem", fontWeight: "bold", color: "white" }}>
+                  {nurseData.total_patients || 0}
+                </div>
                 <div style={{ fontSize: "0.875rem", color: "rgba(255, 255, 255, 0.8)" }}>Pacientes Atendidos</div>
               </CardContent>
             </Card>
 
             <Card style={{ backgroundColor: "rgba(255, 255, 255, 0.1)", border: "none" }}>
               <CardContent style={{ padding: "1.5rem", textAlign: "center" }}>
-                <div style={{ fontSize: "2rem", fontWeight: "bold", color: "white" }}>8</div>
-                <div style={{ fontSize: "0.875rem", color: "rgba(255, 255, 255, 0.8)" }}>Consultas Hoje</div>
+                <div style={{ fontSize: "2rem", fontWeight: "bold", color: "white" }}>{upcomingSchedules.length}</div>
+                <div style={{ fontSize: "0.875rem", color: "rgba(255, 255, 255, 0.8)" }}>Consultas</div>
               </CardContent>
             </Card>
 
@@ -411,8 +415,10 @@ export default function NurseDashboard() {
 
             <Card style={{ backgroundColor: "rgba(255, 255, 255, 0.1)", border: "none" }}>
               <CardContent style={{ padding: "1.5rem", textAlign: "center" }}>
-                <div style={{ fontSize: "2rem", fontWeight: "bold", color: "white" }}>R$ 2.450</div>
-                <div style={{ fontSize: "0.875rem", color: "rgba(255, 255, 255, 0.8)" }}>Ganhos do Mês</div>
+                <div style={{ fontSize: "2rem", fontWeight: "bold", color: "white" }}>
+                  R$ {nurseData.earnings?.toFixed(2) || "0.00"}
+                </div>
+                <div style={{ fontSize: "0.875rem", color: "rgba(255, 255, 255, 0.8)" }}>Ganhos Totais</div>
               </CardContent>
             </Card>
           </div>
