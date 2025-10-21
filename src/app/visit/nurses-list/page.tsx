@@ -97,7 +97,12 @@ export default function PatientDashboard() {
         const data: ApiResponse = await response.json()
 
         if (data.success) {
-          setNurses(data.data || [])
+          // Sempre definir todos os enfermeiros como disponíveis
+          const nursesWithAvailability = (data.data || []).map(nurse => ({
+            ...nurse,
+            available: true
+          }))
+          setNurses(nursesWithAvailability)
         } else {
           throw new Error(data.message || "Erro ao carregar dados")
         }
@@ -691,12 +696,7 @@ export default function PatientDashboard() {
                       }}
                     >
                       <h3 style={{ fontSize: "1.25rem", fontWeight: "bold", color: "#1f2937" }}>{nurse.name}</h3>
-                      <Badge
-                        variant={nurse.available ? "default" : "secondary"}
-                        style={{ backgroundColor: nurse.available ? "#15803d" : "#6b7280" }}
-                      >
-                        {nurse.available ? "Disponível" : "Indisponível"}
-                      </Badge>
+
                     </div>
                     <p style={{ color: "#15803d", fontWeight: "600", marginBottom: "0.25rem" }}>
                       {nurse.specialization.charAt(0).toUpperCase() + nurse.specialization.slice(1)}
@@ -740,12 +740,6 @@ export default function PatientDashboard() {
                       </span>
                     </div>
                   )}
-                  {nurse.services && nurse.services.length > 0 && (
-                    <div style={{ gridColumn: "1 / -1" }}>
-                      <span style={{ color: "#6b7280" }}>Serviços:</span>
-                      <span style={{ marginLeft: "0.25rem", fontWeight: "600" }}>{nurse.services.join(", ")}</span>
-                    </div>
-                  )}
                 </div>
 
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -762,10 +756,9 @@ export default function PatientDashboard() {
                       }}
                       disabled={!nurse.available}
                     >
-                      {nurse.available ? "Ver Perfil" : "Indisponível"}
+                      Ver Perfil
                     </Button>
-                  </Link>
-                </div>
+                  </Link>                </div>
               </CardContent>
             </Card>
           ))}

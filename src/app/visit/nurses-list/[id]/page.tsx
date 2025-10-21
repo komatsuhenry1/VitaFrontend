@@ -72,41 +72,54 @@ export default function NurseProfile() {
     useEffect(() => {
         const fetchNurseData = async () => {
             try {
-                setLoading(true)
-                const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+                setLoading(true);
+                const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
                 const response = await fetch(`${API_BASE_URL}/user/nurse/${nurseId}`, {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",
                         Authorization: `Bearer ${localStorage.getItem("token") ?? ""}`,
                     },
-                })
-
+                });
+                console.log("response", response);
+    
+                // ================== MUDANÇA PRINCIPAL ==================
+    
+                // 1. Leia a resposta JSON ANTES de verificar o status 'ok'.
+                //    Isso garante que você tenha a mensagem de erro da API.
+                const result: ApiResponse = await response.json();
+                console.log("result", result);
+    
+                // 2. Agora, verifique o status da resposta.
+                //    Se não estiver 'ok', lance um erro usando a mensagem da API.
                 if (!response.ok) {
-                    throw new Error("Enfermeiro não encontrado ou erro na rede.")
+                    throw new Error(result.message || "Erro ao buscar dados do enfermeiro.");
                 }
-
-                const result: ApiResponse = await response.json()
-
+    
+                // A lógica de sucesso continua a mesma.
+                // O `else if` anterior se torna desnecessário com esta nova estrutura.
                 if (result.success && result.data) {
-                    setNurse(result.data)
-                    setValue(result.data.price > 0 ? String(result.data.price) : "")
+                    setNurse(result.data);
+                    setValue(result.data.price > 0 ? String(result.data.price) : "");
                 } else {
-                    throw new Error(result.message || "Erro ao carregar dados do enfermeiro")
+                    // Um fallback caso a API retorne sucesso mas sem dados.
+                    throw new Error(result.message || "Erro ao carregar dados do enfermeiro");
                 }
+    
+                // ================== FIM DA MUDANÇA ==================
+    
             } catch (err) {
-                setError(err instanceof Error ? err.message : "Erro desconhecido")
+                setError(err instanceof Error ? err.message : "Erro desconhecido");
             } finally {
-                setLoading(false)
+                setLoading(false);
             }
-        }
-
+        };
+    
         if (nurseId) {
-            fetchNurseData()
+            fetchNurseData();
         }
-    }, [nurseId])
-
-    // Lógica para agendamento
+    }, [nurseId]);    
+    
     const handleBooking = async () => {
         if (!selectedDate || !selectedTime || !value) { // 👈 Alteração: Validar o campo 'value'
             setBookingError("Por favor, selecione data, horário e informe o valor.")

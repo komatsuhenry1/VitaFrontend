@@ -703,16 +703,16 @@ export default function RegisterPage() {
                               <SelectValue placeholder="Selecione" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="sao paulo">São Paulo</SelectItem>
-                              <SelectItem value="rio de janeiro">Rio de Janeiro</SelectItem>
-                              <SelectItem value="belo horizonte">Belo Horizonte</SelectItem>
-                              <SelectItem value="brasilia">Brasília</SelectItem>
-                              <SelectItem value="curitiba">Curitiba</SelectItem>
-                              <SelectItem value="porto alegre">Porto Alegre</SelectItem>
-                              <SelectItem value="salvador">Salvador</SelectItem>
-                              <SelectItem value="fortaleza">Fortaleza</SelectItem>
-                              <SelectItem value="recife">Recife</SelectItem>
-                              <SelectItem value="manaus">Manaus</SelectItem>
+                              <SelectItem value="São Paulo">São Paulo</SelectItem>
+                              <SelectItem value="Rio de Janeiro">Rio de Janeiro</SelectItem>
+                              <SelectItem value="Belo Horizonte">Belo Horizonte</SelectItem>
+                              <SelectItem value="Brasília">Brasília</SelectItem>
+                              <SelectItem value="Curitiba">Curitiba</SelectItem>
+                              <SelectItem value="Porto Alegre">Porto Alegre</SelectItem>
+                              <SelectItem value="Salvador">Salvador</SelectItem>
+                              <SelectItem value="Fortaleza">Fortaleza</SelectItem>
+                              <SelectItem value="Recife">Recife</SelectItem>
+                              <SelectItem value="Manaus">Manaus</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>

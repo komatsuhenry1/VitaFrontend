@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
-import { Clock, DollarSign, Calendar, Loader2, Plus, X, MapPin } from "lucide-react" // Adicionado MapPin
+import { Clock, DollarSign, Calendar, Loader2, Plus, X, Award, MapPin } from "lucide-react" // MapPin adicionado de volta
 import { toast } from "sonner"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
@@ -39,11 +39,14 @@ export default function NurseAvailabilityPage() {
         days_available: [],
     })
 
-    // Services management
+    // States dos campos dinâmicos
     const [services, setServices] = useState<string[]>([])
     const [selectedService, setSelectedService] = useState("")
 
-    // ✅ NOVO: State para os bairros
+    const [qualifications, setQualifications] = useState<string[]>([])
+    const [selectedQualification, setSelectedQualification] = useState("")
+
+    // ✅ LÓGICA DE BAIRROS RESTAURADA
     const [neighborhoods, setNeighborhoods] = useState<string[]>([])
     const [selectedNeighborhood, setSelectedNeighborhood] = useState("")
 
@@ -56,6 +59,7 @@ export default function NurseAvailabilityPage() {
                     return
                 }
 
+                // ✅ ENDPOINT CORRIGIDO PARA CARREGAR TODAS AS CONFIGURAÇÕES
                 const response = await fetch(`${API_BASE_URL}/nurse/availability`, {
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -69,7 +73,8 @@ export default function NurseAvailabilityPage() {
                 const result = await response.json()
 
                 if (result.success && result.data) {
-                    setAvailability(result.data.online)
+                    // Preenche todos os dados do formulário
+                    setAvailability(result.data.online ?? true) // 'online' parece ser o campo correto aqui
                     setAvailabilityForm({
                         start_time: result.data.start_time || "08:00",
                         end_time: result.data.end_time || "18:00",
@@ -79,7 +84,8 @@ export default function NurseAvailabilityPage() {
                         days_available: result.data.days_available || [],
                     })
                     setServices(result.data.services || [])
-                    // ✅ NOVO: Popula os bairros com dados da API
+                    setQualifications(result.data.qualifications || [])
+                    // ✅ POPULA OS BAIRROS COM DADOS DA API
                     setNeighborhoods(result.data.available_neighborhoods || [])
                 }
             } catch (err) {
@@ -91,11 +97,11 @@ export default function NurseAvailabilityPage() {
         }
 
         fetchNurseData()
-    }, [])
+    }, [router]) // router adicionado para consistência
 
     const handleSaveAvailability = async () => {
         setIsSaving(true)
-        try {   
+        try {
             const token = localStorage.getItem("token")
             const response = await fetch(`${API_BASE_URL}/nurse/update`, {
                 method: "PATCH",
@@ -110,9 +116,10 @@ export default function NurseAvailabilityPage() {
                     price: availabilityForm.price_per_hour,
                     max_patients_per_day: availabilityForm.max_patients_per_day,
                     days_available: availabilityForm.days_available,
-                    online: availability,
+                    online: availability, // Enviando 'online' em vez de 'available'
                     services: services,
-                    // ✅ NOVO: Envia os bairros para a API
+                    qualifications: qualifications,
+                    // ✅ ENVIANDO OS BAIRROS PARA SALVAR
                     available_neighborhoods: neighborhoods,
                 }),
             })
@@ -139,6 +146,7 @@ export default function NurseAvailabilityPage() {
         }))
     }
 
+    // Funções para Serviços
     const addService = () => {
         if (selectedService && !services.includes(selectedService)) {
             setServices([...services, selectedService])
@@ -154,7 +162,23 @@ export default function NurseAvailabilityPage() {
         toast.success("Serviço removido!")
     }
 
-    // ✅ NOVO: Funções para adicionar e remover bairros
+    // Funções para Qualificações
+    const addQualification = () => {
+        if (selectedQualification && !qualifications.includes(selectedQualification)) {
+            setQualifications([...qualifications, selectedQualification])
+            setSelectedQualification("")
+            toast.success("Qualificação adicionada!")
+        } else if (qualifications.includes(selectedQualification)) {
+            toast.error("Esta qualificação já foi adicionada")
+        }
+    }
+
+    const removeQualification = (qualificationToRemove: string) => {
+        setQualifications(qualifications.filter((qualification) => qualification !== qualificationToRemove))
+        toast.success("Qualificação removida!")
+    }
+
+    // ✅ FUNÇÕES PARA BAIRROS RESTAURADAS
     const addNeighborhood = () => {
         if (selectedNeighborhood && !neighborhoods.includes(selectedNeighborhood)) {
             setNeighborhoods([...neighborhoods, selectedNeighborhood])
@@ -169,7 +193,6 @@ export default function NurseAvailabilityPage() {
         setNeighborhoods(neighborhoods.filter((neighborhood) => neighborhood !== neighborhoodToRemove))
         toast.success("Bairro removido!")
     }
-
 
     if (loading) {
         return (
@@ -260,7 +283,9 @@ export default function NurseAvailabilityPage() {
                                         type="button"
                                         variant={availabilityForm.days_available.includes(day) ? "default" : "outline"}
                                         onClick={() => toggleDayAvailability(day)}
-                                        className={availabilityForm.days_available.includes(day) ? "bg-[#15803d] hover:bg-[#166534]" : ""}
+                                        className={
+                                            availabilityForm.days_available.includes(day) ? "bg-[#15803d] hover:bg-[#166534]" : ""
+                                        }
                                     >
                                         {day}
                                     </Button>
@@ -277,7 +302,7 @@ export default function NurseAvailabilityPage() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div>
-                                <Label htmlFor="specialization">Especialização</Label>
+                                <Label htmlFor="specialization">Especialização Principal</Label>
                                 <Select
                                     value={availabilityForm.specialization}
                                     onValueChange={(value) => setAvailabilityForm({ ...availabilityForm, specialization: value })}
@@ -339,7 +364,7 @@ export default function NurseAvailabilityPage() {
                         </CardContent>
                     </Card>
 
-                    {/* ✅ NOVO: Card de Bairros */}
+                    {/* ✅ CARD DE BAIRROS RESTAURADO */}
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
@@ -370,13 +395,13 @@ export default function NurseAvailabilityPage() {
                                         <SelectItem value="Butantã">Butantã</SelectItem>
                                         <SelectItem value="Lapa">Lapa</SelectItem>
                                         <SelectItem value="Santana">Santana</SelectItem>
-                                        <SelectItem value="Vila Guilherme">Vila Guilherme</SelectItem>
-                                        <SelectItem value="Penha">Penha</SelectItem>
-                                        <SelectItem value="São Miguel">São Miguel</SelectItem>
-                                        <SelectItem value="Outro">Outro</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                <Button onClick={addNeighborhood} disabled={!selectedNeighborhood} className="bg-[#15803d] hover:bg-[#166534]">
+                                <Button
+                                    onClick={addNeighborhood}
+                                    disabled={!selectedNeighborhood}
+                                    className="bg-[#15803d] hover:bg-[#166534]"
+                                >
                                     <Plus size={20} />
                                     Adicionar
                                 </Button>
@@ -389,7 +414,11 @@ export default function NurseAvailabilityPage() {
                                             key={index}
                                             variant="secondary"
                                             className="text-sm py-2 px-3 flex items-center gap-2"
-                                            style={{ backgroundColor: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0" }}
+                                            style={{
+                                                backgroundColor: "#f0fdf4",
+                                                color: "#15803d",
+                                                border: "1px solid #bbf7d0",
+                                            }}
                                         >
                                             {neighborhood}
                                             <button
@@ -410,6 +439,90 @@ export default function NurseAvailabilityPage() {
                         </CardContent>
                     </Card>
 
+                    {/* Qualifications Card */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Award size={20} />
+                                Qualificações e Certificações
+                            </CardTitle>
+                            <CardDescription>Adicione suas qualificações profissionais e certificações</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex gap-2">
+                                <Select value={selectedQualification} onValueChange={setSelectedQualification}>
+                                    <SelectTrigger className="flex-1">
+                                        <SelectValue placeholder="Selecione uma qualificação..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Graduação em Enfermagem">Graduação em Enfermagem</SelectItem>
+                                        <SelectItem value="Pós-graduação em UTI">Pós-graduação em UTI</SelectItem>
+                                        <SelectItem value="Pós-graduação em Emergência">Pós-graduação em Emergência</SelectItem>
+                                        <SelectItem value="Pós-graduação em Pediatria">Pós-graduação em Pediatria</SelectItem>
+                                        <SelectItem value="Pós-graduação em Geriatria">Pós-graduação em Geriatria</SelectItem>
+                                        <SelectItem value="Pós-graduação em Home Care">Pós-graduação em Home Care</SelectItem>
+                                        <SelectItem value="Mestrado em Enfermagem">Mestrado em Enfermagem</SelectItem>
+                                        <SelectItem value="Doutorado em Enfermagem">Doutorado em Enfermagem</SelectItem>
+                                        <SelectItem value="Certificação BLS (Suporte Básico de Vida)">
+                                            Certificação BLS (Suporte Básico de Vida)
+                                        </SelectItem>
+                                        <SelectItem value="Certificação ACLS (Suporte Avançado de Vida Cardiovascular)">
+                                            Certificação ACLS (Suporte Avançado de Vida Cardiovascular)
+                                        </SelectItem>
+                                        <SelectItem value="Certificação PALS (Suporte Avançado de Vida em Pediatria)">
+                                            Certificação PALS (Suporte Avançado de Vida em Pediatria)
+                                        </SelectItem>
+                                        <SelectItem value="Certificação em Feridas">Certificação em Feridas</SelectItem>
+                                        <SelectItem value="Certificação em Estomaterapia">Certificação em Estomaterapia</SelectItem>
+                                        <SelectItem value="Certificação em Oncologia">Certificação em Oncologia</SelectItem>
+                                        <SelectItem value="Certificação em Nefrologia">Certificação em Nefrologia</SelectItem>
+                                        <SelectItem value="Curso de Punção Venosa">Curso de Punção Venosa</SelectItem>
+                                        <SelectItem value="Curso de Administração de Medicamentos">
+                                            Curso de Administração de Medicamentos
+                                        </SelectItem>
+                                        <SelectItem value="Curso de Cuidados Paliativos">Curso de Cuidados Paliativos</SelectItem>
+                                        <SelectItem value="Curso de Primeiros Socorros">Curso de Primeiros Socorros</SelectItem>
+                                        <SelectItem value="Experiência em UTI Neonatal">Experiência em UTI Neonatal</SelectItem>
+                                        <SelectItem value="Experiência em Centro Cirúrgico">Experiência em Centro Cirúrgico</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <Button
+                                    onClick={addQualification}
+                                    disabled={!selectedQualification}
+                                    className="bg-[#15803d] hover:bg-[#166534]"
+                                >
+                                    <Plus size={20} />
+                                    Adicionar
+                                </Button>
+                            </div>
+
+                            {qualifications.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                    {qualifications.map((qualification, index) => (
+                                        <Badge
+                                            key={index}
+                                            variant="secondary"
+                                            className="text-sm py-2 px-3 flex items-center gap-2"
+                                            style={{ backgroundColor: "#eff6ff", color: "#1e40af", border: "1px solid #bfdbfe" }}
+                                        >
+                                            {qualification}
+                                            <button
+                                                onClick={() => removeQualification(qualification)}
+                                                className="hover:text-red-600"
+                                                style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </Badge>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p style={{ textAlign: "center", color: "#9ca3af", padding: "2rem", fontSize: "0.875rem" }}>
+                                    Nenhuma qualificação adicionada.
+                                </p>
+                            )}
+                        </CardContent>
+                    </Card>
 
                     {/* Services Card */}
                     <Card>
@@ -424,9 +537,6 @@ export default function NurseAvailabilityPage() {
                                         <SelectValue placeholder="Selecione um serviço..." />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Aplicação de injeções intramusculares">
-                                            Aplicação de injeções intramusculares
-                                        </SelectItem>
                                         <SelectItem value="Aplicação de injeções subcutâneas">Aplicação de injeções subcutâneas</SelectItem>
                                         <SelectItem value="Aplicação de injeções endovenosas">Aplicação de injeções endovenosas</SelectItem>
                                         <SelectItem value="Curativos simples">Curativos simples</SelectItem>
@@ -464,7 +574,11 @@ export default function NurseAvailabilityPage() {
                                         <SelectItem value="Reabilitação motora">Reabilitação motora</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                <Button onClick={addService} disabled={!selectedService} className="bg-[#15803d] hover:bg-[#166534]">
+                                <Button
+                                    onClick={addService}
+                                    disabled={!selectedService}
+                                    className="bg-[#15803d] hover:bg-[#166534]"
+                                >
                                     <Plus size={20} />
                                     Adicionar
                                 </Button>
@@ -477,7 +591,11 @@ export default function NurseAvailabilityPage() {
                                             key={index}
                                             variant="secondary"
                                             className="text-sm py-2 px-3 flex items-center gap-2"
-                                            style={{ backgroundColor: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0" }}
+                                            style={{
+                                                backgroundColor: "#f0fdf4",
+                                                color: "#15803d",
+                                                border: "1px solid #bbf7d0",
+                                            }}
                                         >
                                             {service}
                                             <button
@@ -492,7 +610,7 @@ export default function NurseAvailabilityPage() {
                                 </div>
                             ) : (
                                 <p style={{ textAlign: "center", color: "#9ca3af", padding: "2rem", fontSize: "0.875rem" }}>
-                                    Nenhum serviço adicionado ainda. Adicione os serviços que você oferece acima.
+                                    Nenhum serviço adicionado.
                                 </p>
                             )}
                         </CardContent>

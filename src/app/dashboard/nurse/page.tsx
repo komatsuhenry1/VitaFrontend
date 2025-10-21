@@ -81,7 +81,7 @@ export default function NurseDashboard() {
           return
         }
 
-        const response = await fetch(`${API_BASE_URL}/user/nurse/${nurseId}`, {
+        const response = await fetch(`${API_BASE_URL}/nurse/dashboard_info/${nurseId}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
