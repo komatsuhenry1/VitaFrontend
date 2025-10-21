@@ -881,7 +881,7 @@ export default function RegisterPage() {
                             <SelectItem value="Oncologia">Oncologia</SelectItem>
                             <SelectItem value="Obstetrícia">Obstetrícia</SelectItem>
                             <SelectItem value="Emergência">Emergência</SelectItem>
-                            <SelectItem value="Home Care">Home Care</SelectItem>
+                            <SelectItem value="Domiciliar">Domiciliar</SelectItem>
                             <SelectItem value="Psiquiatria">Psiquiatria</SelectItem>
                             <SelectItem value="Nefrologia">Nefrologia</SelectItem>
                             <SelectItem value="Ortopedia">Ortopedia</SelectItem>

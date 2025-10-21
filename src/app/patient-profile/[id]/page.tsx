@@ -254,11 +254,6 @@ export default function PatientProfile() {
                                         label="Última Atualização"
                                         value={formatDate(patient.updated_at)}
                                     />
-                                    <InfoItem
-                                        icon={<Shield size={20} />}
-                                        label="Status da Conta"
-                                        value={patient.first_access ? "Aguardando primeiro acesso" : "Conta ativa"}
-                                    />
                                 </ul>
                             </CardContent>
                         </Card>

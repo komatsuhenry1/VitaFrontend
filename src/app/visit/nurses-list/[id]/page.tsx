@@ -63,7 +63,7 @@ export default function NurseProfile() {
     const [reason, setReason] = useState("")
     const [visitType, setVisitType] = useState("domiciliar")
     const [value, setValue] = useState("") // 👈 Nova alteração: Estado para o Valor
-    
+
     // Estados para o processo de agendamento
     const [bookingLoading, setBookingLoading] = useState(false)
     const [bookingSuccess, setBookingSuccess] = useState(false)
@@ -82,20 +82,20 @@ export default function NurseProfile() {
                     },
                 });
                 console.log("response", response);
-    
+
                 // ================== MUDANÇA PRINCIPAL ==================
-    
+
                 // 1. Leia a resposta JSON ANTES de verificar o status 'ok'.
                 //    Isso garante que você tenha a mensagem de erro da API.
                 const result: ApiResponse = await response.json();
                 console.log("result", result);
-    
+
                 // 2. Agora, verifique o status da resposta.
                 //    Se não estiver 'ok', lance um erro usando a mensagem da API.
                 if (!response.ok) {
                     throw new Error(result.message || "Erro ao buscar dados do enfermeiro.");
                 }
-    
+
                 // A lógica de sucesso continua a mesma.
                 // O `else if` anterior se torna desnecessário com esta nova estrutura.
                 if (result.success && result.data) {
@@ -105,21 +105,21 @@ export default function NurseProfile() {
                     // Um fallback caso a API retorne sucesso mas sem dados.
                     throw new Error(result.message || "Erro ao carregar dados do enfermeiro");
                 }
-    
+
                 // ================== FIM DA MUDANÇA ==================
-    
+
             } catch (err) {
                 setError(err instanceof Error ? err.message : "Erro desconhecido");
             } finally {
                 setLoading(false);
             }
         };
-    
+
         if (nurseId) {
             fetchNurseData();
         }
-    }, [nurseId]);    
-    
+    }, [nurseId]);
+
     const handleBooking = async () => {
         if (!selectedDate || !selectedTime || !value) { // 👈 Alteração: Validar o campo 'value'
             setBookingError("Por favor, selecione data, horário e informe o valor.")
@@ -258,14 +258,14 @@ export default function NurseProfile() {
                                 </p>
                                 <p style={{ color: "#6b7280", marginBottom: "1rem" }}>{nurse.department}</p>
 
-                                <div style={{ display: "flex", justifyContent: "center", gap: "1rem", marginBottom: "1rem" }}>
+                                {/* <div style={{ display: "flex", justifyContent: "center", gap: "1rem", marginBottom: "1rem" }}>
                                     <Badge
                                         variant={nurse.available ? "default" : "secondary"}
                                         style={{ backgroundColor: nurse.available ? "#15803d" : "#6b7280" }}
                                     >
                                         {nurse.available ? "Disponível" : "Indisponível"}
                                     </Badge>
-                                </div>
+                                </div> */}
 
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }}>
                                     <div style={{ textAlign: "center" }}>
@@ -285,15 +285,12 @@ export default function NurseProfile() {
                                 </div>
                                 <p style={{ color: "#6b7280", fontSize: "0.875rem", marginBottom: "1.5rem" }}>📍 {nurse.location}</p>
 
-                                {nurse.available && (
-                                    <Button
-                                        onClick={() => setShowBookingForm(true)}
-                                        style={{ backgroundColor: "#15803d", color: "white", width: "100%" }}
-                                    >
-                                        Agendar Consulta
-                                    </Button>
-                                )}
-                            </CardContent>
+                                <Button
+                                    onClick={() => setShowBookingForm(true)}
+                                    style={{ backgroundColor: "#15803d", color: "white", width: "100%" }}
+                                >
+                                    Agendar Consulta
+                                </Button>                            </CardContent>
                         </Card>
 
                         {/* Disponibilidade */}
@@ -483,7 +480,7 @@ export default function NurseProfile() {
                         </div>
 
                         <div style={{ marginBottom: "1rem" }}>
-                            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>Valor da Consulta (R$)</label> 
+                            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>Valor da Consulta (R$)</label>
                             {/* 👈 Nova alteração: Campo de Valor */}
                             <Input
                                 type="number"

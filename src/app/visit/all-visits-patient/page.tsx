@@ -23,7 +23,6 @@ import { Clock, CheckCircle, User, MessageCircle } from "lucide-react"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
-// [MUDANÇA] O 'id' da visita agora é uma STRING para corresponder à API.
 interface Visit {
     id: string
     description: string
@@ -82,8 +81,6 @@ export default function NurseVisitsPage() {
             const result = await response.json()
 
             if (result.success && result.data) {
-                // A normalização de status não é mais estritamente necessária se a API já envia
-                // mas vamos manter por segurança.
                 const normalizedData = {
                     pending: result.data.pending || [],
                     confirmed: result.data.confirmed || [],
@@ -167,43 +164,63 @@ export default function NurseVisitsPage() {
         }
     }
 
+    // ================== FUNÇÕES DE DATA CORRIGIDAS ==================
+    const parseDateFromAPI = (dateString: string): Date | null => {
+        if (!dateString) return null;
+
+        const parts = dateString.match(/(\d{2})\/(\d{2})\/(\d{4})\s(\d{2}):(\d{2})/);
+
+        if (parts) {
+            const [, day, month, year, hour, minute] = parts;
+            const isoString = `${year}-${month}-${day}T${hour}:${minute}:00`;
+            const date = new Date(isoString);
+            if (!isNaN(date.getTime())) {
+                return date;
+            }
+        }
+
+        const fallbackDate = new Date(dateString);
+        if (!isNaN(fallbackDate.getTime())) {
+            return fallbackDate;
+        }
+
+        return null;
+    };
+
     const formatDate = (dateString: string) => {
-        if (!dateString) {
-            return "Data não informada"
-        }
-        const date = new Date(dateString)
-        if (isNaN(date.getTime())) {
-            return "Data inválida"
-        }
+        const date = parseDateFromAPI(dateString);
+        if (!date) return "Data inválida";
+
         return date.toLocaleDateString("pt-BR", {
             day: "2-digit",
             month: "2-digit",
             year: "numeric",
             hour: "2-digit",
             minute: "2-digit",
-        })
-    }
+        });
+    };
 
     const formatDateLong = (dateString: string) => {
-        if (!dateString) return "Data não informada"
-        const date = new Date(dateString)
-        if (isNaN(date.getTime())) return "Data inválida"
+        const date = parseDateFromAPI(dateString);
+        if (!date) return "Data inválida";
+
         return date.toLocaleDateString("pt-BR", {
             day: "2-digit",
             month: "long",
             year: "numeric",
-        })
-    }
+        });
+    };
 
     const formatTime = (dateString: string) => {
-        if (!dateString) return ""
-        const date = new Date(dateString)
-        if (isNaN(date.getTime())) return ""
+        const date = parseDateFromAPI(dateString);
+        if (!date) return "";
+
         return date.toLocaleTimeString("pt-BR", {
             hour: "2-digit",
             minute: "2-digit",
-        })
-    }
+        });
+    };
+    // ===============================================================
 
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat("pt-BR", {
@@ -257,14 +274,11 @@ export default function NurseVisitsPage() {
     }
 
     const getCancellationDeadline = (visitDate: string) => {
-        const visit = new Date(visitDate)
-        if (isNaN(visit.getTime())) {
-            return "Data de limite indisponível"
+        const visit = parseDateFromAPI(visitDate);
+        if (!visit) {
+            return "Data de limite indisponível";
         }
         const deadline = new Date(visit.getTime() - 24 * 60 * 60 * 1000)
-        if (isNaN(deadline.getTime())) {
-            return "Erro ao calcular limite"
-        }
         return formatDateLong(deadline.toISOString()) + " às " + formatTime(deadline.toISOString())
     }
 
@@ -272,7 +286,6 @@ export default function NurseVisitsPage() {
     const confirmedVisits = visits.confirmed
     const completedVisits = visits.completed
 
-    // [MUDANÇA] Componente VisitCard simplificado
     const VisitCard = ({ visit }: { visit: Visit }) => (
         <Card key={visit.id} style={{ overflow: "hidden" }}>
             <CardContent style={{ padding: "1.5rem" }}>
@@ -324,7 +337,6 @@ export default function NurseVisitsPage() {
                             </div>
                         )}
                     </div>
-                    {/* [MUDANÇA] Lógica dos botões agora usa 'visit.status' */}
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                         <Button variant="outline" onClick={() => { setSelectedVisit(visit); setShowDialog(true); setShowCancelForm(false); }} style={{ borderColor: "#15803d", color: "#15803d" }} >
                             <User className="h-4 w-4 mr-2" />
@@ -427,7 +439,6 @@ export default function NurseVisitsPage() {
                             />
                         ) : (
                             <div style={{ display: "grid", gap: "1.5rem" }}>
-                                {/* [MUDANÇA] Chamada do VisitCard simplificada */}
                                 {pendingVisits.map((visit) => (
                                     <VisitCard key={visit.id} visit={visit} />
                                 ))}
