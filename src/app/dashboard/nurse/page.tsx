@@ -6,10 +6,28 @@ import { Header } from "@/components/Header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Wifi, WifiOff, Loader2 } from "lucide-react"
+import { Wifi, WifiOff, Loader2, Calendar, Clock, MapPin, DollarSign } from "lucide-react"
 import { toast } from "sonner"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+
+interface Schedule {
+  id: string
+  status: string
+  patient_id: string
+  patient_name: string
+  patient_email: string
+  description: string
+  reason: string
+  cancel_reason: string
+  nurse_id: string
+  nurse_name: string
+  value: number
+  visit_type: string
+  visit_date: string
+  created_at: string
+  updated_at: string
+}
 
 interface NurseData {
   id: string
@@ -17,7 +35,7 @@ interface NurseData {
   specialization: string
   experience: number
   rating: number
-  online: boolean // [MUDANÇA] Campo 'online' adicionado à interface
+  online: boolean
   price: number
   shift: string
   department: string
@@ -27,6 +45,7 @@ interface NurseData {
   bio: string
   qualifications: string[]
   services: string[]
+  schedules: Schedule[]
   reviews: Array<{
     patient: string
     rating: number
@@ -48,6 +67,30 @@ const heroStyle = {
   backgroundPosition: "center",
   color: "white",
   padding: "5rem 0",
+}
+
+const formatDateTime = (isoDate: string) => {
+  const date = new Date(isoDate)
+  const dateStr = date.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  })
+  const timeStr = date.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+  return { date: dateStr, time: timeStr }
+}
+
+const getStatusBadge = (status: string) => {
+  const statusMap: Record<string, { color: string; bg: string; label: string }> = {
+    PENDING: { color: "#f59e0b", bg: "#fef3c7", label: "Pendente" },
+    CONFIRMED: { color: "#10b981", bg: "#d1fae5", label: "Confirmado" },
+    COMPLETED: { color: "#3b82f6", bg: "#dbeafe", label: "Concluído" },
+    CANCELLED: { color: "#ef4444", bg: "#fee2e2", label: "Cancelado" },
+  }
+  return statusMap[status] || { color: "#6b7280", bg: "#f3f4f6", label: status }
 }
 
 export default function NurseDashboard() {
@@ -81,7 +124,7 @@ export default function NurseDashboard() {
           return
         }
 
-        const response = await fetch(`${API_BASE_URL}/nurse/dashboard_info/${nurseId}`, {
+        const response = await fetch(`${API_BASE_URL}/nurse/dashboard_info`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -96,7 +139,7 @@ export default function NurseDashboard() {
         if (result.success && result.data) {
           setNurseData(result.data)
           setAvailability(result.data.available)
-          setIsOnline(result.data.online) // [MUDANÇA] O estado 'isOnline' é definido com o valor da API
+          setIsOnline(result.data.online)
 
           setAvailabilityForm({
             start_time: result.data.start_time || "08:00",
@@ -235,6 +278,38 @@ export default function NurseDashboard() {
     return null
   }
 
+  const upcomingSchedules =
+    nurseData.schedules?.filter((schedule) => schedule.status === "PENDING" || schedule.status === "CONFIRMED") || []
+
+  const completedSchedules = nurseData.schedules?.filter((schedule) => schedule.status === "COMPLETED") || []
+
+  // Extract unique patients from completed schedules
+  const uniquePatients = completedSchedules.reduce(
+    (acc, schedule) => {
+      if (!acc.find((p) => p.patient_id === schedule.patient_id)) {
+        acc.push({
+          patient_id: schedule.patient_id,
+          patient_name: schedule.patient_name,
+          patient_email: schedule.patient_email,
+          total_visits: completedSchedules.filter((s) => s.patient_id === schedule.patient_id).length,
+          last_visit: schedule.visit_date,
+          total_spent: completedSchedules
+            .filter((s) => s.patient_id === schedule.patient_id)
+            .reduce((sum, s) => sum + s.value, 0),
+        })
+      }
+      return acc
+    },
+    [] as Array<{
+      patient_id: string
+      patient_name: string
+      patient_email: string
+      total_visits: number
+      last_visit: string
+      total_spent: number
+    }>,
+  )
+
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}>
       <Header />
@@ -352,19 +427,114 @@ export default function NurseDashboard() {
             <TabsTrigger value="patients">Pacientes</TabsTrigger>
             <TabsTrigger value="history">Histórico</TabsTrigger>
           </TabsList>
-          {/* </CHANGE> */}
 
           {/* Schedule Tab */}
           <TabsContent value="schedule" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Agenda de Hoje</CardTitle>
+                <CardTitle>Agenda de Atendimentos</CardTitle>
                 <CardDescription>Seus próximos atendimentos agendados</CardDescription>
               </CardHeader>
               <CardContent>
-                <p style={{ textAlign: "center", color: "#6b7280", padding: "2rem" }}>
-                  Nenhuma visita agendada no momento
-                </p>
+                {upcomingSchedules.length > 0 ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                    {upcomingSchedules.map((schedule) => {
+                      const { date, time } = formatDateTime(schedule.visit_date)
+                      const statusBadge = getStatusBadge(schedule.status)
+
+                      return (
+                        <Card
+                          key={schedule.id}
+                          style={{
+                            border: "1px solid #e5e7eb",
+                            transition: "all 0.2s",
+                          }}
+                        >
+                          <CardContent style={{ padding: "1.5rem" }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "flex-start",
+                                marginBottom: "1rem",
+                              }}
+                            >
+                              <div>
+                                <h3 style={{ fontSize: "1.125rem", fontWeight: "600", color: "#1f2937" }}>
+                                  {schedule.patient_name}
+                                </h3>
+                                <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>{schedule.patient_email}</p>
+                              </div>
+                              <span
+                                style={{
+                                  padding: "0.25rem 0.75rem",
+                                  borderRadius: "9999px",
+                                  fontSize: "0.75rem",
+                                  fontWeight: "600",
+                                  color: statusBadge.color,
+                                  backgroundColor: statusBadge.bg,
+                                }}
+                              >
+                                {statusBadge.label}
+                              </span>
+                            </div>
+
+                            <div
+                              style={{
+                                display: "grid",
+                                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                                gap: "1rem",
+                                marginBottom: "1rem",
+                              }}
+                            >
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                <Calendar size={16} style={{ color: "#15803d" }} />
+                                <span style={{ fontSize: "0.875rem", color: "#4b5563" }}>{date}</span>
+                              </div>
+
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                <Clock size={16} style={{ color: "#15803d" }} />
+                                <span style={{ fontSize: "0.875rem", color: "#4b5563" }}>{time}</span>
+                              </div>
+
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                <MapPin size={16} style={{ color: "#15803d" }} />
+                                <span style={{ fontSize: "0.875rem", color: "#4b5563" }}>
+                                  {schedule.visit_type === "domiciliar" ? "Domiciliar" : schedule.visit_type}
+                                </span>
+                              </div>
+
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                <DollarSign size={16} style={{ color: "#15803d" }} />
+                                <span style={{ fontSize: "0.875rem", color: "#4b5563" }}>
+                                  R$ {schedule.value.toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {schedule.reason && (
+                              <div style={{ marginBottom: "0.75rem" }}>
+                                <p style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151" }}>Motivo:</p>
+                                <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>{schedule.reason}</p>
+                              </div>
+                            )}
+
+                            {schedule.description && (
+                              <div style={{ marginBottom: "0.75rem" }}>
+                                <p style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151" }}>Descrição:</p>
+                                <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>{schedule.description}</p>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p style={{ textAlign: "center", color: "#6b7280", padding: "2rem" }}>
+                    Nenhuma visita agendada no momento
+                  </p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -374,10 +544,75 @@ export default function NurseDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Meus Pacientes</CardTitle>
-                <CardDescription>Lista de pacientes sob seus cuidados</CardDescription>
+                <CardDescription>Pacientes com atendimentos concluídos</CardDescription>
               </CardHeader>
               <CardContent>
-                <p style={{ textAlign: "center", color: "#6b7280", padding: "2rem" }}>Nenhum paciente cadastrado</p>
+                {uniquePatients.length > 0 ? (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+                      gap: "1rem",
+                    }}
+                  >
+                    {uniquePatients.map((patient) => {
+                      const { date } = formatDateTime(patient.last_visit)
+
+                      return (
+                        <Card
+                          key={patient.patient_id}
+                          style={{
+                            border: "1px solid #e5e7eb",
+                            transition: "all 0.2s",
+                          }}
+                        >
+                          <CardContent style={{ padding: "1.5rem" }}>
+                            <div style={{ marginBottom: "1rem" }}>
+                              <h3
+                                style={{
+                                  fontSize: "1.125rem",
+                                  fontWeight: "600",
+                                  color: "#1f2937",
+                                  marginBottom: "0.25rem",
+                                }}
+                              >
+                                {patient.patient_name}
+                              </h3>
+                              <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>{patient.patient_email}</p>
+                            </div>
+
+                            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <span style={{ fontSize: "0.875rem", color: "#6b7280" }}>Total de Visitas:</span>
+                                <span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#15803d" }}>
+                                  {patient.total_visits}
+                                </span>
+                              </div>
+
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <span style={{ fontSize: "0.875rem", color: "#6b7280" }}>Última Visita:</span>
+                                <span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#4b5563" }}>
+                                  {date}
+                                </span>
+                              </div>
+
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <span style={{ fontSize: "0.875rem", color: "#6b7280" }}>Total Gasto:</span>
+                                <span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#15803d" }}>
+                                  R$ {patient.total_spent.toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p style={{ textAlign: "center", color: "#6b7280", padding: "2rem" }}>
+                    Nenhum paciente com atendimentos concluídos
+                  </p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -387,10 +622,106 @@ export default function NurseDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Histórico de Atendimentos</CardTitle>
-                <CardDescription>Seus atendimentos realizados recentemente</CardDescription>
+                <CardDescription>Atendimentos concluídos recentemente</CardDescription>
               </CardHeader>
               <CardContent>
-                <p style={{ textAlign: "center", color: "#6b7280", padding: "2rem" }}>Nenhum atendimento concluído</p>
+                {completedSchedules.length > 0 ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                    {completedSchedules.map((schedule) => {
+                      const { date, time } = formatDateTime(schedule.visit_date)
+                      const statusBadge = getStatusBadge(schedule.status)
+
+                      return (
+                        <Card
+                          key={schedule.id}
+                          style={{
+                            border: "1px solid #e5e7eb",
+                            transition: "all 0.2s",
+                          }}
+                        >
+                          <CardContent style={{ padding: "1.5rem" }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "flex-start",
+                                marginBottom: "1rem",
+                              }}
+                            >
+                              <div>
+                                <h3 style={{ fontSize: "1.125rem", fontWeight: "600", color: "#1f2937" }}>
+                                  {schedule.patient_name}
+                                </h3>
+                                <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>{schedule.patient_email}</p>
+                              </div>
+                              <span
+                                style={{
+                                  padding: "0.25rem 0.75rem",
+                                  borderRadius: "9999px",
+                                  fontSize: "0.75rem",
+                                  fontWeight: "600",
+                                  color: statusBadge.color,
+                                  backgroundColor: statusBadge.bg,
+                                }}
+                              >
+                                {statusBadge.label}
+                              </span>
+                            </div>
+
+                            <div
+                              style={{
+                                display: "grid",
+                                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                                gap: "1rem",
+                                marginBottom: "1rem",
+                              }}
+                            >
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                <Calendar size={16} style={{ color: "#15803d" }} />
+                                <span style={{ fontSize: "0.875rem", color: "#4b5563" }}>{date}</span>
+                              </div>
+
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                <Clock size={16} style={{ color: "#15803d" }} />
+                                <span style={{ fontSize: "0.875rem", color: "#4b5563" }}>{time}</span>
+                              </div>
+
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                <MapPin size={16} style={{ color: "#15803d" }} />
+                                <span style={{ fontSize: "0.875rem", color: "#4b5563" }}>
+                                  {schedule.visit_type === "domiciliar" ? "Domiciliar" : schedule.visit_type}
+                                </span>
+                              </div>
+
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                <DollarSign size={16} style={{ color: "#15803d" }} />
+                                <span style={{ fontSize: "0.875rem", color: "#4b5563" }}>
+                                  R$ {schedule.value.toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {schedule.reason && (
+                              <div style={{ marginBottom: "0.75rem" }}>
+                                <p style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151" }}>Motivo:</p>
+                                <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>{schedule.reason}</p>
+                              </div>
+                            )}
+
+                            {schedule.description && (
+                              <div>
+                                <p style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151" }}>Descrição:</p>
+                                <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>{schedule.description}</p>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p style={{ textAlign: "center", color: "#6b7280", padding: "2rem" }}>Nenhum atendimento concluído</p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
