@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
+import dynamic from "next/dynamic"
+import { Loader2 } from "lucide-react"
 
 interface Nurse {
     id: string
@@ -28,6 +30,16 @@ interface ApiResponse {
     success: boolean
 }
 
+const NursesMapWithNoSSR = dynamic(() => import("@/components/ui/NursesMap"), {
+    loading: () => (
+        <div className="flex h-full w-full items-center justify-center rounded-lg bg-gray-100">
+            <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+            <p className="ml-3 text-gray-600">Carregando mapa interativo...</p>
+        </div>
+    ),
+    ssr: false, // Essential for map libraries
+})
+
 export default function NursesMapPage() {
     const [nurses, setNurses] = useState<Nurse[]>([])
     const [selectedNurse, setSelectedNurse] = useState<Nurse | null>(null)
@@ -39,7 +51,7 @@ export default function NursesMapPage() {
         const fetchNurses = async () => {
             try {
                 setLoading(true)
-                const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/user/all_nurses`, {
+                const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/user/online_nurses`, {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",
@@ -54,10 +66,8 @@ export default function NursesMapPage() {
                 const data: ApiResponse = await response.json()
 
                 if (data.success) {
-                    // Filter only available nurses
                     const availableNurses = data.data.filter((nurse) => nurse.available)
-                    // Add mock coordinates for demonstration (in production, these would come from the API)
-                    const nursesWithCoords = availableNurses.map((nurse, index) => ({
+                    const nursesWithCoords = availableNurses.map((nurse) => ({
                         ...nurse,
                         latitude: userLocation.lat + (Math.random() - 0.5) * 0.1,
                         longitude: userLocation.lng + (Math.random() - 0.5) * 0.1,
@@ -75,7 +85,7 @@ export default function NursesMapPage() {
         }
 
         fetchNurses()
-    }, [])
+    }, [userLocation.lat, userLocation.lng])
 
     if (loading) {
         return (
@@ -117,6 +127,9 @@ export default function NursesMapPage() {
             </div>
         )
     }
+    const nurse = selectedNurse
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+    const imageUrl = nurse?.image ? `${API_BASE_URL}/user/file/${nurse.image}` : "/placeholder-avatar.png"
 
     return (
         <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
@@ -140,223 +153,22 @@ export default function NursesMapPage() {
                 <div
                     style={{ display: "grid", gridTemplateColumns: "1fr 400px", gap: "1.5rem", height: "calc(100vh - 250px)" }}
                 >
-                    {/* Map Container */}
                     <Card style={{ overflow: "hidden", position: "relative" }}>
-                        <div
-                            style={{
-                                width: "100%",
-                                height: "100%",
-                                backgroundColor: "#e5e7eb",
-                                position: "relative",
-                                overflow: "hidden",
-                            }}
-                        >
-                            {/* Simple map visualization */}
-                            <div
-                                style={{
-                                    width: "100%",
-                                    height: "100%",
-                                    background: "linear-gradient(135deg, #d1fae5 0%, #a7f3d0 50%, #6ee7b7 100%)",
-                                    position: "relative",
-                                }}
-                            >
-                                {/* User location marker */}
-                                <div
-                                    style={{
-                                        position: "absolute",
-                                        top: "50%",
-                                        left: "50%",
-                                        transform: "translate(-50%, -50%)",
-                                        zIndex: 10,
-                                    }}
-                                >
-                                    <div
-                                        style={{
-                                            width: "20px",
-                                            height: "20px",
-                                            backgroundColor: "#3b82f6",
-                                            borderRadius: "50%",
-                                            border: "3px solid white",
-                                            boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-                                        }}
-                                    />
-                                    <div
-                                        style={{
-                                            position: "absolute",
-                                            top: "25px",
-                                            left: "50%",
-                                            transform: "translateX(-50%)",
-                                            backgroundColor: "white",
-                                            padding: "4px 8px",
-                                            borderRadius: "4px",
-                                            fontSize: "12px",
-                                            fontWeight: "600",
-                                            whiteSpace: "nowrap",
-                                            boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-                                        }}
-                                    >
-                                        Você está aqui
-                                    </div>
-                                </div>
-
-                                {/* Nurse markers */}
-                                {nurses.map((nurse, index) => {
-                                    const offsetX = ((nurse.longitude || 0) - userLocation.lng) * 3000
-                                    const offsetY = ((nurse.latitude || 0) - userLocation.lat) * 3000
-
-                                    return (
-                                        <div
-                                            key={nurse.id}
-                                            style={{
-                                                position: "absolute",
-                                                top: `calc(50% + ${offsetY}px)`,
-                                                left: `calc(50% + ${offsetX}px)`,
-                                                transform: "translate(-50%, -50%)",
-                                                cursor: "pointer",
-                                                zIndex: selectedNurse?.id === nurse.id ? 20 : 5,
-                                            }}
-                                            onClick={() => setSelectedNurse(nurse)}
-                                        >
-                                            <div
-                                                style={{
-                                                    width: "40px",
-                                                    height: "40px",
-                                                    backgroundColor: selectedNurse?.id === nurse.id ? "#15803d" : "#10b981",
-                                                    borderRadius: "50%",
-                                                    border: "3px solid white",
-                                                    boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    justifyContent: "center",
-                                                    color: "white",
-                                                    fontWeight: "bold",
-                                                    fontSize: "18px",
-                                                    transition: "all 0.2s",
-                                                }}
-                                                onMouseEnter={(e) => {
-                                                    e.currentTarget.style.transform = "scale(1.2)"
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    e.currentTarget.style.transform = "scale(1)"
-                                                }}
-                                            >
-                                                👨‍⚕️
-                                            </div>
-                                            {selectedNurse?.id === nurse.id && (
-                                                <div
-                                                    style={{
-                                                        position: "absolute",
-                                                        top: "45px",
-                                                        left: "50%",
-                                                        transform: "translateX(-50%)",
-                                                        backgroundColor: "white",
-                                                        padding: "6px 10px",
-                                                        borderRadius: "6px",
-                                                        fontSize: "13px",
-                                                        fontWeight: "600",
-                                                        whiteSpace: "nowrap",
-                                                        boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
-                                                        border: "2px solid #15803d",
-                                                    }}
-                                                >
-                                                    {nurse.name}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )
-                                })}
-
-                                {/* Map controls */}
-                                <div
-                                    style={{
-                                        position: "absolute",
-                                        bottom: "20px",
-                                        right: "20px",
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        gap: "8px",
-                                    }}
-                                >
-                                    <Button
-                                        style={{
-                                            backgroundColor: "white",
-                                            color: "#15803d",
-                                            width: "40px",
-                                            height: "40px",
-                                            padding: 0,
-                                            fontSize: "20px",
-                                            boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
-                                        }}
-                                    >
-                                        +
-                                    </Button>
-                                    <Button
-                                        style={{
-                                            backgroundColor: "white",
-                                            color: "#15803d",
-                                            width: "40px",
-                                            height: "40px",
-                                            padding: 0,
-                                            fontSize: "20px",
-                                            boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
-                                        }}
-                                    >
-                                        −
-                                    </Button>
-                                </div>
-
-                                {/* Legend */}
-                                <div
-                                    style={{
-                                        position: "absolute",
-                                        top: "20px",
-                                        left: "20px",
-                                        backgroundColor: "white",
-                                        padding: "12px",
-                                        borderRadius: "8px",
-                                        boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
-                                    }}
-                                >
-                                    <div style={{ fontSize: "14px", fontWeight: "600", marginBottom: "8px", color: "#1f2937" }}>
-                                        Legenda
-                                    </div>
-                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
-                                        <div
-                                            style={{
-                                                width: "16px",
-                                                height: "16px",
-                                                backgroundColor: "#3b82f6",
-                                                borderRadius: "50%",
-                                                border: "2px solid white",
-                                            }}
-                                        />
-                                        <span style={{ fontSize: "13px", color: "#6b7280" }}>Sua localização</span>
-                                    </div>
-                                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                        <div
-                                            style={{
-                                                width: "16px",
-                                                height: "16px",
-                                                backgroundColor: "#10b981",
-                                                borderRadius: "50%",
-                                                border: "2px solid white",
-                                            }}
-                                        />
-                                        <span style={{ fontSize: "13px", color: "#6b7280" }}>Enfermeiro disponível</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <NursesMapWithNoSSR
+                            userLocation={userLocation}
+                            nurses={nurses}
+                            selectedNurse={selectedNurse}
+                            onSelectNurse={setSelectedNurse}
+                        />
                     </Card>
 
-                    {/* Sidebar with nurse details */}
                     <div style={{ overflowY: "auto" }}>
                         {selectedNurse ? (
                             <Card>
                                 <CardContent style={{ padding: "1.5rem" }}>
                                     <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
                                         <img
-                                            src={selectedNurse.image || "/placeholder.svg?height=80&width=80&query=nurse professional"}
+                                            src={selectedNurse.image ? `${API_BASE_URL}/user/file/${selectedNurse.image}` : "/placeholder-avatar.png"}
                                             alt={selectedNurse.name}
                                             style={{ width: "80px", height: "80px", borderRadius: "50%", objectFit: "cover" }}
                                         />
@@ -416,13 +228,12 @@ export default function NursesMapPage() {
                                         Selecione um Enfermeiro
                                     </h3>
                                     <p style={{ color: "#6b7280" }}>
-                                        Clique em um marcador verde no mapa para ver os detalhes do enfermeiro
+                                        Clique em um marcador no mapa ou na lista abaixo para ver os detalhes
                                     </p>
                                 </CardContent>
                             </Card>
                         )}
 
-                        {/* List of all available nurses */}
                         <div style={{ marginTop: "1.5rem" }}>
                             <h3 style={{ fontSize: "1.125rem", fontWeight: "bold", color: "#1f2937", marginBottom: "1rem" }}>
                                 Todos os Enfermeiros Disponíveis ({nurses.length})
@@ -441,9 +252,9 @@ export default function NursesMapPage() {
                                         <CardContent style={{ padding: "1rem" }}>
                                             <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
                                                 <img
-                                                    src={nurse.image || "/placeholder.svg?height=50&width=50&query=nurse"}
+                                                    src={nurse.image ? `${API_BASE_URL}/user/file/${nurse.image}` : "/placeholder-avatar.png"}
                                                     alt={nurse.name}
-                                                    style={{ width: "50px", height: "50px", borderRadius: "50%", objectFit: "cover" }}
+                                                    style={{ width: "80px", height: "80px", borderRadius: "50%", objectFit: "cover" }}
                                                 />
                                                 <div style={{ flex: 1 }}>
                                                     <div style={{ fontWeight: "600", color: "#1f2937", marginBottom: "0.25rem" }}>
