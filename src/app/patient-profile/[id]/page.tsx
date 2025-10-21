@@ -125,12 +125,22 @@ export default function PatientProfile() {
 
     if (loading) {
         return (
-            <div className="flex flex-col min-h-screen bg-gray-50">
+            <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
                 <Header />
-                <div className="flex flex-1 items-center justify-center text-center">
-                    <div className="flex flex-col items-center gap-2">
-                        <Loader2 className="h-8 w-8 animate-spin text-green-700" />
-                        <p className="text-lg text-gray-600">Carregando perfil do paciente...</p>
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
+                    <div style={{ textAlign: "center" }}>
+                        <div
+                            style={{
+                                width: "40px",
+                                height: "40px",
+                                border: "4px solid #e5e7eb",
+                                borderTop: "4px solid #15803d",
+                                borderRadius: "50%",
+                                animation: "spin 1s linear infinite",
+                                margin: "0 auto 1rem",
+                            }}
+                        ></div>
+                        <p style={{ color: "#6b7280" }}>Carregando perfil de paciente...</p>
                     </div>
                 </div>
             </div>

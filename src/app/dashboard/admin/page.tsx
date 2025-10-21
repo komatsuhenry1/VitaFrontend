@@ -249,14 +249,27 @@ const AdminDashboard = () => {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
-        <Header />
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "50vh" }}>
-          <p>Carregando dados do dashboard...</p>
+        <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
+            <Header />
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
+                <div style={{ textAlign: "center" }}>
+                    <div
+                        style={{
+                            width: "40px",
+                            height: "40px",
+                            border: "4px solid #e5e7eb",
+                            borderTop: "4px solid #15803d",
+                            borderRadius: "50%",
+                            animation: "spin 1s linear infinite",
+                            margin: "0 auto 1rem",
+                        }}
+                    ></div>
+                    <p style={{ color: "#6b7280" }}>Carregando dados de dashboard...</p>
+                </div>
+            </div>
         </div>
-      </div>
     )
-  }
+}
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>

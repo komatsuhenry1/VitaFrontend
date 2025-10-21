@@ -194,14 +194,26 @@ export default function NurseProfile() {
         return (
             <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
                 <Header />
-                <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem", textAlign: "center" }}>
-                    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "200px" }}>
-                        <div style={{ color: "#15803d", fontSize: "1.125rem" }}>Carregando perfil do enfermeiro...</div>
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
+                    <div style={{ textAlign: "center" }}>
+                        <div
+                            style={{
+                                width: "40px",
+                                height: "40px",
+                                border: "4px solid #e5e7eb",
+                                borderTop: "4px solid #15803d",
+                                borderRadius: "50%",
+                                animation: "spin 1s linear infinite",
+                                margin: "0 auto 1rem",
+                            }}
+                        ></div>
+                        <p style={{ color: "#6b7280" }}>Carregando perfil de enfermeiro...</p>
                     </div>
                 </div>
             </div>
         )
     }
+
 
     if (error || !nurse) {
         return (

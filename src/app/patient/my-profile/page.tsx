@@ -336,11 +336,22 @@ export default function MyProfile() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50">
+            <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
                 <Header />
-                <div className="container mx-auto px-4 py-8 text-center">
-                    <div className="flex justify-center items-center h-48">
-                        <div className="text-[#15803d] text-lg">Carregando seu perfil...</div>
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
+                    <div style={{ textAlign: "center" }}>
+                        <div
+                            style={{
+                                width: "40px",
+                                height: "40px",
+                                border: "4px solid #e5e7eb",
+                                borderTop: "4px solid #15803d",
+                                borderRadius: "50%",
+                                animation: "spin 1s linear infinite",
+                                margin: "0 auto 1rem",
+                            }}
+                        ></div>
+                        <p style={{ color: "#6b7280" }}>Carregando seu perfil...</p>
                     </div>
                 </div>
             </div>
