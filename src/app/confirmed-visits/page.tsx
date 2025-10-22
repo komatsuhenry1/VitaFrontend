@@ -255,7 +255,7 @@ export default function VisitsPage() {
                             <>
                                 <Button
                                     variant="outline"
-                                    onClick={() => router.push(`/visit/nurses-list/${visit.nurse?.id}`)}
+                                    onClick={() => router.push(`/nurse-profile/${visit.nurse?.id}`)}
                                     style={{ borderColor: "#15803d", color: "#15803d" }}
                                 >
                                     Ver Perfil
@@ -571,7 +571,7 @@ export default function VisitsPage() {
                             <Button
                                 onClick={() => {
                                     setShowDetailsDialog(false)
-                                    router.push(`/visit/nurses-list/${selectedVisit.nurse?.id}`)
+                                    router.push(`/nurse-profile/${selectedVisit.nurse?.id}`)
                                 }}
                                 style={{ backgroundColor: "#15803d", color: "white" }}
                             >

@@ -270,7 +270,7 @@ export default function NursesMapPage() {
                                     </div>
 
                                     <div style={{ display: "flex", gap: "0.5rem" }}>
-                                        <Link href={`/visit/nurses-list/${selectedNurse.id}`} style={{ flex: 1 }}>
+                                        <Link href={`/nurse-profile/${selectedNurse.id}`} style={{ flex: 1 }}>
                                             <Button style={{ backgroundColor: "#15803d", color: "white", width: "100%" }}>
                                                 Ver Perfil Completo
                                             </Button>

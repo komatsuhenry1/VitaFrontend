@@ -748,7 +748,7 @@ export default function PatientDashboard() {
                     <span style={{ color: "#6b7280", fontSize: "0.875rem" }}>/hora</span>
                   </div>
 
-                  <Link href={`/visit/nurses-list/${nurse.id}`}>
+                  <Link href={`/nurse-profile/${nurse.id}`}>
                     <Button
                       style={{
                         backgroundColor: nurse.available ? "#15803d" : "#6b7280",
