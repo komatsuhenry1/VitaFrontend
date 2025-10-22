@@ -211,7 +211,7 @@ export default function PatientRegisterPage() {
     try {
       const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
 
-      const response = await fetch(`${apiBaseUrl}/auth/patient`, {
+      const response = await fetch(`${apiBaseUrl}/auth/user`, {
         method: "POST",
         body: dataToSend,
       })

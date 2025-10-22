@@ -6,6 +6,11 @@ import L from "leaflet"
 import { useEffect } from "react"
 
 // Define a interface para as props do componente
+interface PatientLocation {
+  latitude: number
+  longitude: number
+}
+
 interface Nurse {
   id: string
   name: string
@@ -17,8 +22,9 @@ interface Nurse {
   available: boolean
   location: string
   neighborhood: string
-  latitude?: number
-  longitude?: number
+  latitude: number
+  longitude: number
+  patient_location: PatientLocation
 }
 
 interface NursesMapProps {
@@ -50,7 +56,7 @@ function ChangeView({ center, zoom }: { center: [number, number]; zoom: number }
 const NursesMap = ({ userLocation, nurses, selectedNurse, onSelectNurse }: NursesMapProps) => {
   // Define a posição central do mapa
   const mapCenter: [number, number] = selectedNurse
-    ? [selectedNurse.latitude || userLocation.lat, selectedNurse.longitude || userLocation.lng]
+    ? [selectedNurse.latitude, selectedNurse.longitude]
     : [userLocation.lat, userLocation.lng]
 
   return (
@@ -67,23 +73,20 @@ const NursesMap = ({ userLocation, nurses, selectedNurse, onSelectNurse }: Nurse
       </Marker>
 
       {/* Marcadores para cada enfermeiro */}
-      {nurses.map((nurse) => {
-        if (!nurse.latitude || !nurse.longitude) return null
-        return (
-          <Marker
-            key={nurse.id}
-            position={[nurse.latitude, nurse.longitude]}
-            icon={defaultIcon}
-            eventHandlers={{
-              click: () => {
-                onSelectNurse(nurse)
-              },
-            }}
-          >
-            <Popup>{nurse.name}</Popup>
-          </Marker>
-        )
-      })}
+      {nurses.map((nurse) => (
+        <Marker
+          key={nurse.id}
+          position={[nurse.latitude, nurse.longitude]}
+          icon={defaultIcon}
+          eventHandlers={{
+            click: () => {
+              onSelectNurse(nurse)
+            },
+          }}
+        >
+          <Popup>{nurse.name}</Popup>
+        </Marker>
+      ))}
     </MapContainer>
   )
 }

@@ -9,6 +9,13 @@ import Link from "next/link"
 import dynamic from "next/dynamic"
 import { Loader2 } from "lucide-react"
 
+// --- MUDANÇA: Interfaces atualizadas ---
+
+interface PatientLocation {
+    latitude: number
+    longitude: number
+}
+
 interface Nurse {
     id: string
     name: string
@@ -20,8 +27,11 @@ interface Nurse {
     available: boolean
     location: string
     neighborhood: string
-    latitude?: number
-    longitude?: number
+    // Agora são obrigatórios e vêm da API
+    latitude: number
+    longitude: number
+    // Novo campo para a localização do paciente
+    patient_location: PatientLocation
 }
 
 interface ApiResponse {
@@ -29,6 +39,7 @@ interface ApiResponse {
     message: string
     success: boolean
 }
+// --- FIM DA MUDANÇA ---
 
 const NursesMapWithNoSSR = dynamic(() => import("@/components/ui/NursesMap"), {
     loading: () => (
@@ -37,25 +48,50 @@ const NursesMapWithNoSSR = dynamic(() => import("@/components/ui/NursesMap"), {
             <p className="ml-3 text-gray-600">Carregando mapa interativo...</p>
         </div>
     ),
-    ssr: false, // Essential for map libraries
+    ssr: false, // Essencial para bibliotecas de mapa
 })
+
+// --- MUDANÇA: Função para randomizar localização (Fuzzing) ---
+/**
+ * Adiciona uma pequena variação aleatória às coordenadas para
+ * mostrar uma localização "aproximada" e proteger a privacidade.
+ * 0.002 graus é ~222 metros.
+ */
+const FUZZ_AMOUNT = 0.002
+const fuzzCoordinates = (lat: number, lng: number) => {
+    const latOffset = (Math.random() - 0.5) * FUZZ_AMOUNT * 2
+    const lngOffset = (Math.random() - 0.5) * FUZZ_AMOUNT * 2
+    return {
+        latitude: lat + latOffset,
+        longitude: lng + lngOffset,
+    }
+}
+// --- FIM DA MUDANÇA ---
 
 export default function NursesMapPage() {
     const [nurses, setNurses] = useState<Nurse[]>([])
     const [selectedNurse, setSelectedNurse] = useState<Nurse | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    const [userLocation, setUserLocation] = useState({ lat: -23.5505, lng: -46.6333 }) // Default: São Paulo
+    // Começa com um padrão, mas será ATUALIZADO PELA API
+    const [userLocation, setUserLocation] = useState({ lat: -23.5505, lng: -46.6333 })
 
+    // --- MUDANÇA: Lógica de fetch totalmente refeita ---
     useEffect(() => {
         const fetchNurses = async () => {
             try {
                 setLoading(true)
+                setError(null)
+                const token = localStorage.getItem("token")
+                if (!token) {
+                    throw new Error("Usuário não autenticado")
+                }
+
                 const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/user/online_nurses`, {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${localStorage.getItem("token")}`,
+                        Authorization: `Bearer ${token}`,
                     },
                 })
 
@@ -66,13 +102,27 @@ export default function NursesMapPage() {
                 const data: ApiResponse = await response.json()
 
                 if (data.success) {
+                    // 1. REQUISITO: Pegar a localização EXATA do paciente vinda da API
+                    if (data.data.length > 0 && data.data[0].patient_location) {
+                        const patLoc = data.data[0].patient_location
+                        setUserLocation({ lat: patLoc.latitude, lng: patLoc.longitude })
+                    }
+
                     const availableNurses = data.data.filter((nurse) => nurse.available)
-                    const nursesWithCoords = availableNurses.map((nurse) => ({
-                        ...nurse,
-                        latitude: userLocation.lat + (Math.random() - 0.5) * 0.1,
-                        longitude: userLocation.lng + (Math.random() - 0.5) * 0.1,
-                    }))
-                    setNurses(nursesWithCoords)
+
+                    // 2. REQUISITO: Mostrar enfermeiros de forma APROXIMADA
+                    const nursesWithFuzzedCoords = availableNurses.map((nurse) => {
+                        // Pega as coordenadas "embaralhadas"
+                        const { latitude, longitude } = fuzzCoordinates(nurse.latitude, nurse.longitude)
+
+                        return {
+                            ...nurse,
+                            latitude: latitude,   // Sobrescreve com o valor aproximado
+                            longitude: longitude, // Sobrescreve com o valor aproximado
+                        }
+                    })
+
+                    setNurses(nursesWithFuzzedCoords)
                 } else {
                     throw new Error(data.message || "Erro ao carregar dados")
                 }
@@ -85,8 +135,11 @@ export default function NursesMapPage() {
         }
 
         fetchNurses()
-    }, [userLocation.lat, userLocation.lng])
+    }, []) // Roda apenas UMA VEZ
+    // --- FIM DA MUDANÇA ---
 
+
+    // O JSX de Loading e Error permanece o mesmo...
     if (loading) {
         return (
             <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
@@ -127,6 +180,8 @@ export default function NursesMapPage() {
             </div>
         )
     }
+
+    // O JSX principal permanece o mesmo...
     const nurse = selectedNurse
     const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
     const imageUrl = nurse?.image ? `${API_BASE_URL}/user/file/${nurse.image}` : "/placeholder-avatar.png"
@@ -154,6 +209,9 @@ export default function NursesMapPage() {
                     style={{ display: "grid", gridTemplateColumns: "1fr 400px", gap: "1.5rem", height: "calc(100vh - 250px)" }}
                 >
                     <Card style={{ overflow: "hidden", position: "relative" }}>
+                        {/* Este componente agora recebe a localização EXATA do paciente
+                          e a lista de enfermeiros com localizações APROXIMADAS 
+                        */}
                         <NursesMapWithNoSSR
                             userLocation={userLocation}
                             nurses={nurses}

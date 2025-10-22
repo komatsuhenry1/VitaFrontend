@@ -682,16 +682,17 @@ export default function RegisterPage() {
                               <SelectValue placeholder="Selecione" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="centro">Centro</SelectItem>
-                              <SelectItem value="tatuape">Tatuapé</SelectItem>
-                              <SelectItem value="mooca">Mooca</SelectItem>
-                              <SelectItem value="vila mariana">Vila Mariana</SelectItem>
-                              <SelectItem value="pinheiros">Pinheiros</SelectItem>
-                              <SelectItem value="itaim bibi">Itaim Bibi</SelectItem>
-                              <SelectItem value="jardins">Jardins</SelectItem>
-                              <SelectItem value="moema">Moema</SelectItem>
-                              <SelectItem value="santana">Santana</SelectItem>
-                              <SelectItem value="ipiranga">Ipiranga</SelectItem>
+                              <SelectItem value="Centro">Centro</SelectItem>
+                              <SelectItem value="Vila Prudente">Vila Prudente</SelectItem>
+                              <SelectItem value="Tatuapé">Tatuapé</SelectItem>
+                              <SelectItem value="Mooca">Mooca</SelectItem>
+                              <SelectItem value="Vila Mariana">Vila Mariana</SelectItem>
+                              <SelectItem value="Pinheiros">Pinheiros</SelectItem>
+                              <SelectItem value="Itaim Bibi">Itaim Bibi</SelectItem>
+                              <SelectItem value="Jardins">Jardins</SelectItem>
+                              <SelectItem value="Moema">Moema</SelectItem>
+                              <SelectItem value="Santana">Santana</SelectItem>
+                              <SelectItem value="Ipiranga">Ipiranga</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>

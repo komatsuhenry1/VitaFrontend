@@ -41,19 +41,19 @@ interface UserData {
 
 const navLinksConfig = {
   base: [
-    { href: "/", label: "Início" },
     { href: "/sobre", label: "Sobre" },
+    { href: "/", label: "Início" },
     { href: "/servicos", label: "Serviços" },
     { href: "/contato", label: "Contato" },
   ],
   PATIENT: [
+    { href: "/sobre", label: "Sobre" },
     { href: "/visit/nurses-list", label: "Enfermeiros" },
     { href: "/confirmed-visits", label: "Minhas Visitas" },
-    { href: "/sobre", label: "Sobre" },
     { href: "/patient/map", label: "Mapa" },
   ],
   NURSE: [
-    { href: "/sobre", label: "Sobre" },
+    { href: "/sobre",  label: "Sobre" },
     { href: "/dashboard/nurse", label: "Dashboard" },
     { href: "/visit/all-visits-patient", label: "Visitas" },
     { href: "/chat/nurse-chats", label: "Conversas" },
