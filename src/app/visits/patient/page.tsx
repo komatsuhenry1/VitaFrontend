@@ -9,14 +9,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
+// --- MUDANÇA: Remover imports do Dialog de Detalhes ---
+// import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -37,7 +31,7 @@ interface Visit {
     description: string
     reason: string
     visit_type: string
-    date: string // Já vem como string formatada
+    date: string
     status: string
     nurse: {
         id: string
@@ -45,7 +39,7 @@ interface Visit {
         specialization: string
         image: string
     }
-    created_at: string // Já vem como string formatada
+    created_at: string
 }
 
 interface VisitsResponse {
@@ -63,13 +57,14 @@ export default function VisitsPage() {
     const [visitsToday, setVisitsToday] = useState<Visit[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null)
-    const [showDetailsDialog, setShowDetailsDialog] = useState(false)
+    const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null) // Mantido para confirmação
+    // --- MUDANÇA: Remover estado do Dialog de Detalhes ---
+    // const [showDetailsDialog, setShowDetailsDialog] = useState(false)
     const [showCompletionDialog, setShowCompletionDialog] = useState(false)
     const [completingVisit, setCompletingVisit] = useState(false)
 
+    // ... (useEffect fetchVisits) ...
     useEffect(() => {
-        // ... (fetchVisits permanece o mesmo) ...
         const fetchVisits = async () => {
             try {
                 setLoading(true)
@@ -110,61 +105,35 @@ export default function VisitsPage() {
         fetchVisits()
     }, [router])
 
-    // --- MUDANÇA: Função 'formatDate' removida ---
-    // A data já vem formatada do backend (ex: "23/10/2025 14:00")
-    // const formatDate = (dateString: string) => {
-    //   const date = new Date(dateString) // <-- ISSO CAUSA O ERRO "Invalid Date"
-    //   return date.toLocaleDateString("pt-BR", {
-    //     day: "2-digit",
-    //     month: "2-digit",
-    //     year: "numeric",
-    //     hour: "2-digit",
-    //     minute: "2-digit",
-    //   })
-    // }
-    // --- FIM DA MUDANÇA ---
 
+    // ... (getStatusColor, getStatusLabel, getVisitTypeLabel) ...
     const getStatusColor = (status: string) => {
-        // ... (função permanece a mesma)
         switch (status) {
-            case "PENDING":
-                return "#f59e0b"
-            case "CONFIRMED":
-                return "#15803d"
-            case "COMPLETED":
-                return "#0891b2"
-            default:
-                return "#6b7280"
+            case "PENDING": return "#f59e0b";
+            case "CONFIRMED": return "#15803d";
+            case "COMPLETED": return "#0891b2";
+            default: return "#6b7280";
         }
     }
 
     const getStatusLabel = (status: string) => {
-        // ... (função permanece a mesma)
         switch (status) {
-            case "PENDING":
-                return "Pendente"
-            case "CONFIRMED":
-                return "Confirmada"
-            case "COMPLETED":
-                return "Concluída"
-            default:
-                return status
+            case "PENDING": return "Pendente";
+            case "CONFIRMED": return "Confirmada";
+            case "COMPLETED": return "Concluída";
+            default: return status;
         }
     }
 
     const getVisitTypeLabel = (type: string) => {
-        // ... (função permanece a mesma)
-        switch (type.toLowerCase()) {
-            case "domiciliar":
-                return "Domiciliar"
-            case "hospitalar":
-                return "Hospitalar"
-            case "clinica":
-                return "Clínica"
-            default:
-                return type
+        switch (type?.toLowerCase()) {
+            case "domiciliar": return "Domiciliar";
+            case "hospitalar": return "Hospitalar";
+            case "clinica": return "Clínica";
+            default: return type || 'N/A';
         }
     }
+
 
     const pendingVisits = visits.filter((visit) => visit.status === "PENDING")
     const confirmedVisits = visits.filter((visit) => visit.status === "CONFIRMED")
@@ -173,57 +142,32 @@ export default function VisitsPage() {
     const VisitCard = ({ visit, status }: { visit: Visit; status: string }) => (
         <Card key={visit.id} style={{ overflow: "hidden" }}>
             <CardContent style={{ padding: "1.5rem" }}>
-                <div
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns: "auto 1fr auto",
-                        gap: "1.5rem",
-                        alignItems: "start",
-                    }}
-                >
+                <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: "1.5rem", alignItems: "start" }}>
                     {/* ... (Imagem da Enfermeira) ... */}
                     <div>
                         <img
-                            src={
-                                visit.nurse?.image
-                                    ? `http://localhost:8081/api/v1/user/file/${visit.nurse.image}`
-                                    : "/nurse-profile.jpg"
-                            }
+                            src={visit.nurse?.image ? `${API_BASE_URL}/user/file/${visit.nurse.image}` : "/nurse-profile.jpg"}
                             alt={visit.nurse?.name || "Enfermeiro"}
-                            style={{
-                                width: "80px",
-                                height: "80px",
-                                borderRadius: "50%",
-                                objectFit: "cover",
-                            }}
+                            style={{ width: "80px", height: "80px", borderRadius: "50%", objectFit: "cover" }}
+                            onError={(e) => (e.currentTarget.src = "/nurse-profile.jpg")} // Fallback
                         />
                     </div>
 
                     {/* Visit Details */}
                     <div>
-                        {/* ... (Nome e Badge) ... */}
+                        {/* ... (Nome, Badge, Especialização, Data, Tipo, Motivo, Descrição) ... */}
                         <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.5rem" }}>
                             <h3 style={{ fontSize: "1.25rem", fontWeight: "600", color: "#1f2937" }}>
                                 {visit.nurse?.name || "Enfermeiro não especificado"}
                             </h3>
                             <Badge style={{ backgroundColor: getStatusColor(visit.status) }}>{getStatusLabel(visit.status)}</Badge>
                         </div>
-
                         <p style={{ color: "#15803d", fontWeight: "500", marginBottom: "0.75rem" }}>
                             {visit.nurse?.specialization || "Enfermagem"}
                         </p>
-
-                        <div
-                            style={{
-                                display: "grid",
-                                gridTemplateColumns: "repeat(2, 1fr)",
-                                gap: "0.75rem",
-                                marginBottom: "0.75rem",
-                            }}
-                        >
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.75rem", marginBottom: "0.75rem" }}>
                             <div>
                                 <span style={{ fontSize: "0.875rem", color: "#6b7280" }}>📅 Data:</span>
-                                {/* --- MUDANÇA: Usando a string 'visit.date' diretamente --- */}
                                 <span style={{ marginLeft: "0.5rem", fontWeight: "500" }}>{visit.date}</span>
                             </div>
                             <div>
@@ -231,12 +175,10 @@ export default function VisitsPage() {
                                 <span style={{ marginLeft: "0.5rem", fontWeight: "500" }}>{getVisitTypeLabel(visit.visit_type)}</span>
                             </div>
                         </div>
-                        {/* ... (Motivo e Descrição) ... */}
                         <div style={{ marginBottom: "0.5rem" }}>
                             <span style={{ fontSize: "0.875rem", color: "#6b7280", fontWeight: "600" }}>Motivo: </span>
                             <span style={{ color: "#4b5563" }}>{visit.reason}</span>
                         </div>
-
                         {visit.description && (
                             <div>
                                 <span style={{ fontSize: "0.875rem", color: "#6b7280", fontWeight: "600" }}>Descrição: </span>
@@ -245,16 +187,17 @@ export default function VisitsPage() {
                         )}
                     </div>
 
-                    {/* ... (Botões de Ação) ... */}
+                    {/* Action Buttons */}
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                        {status === "PENDING" && (
+                        {/* --- MUDANÇA: Botões Ver Detalhes agora navegam --- */}
+                        {(status === "PENDING" || status === "COMPLETED") && (
                             <Button
                                 variant="outline"
-                                onClick={() => {
-                                    setSelectedVisit(visit)
-                                    setShowDetailsDialog(true)
+                                onClick={() => router.push(`/visit-details/patient/${visit.id}`)} // Navega
+                                style={{
+                                    borderColor: status === "PENDING" ? "#f59e0b" : "#0891b2",
+                                    color: status === "PENDING" ? "#f59e0b" : "#0891b2"
                                 }}
-                                style={{ borderColor: "#f59e0b", color: "#f59e0b" }}
                             >
                                 <Info className="h-4 w-4 mr-2" />
                                 Ver Detalhes
@@ -265,7 +208,7 @@ export default function VisitsPage() {
                             <>
                                 <Button
                                     variant="outline"
-                                    onClick={() => router.push(`/nurse/${visit.nurse?.id}`)}
+                                    onClick={() => router.push(`/nurse-profile/${visit.nurse?.id}`)} // Ajuste a rota se necessário
                                     style={{ borderColor: "#15803d", color: "#15803d" }}
                                 >
                                     Ver Perfil
@@ -288,21 +231,16 @@ export default function VisitsPage() {
                                     <MessageCircle className="h-4 w-4 mr-2" />
                                     Chat
                                 </Button>
+                                {/* Botão Ver Detalhes para CONFIRMED também navega */}
+                                <Button
+                                    variant="outline"
+                                    onClick={() => router.push(`/visit-details/patient/${visit.id}`)} // Navega
+                                    style={{ borderColor: "#6b7280", color: "#6b7280" }} // Cor neutra
+                                >
+                                    <Info className="h-4 w-4 mr-2" />
+                                    Ver Detalhes
+                                </Button>
                             </>
-                        )}
-
-                        {status === "COMPLETED" && (
-                            <Button
-                                variant="outline"
-                                onClick={() => {
-                                    setSelectedVisit(visit)
-                                    setShowDetailsDialog(true)
-                                }}
-                                style={{ borderColor: "#0891b2", color: "#0891b2" }}
-                            >
-                                <Info className="h-4 w-4 mr-2" />
-                                Ver Detalhes
-                            </Button>
                         )}
                     </div>
                 </div>
@@ -337,9 +275,10 @@ export default function VisitsPage() {
             })
 
             if (!response.ok) {
-                throw new Error("Erro ao concluir visita")
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || "Erro ao concluir visita");
             }
-
+            // Re-fetch visits after completion
             const visitsResponse = await fetch(`${API_BASE_URL}/user/visits`, {
                 method: "GET",
                 headers: {
@@ -352,19 +291,30 @@ export default function VisitsPage() {
             if (result.success && result.data) {
                 setVisits(result.data.all_visits || [])
                 setVisitsToday(result.data.visits_today || [])
+            } else {
+                console.error("Failed to re-fetch visits after completion:", result.message);
             }
 
             setShowCompletionDialog(false)
             setSelectedVisit(null)
+            // Add toast notification for success
+            // toast.success("Visita concluída com sucesso!");
         } catch (err) {
-            alert(err instanceof Error ? err.message : "Erro ao concluir visita")
+            // Use toast for error notification
+            // toast.error(err instanceof Error ? err.message : "Erro ao concluir visita");
+            alert(err instanceof Error ? err.message : "Erro ao concluir visita") // Fallback alert
         } finally {
             setCompletingVisit(false)
         }
     }
 
-    const handleOpenChat = (nurseId: string) => {
-        router.push(`/chat/${nurseId}`)
+    const handleOpenChat = (nurseId: string | undefined) => { // Make nurseId optional
+        if (nurseId) {
+            router.push(`/chat?selected=${nurseId}`) // Use query param for chat page
+        } else {
+            // toast.error("Não foi possível iniciar o chat: ID do enfermeiro não encontrado.");
+            alert("Não foi possível iniciar o chat: ID do enfermeiro não encontrado."); // Fallback
+        }
     }
 
     if (loading) {
@@ -374,6 +324,7 @@ export default function VisitsPage() {
                 <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem", textAlign: "center" }}>
                     <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "200px" }}>
                         <div style={{ color: "#15803d", fontSize: "1.125rem" }}>Carregando suas visitas...</div>
+                        {/* Consider adding a spinner here */}
                     </div>
                 </div>
             </div>
@@ -386,8 +337,8 @@ export default function VisitsPage() {
                 <Header />
                 <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem", textAlign: "center" }}>
                     <h1 style={{ color: "#dc2626", marginBottom: "1rem" }}>{error}</h1>
-                    <Button onClick={() => router.back()} style={{ marginTop: "1rem" }}>
-                        Voltar
+                    <Button onClick={() => window.location.reload()} style={{ marginTop: "1rem" }}> {/* Reload page on error */}
+                        Tentar Novamente
                     </Button>
                 </div>
             </div>
@@ -417,44 +368,20 @@ export default function VisitsPage() {
                             <h2 style={{ fontSize: "1.5rem", fontWeight: "600", color: "#1f2937" }}>Visitas de Hoje</h2>
                             <Badge style={{ backgroundColor: "#15803d", color: "white" }}>{visitsToday.length}</Badge>
                         </div>
-
-                        <div
-                            style={{
-                                display: "grid",
-                                gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))",
-                                gap: "1rem",
-                            }}
-                        >
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))", gap: "1rem" }}>
                             {visitsToday.map((visit) => (
-                                <Card
-                                    key={visit.id}
-                                    style={{
-                                        overflow: "hidden",
-                                        border: "2px solid #15803d",
-                                        backgroundColor: "#f0fdf4",
-                                    }}
-                                >
+                                <Card key={visit.id} style={{ overflow: "hidden", border: "2px solid #15803d", backgroundColor: "#f0fdf4" }}>
                                     <CardContent style={{ padding: "1.5rem" }}>
                                         {/* ... (Info Enfermeira) ... */}
                                         <div style={{ display: "flex", alignItems: "start", gap: "1rem", marginBottom: "1rem" }}>
                                             <img
-                                                src={
-                                                    visit.nurse?.image
-                                                        ? `http://localhost:8081/api/v1/user/file/${visit.nurse.image}`
-                                                        : "/nurse-profile.jpg"
-                                                }
+                                                src={visit.nurse?.image ? `${API_BASE_URL}/user/file/${visit.nurse.image}` : "/nurse-profile.jpg"}
                                                 alt={visit.nurse?.name || "Enfermeiro"}
-                                                style={{
-                                                    width: "60px",
-                                                    height: "60px",
-                                                    borderRadius: "50%",
-                                                    objectFit: "cover",
-                                                }}
+                                                style={{ width: "60px", height: "60px", borderRadius: "50%", objectFit: "cover" }}
+                                                onError={(e) => (e.currentTarget.src = "/nurse-profile.jpg")}
                                             />
                                             <div style={{ flex: 1 }}>
-                                                <h3
-                                                    style={{ fontSize: "1.125rem", fontWeight: "600", color: "#1f2937", marginBottom: "0.25rem" }}
-                                                >
+                                                <h3 style={{ fontSize: "1.125rem", fontWeight: "600", color: "#1f2937", marginBottom: "0.25rem" }}>
                                                     {visit.nurse?.name || "Enfermeiro não especificado"}
                                                 </h3>
                                                 <p style={{ color: "#15803d", fontWeight: "500", fontSize: "0.875rem" }}>
@@ -469,31 +396,21 @@ export default function VisitsPage() {
                                         <div style={{ display: "grid", gap: "0.5rem", marginBottom: "1rem" }}>
                                             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                                                 <Clock className="h-4 w-4" style={{ color: "#6b7280" }} />
-                                                {/* --- MUDANÇA: Usando a string 'visit.date' diretamente --- */}
                                                 <span style={{ fontSize: "0.875rem", fontWeight: "500" }}>{visit.date}</span>
                                             </div>
                                             <div>
                                                 <span style={{ fontSize: "0.875rem", color: "#6b7280" }}>Tipo: </span>
-                                                <span style={{ fontSize: "0.875rem", fontWeight: "500" }}>
-                                                    {getVisitTypeLabel(visit.visit_type)}
-                                                </span>
+                                                <span style={{ fontSize: "0.875rem", fontWeight: "500" }}>{getVisitTypeLabel(visit.visit_type)}</span>
                                             </div>
                                             <div>
                                                 <span style={{ fontSize: "0.875rem", color: "#6b7280" }}>Motivo: </span>
                                                 <span style={{ fontSize: "0.875rem" }}>{visit.reason}</span>
                                             </div>
                                         </div>
-
+                                        {/* --- MUDANÇA: Botão navega --- */}
                                         <Button
-                                            onClick={() => {
-                                                setSelectedVisit(visit)
-                                                setShowDetailsDialog(true)
-                                            }}
-                                            style={{
-                                                width: "100%",
-                                                backgroundColor: "#15803d",
-                                                color: "white",
-                                            }}
+                                            onClick={() => router.push(`/visit-details/patient/${visit.id}`)} // Navega
+                                            style={{ width: "100%", backgroundColor: "#15803d", color: "white" }}
                                         >
                                             <Info className="h-4 w-4 mr-2" />
                                             Ver Detalhes da Visita
@@ -505,9 +422,9 @@ export default function VisitsPage() {
                     </div>
                 )}
 
-                {/* ... (Abas: Pendentes, Confirmadas, Concluídas) ... */}
-                {visits.length === 0 ? (
-                    // ... (Empty State)
+                {/* Abas */}
+                {visits.length === 0 && visitsToday.length === 0 ? ( // Verifica visitsToday também
+                    // ... (Empty State geral)
                     <Card>
                         <CardContent style={{ padding: "3rem", textAlign: "center" }}>
                             <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>📅</div>
@@ -523,8 +440,9 @@ export default function VisitsPage() {
                         </CardContent>
                     </Card>
                 ) : (
-                    <Tabs defaultValue="pending" className="w-full">
+                    <Tabs defaultValue={confirmedVisits.length > 0 ? "confirmed" : (pendingVisits.length > 0 ? "pending" : "completed")} className="w-full"> {/* Default inteligente */}
                         <TabsList className="grid w-full grid-cols-3 mb-6">
+                            {/* ... (TabsTrigger) ... */}
                             <TabsTrigger value="pending" className="flex items-center gap-2">
                                 <Clock className="h-4 w-4" />
                                 Pendentes ({pendingVisits.length})
@@ -534,161 +452,48 @@ export default function VisitsPage() {
                                 Confirmadas ({confirmedVisits.length})
                             </TabsTrigger>
                             <TabsTrigger value="completed" className="flex items-center gap-2">
-                                <CheckCircle className="h-4 w-4" />
+                                <CheckCheck className="h-4 w-4" /> {/* Ícone diferente */}
                                 Concluídas ({completedVisits.length})
                             </TabsTrigger>
                         </TabsList>
 
-                        {/* Abas... */}
                         <TabsContent value="pending">
                             {pendingVisits.length === 0 ? (
-                                <EmptyState
-                                    icon={<Clock className="h-16 w-16 text-amber-500 mx-auto" />}
-                                    title="Nenhuma visita pendente"
-                                    description="Você não tem visitas aguardando confirmação."
-                                />
+                                <EmptyState icon={<Clock className="h-16 w-16 text-amber-500 mx-auto" />} title="Nenhuma visita pendente" description="Você não tem visitas aguardando confirmação." />
                             ) : (
                                 <div style={{ display: "grid", gap: "1.5rem" }}>
-                                    {pendingVisits.map((visit) => (
-                                        <VisitCard key={visit.id} visit={visit} status="PENDING" />
-                                    ))}
+                                    {pendingVisits.map((visit) => <VisitCard key={visit.id} visit={visit} status="PENDING" />)}
                                 </div>
                             )}
                         </TabsContent>
-
                         <TabsContent value="confirmed">
                             {confirmedVisits.length === 0 ? (
-                                <EmptyState
-                                    icon={<CheckCircle className="h-16 w-16 text-green-600 mx-auto" />}
-                                    title="Nenhuma visita confirmada"
-                                    description="Você não tem visitas confirmadas no momento."
-                                />
+                                <EmptyState icon={<CheckCircle className="h-16 w-16 text-green-600 mx-auto" />} title="Nenhuma visita confirmada" description="Você não tem visitas confirmadas no momento." />
                             ) : (
                                 <div style={{ display: "grid", gap: "1.5rem" }}>
-                                    {confirmedVisits.map((visit) => (
-                                        <VisitCard key={visit.id} visit={visit} status="CONFIRMED" />
-                                    ))}
+                                    {confirmedVisits.map((visit) => <VisitCard key={visit.id} visit={visit} status="CONFIRMED" />)}
                                 </div>
                             )}
                         </TabsContent>
-
                         <TabsContent value="completed">
                             {completedVisits.length === 0 ? (
-                                <EmptyState
-                                    icon={<CheckCircle className="h-16 w-16 text-cyan-600 mx-auto" />}
-                                    title="Nenhuma visita concluída"
-                                    description="Você ainda não tem visitas concluídas."
-                                />
+                                <EmptyState icon={<CheckCheck className="h-16 w-16 text-cyan-600 mx-auto" />} title="Nenhuma visita concluída" description="Você ainda não tem visitas concluídas." />
                             ) : (
                                 <div style={{ display: "grid", gap: "1.5rem" }}>
-                                    {completedVisits.map((visit) => (
-                                        <VisitCard key={visit.id} visit={visit} status="COMPLETED" />
-                                    ))}
+                                    {completedVisits.map((visit) => <VisitCard key={visit.id} visit={visit} status="COMPLETED" />)}
                                 </div>
                             )}
                         </TabsContent>
-
                     </Tabs>
                 )}
             </div>
 
-            {/* Details Dialog */}
-            <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-                <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle>Detalhes da Visita</DialogTitle>
-                        <DialogDescription>Informações completas sobre a visita agendada</DialogDescription>
-                    </DialogHeader>
+            {/* --- MUDANÇA: Dialog de Detalhes REMOVIDO --- */}
+            {/* <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}> ... </Dialog> */}
 
-                    {selectedVisit && (
-                        <div style={{ display: "grid", gap: "1.5rem" }}>
-                            {/* ... (Info Enfermeira) ... */}
-                            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                                <img
-                                    src={
-                                        selectedVisit.nurse?.image
-                                            ? `http://localhost:8081/api/v1/user/file/${selectedVisit.nurse.image}`
-                                            : "/nurse-profile.jpg"
-                                    }
-                                    alt={selectedVisit.nurse?.name}
-                                    style={{
-                                        width: "80px",
-                                        height: "80px",
-                                        borderRadius: "50%",
-                                        objectFit: "cover",
-                                    }}
-                                />
-                                <div>
-                                    <h3 style={{ fontSize: "1.25rem", fontWeight: "600", marginBottom: "0.25rem" }}>
-                                        {selectedVisit.nurse?.name}
-                                    </h3>
-                                    <p style={{ color: "#15803d", fontWeight: "500" }}>{selectedVisit.nurse?.specialization}</p>
-                                </div>
-                            </div>
-
-
-                            {/* Visit Details */}
-                            <div style={{ display: "grid", gap: "1rem" }}>
-                                <div>
-                                    <span style={{ fontWeight: "600", color: "#6b7280" }}>Status:</span>
-                                    <Badge style={{ backgroundColor: getStatusColor(selectedVisit.status), marginLeft: "0.5rem" }}>
-                                        {getStatusLabel(selectedVisit.status)}
-                                    </Badge>
-                                </div>
-
-                                <div>
-                                    <span style={{ fontWeight: "600", color: "#6b7280" }}>Data e Hora:</span>
-                                    {/* --- MUDANÇA: Usando a string 'selectedVisit.date' diretamente --- */}
-                                    <p>{selectedVisit.date}</p>
-                                </div>
-
-                                <div>
-                                    <span style={{ fontWeight: "600", color: "#6b7280" }}>Tipo de Visita:</span>
-                                    <p>{getVisitTypeLabel(selectedVisit.visit_type)}</p>
-                                </div>
-
-                                <div>
-                                    <span style={{ fontWeight: "600", color: "#6b7280" }}>Motivo:</span>
-                                    <p>{selectedVisit.reason}</p>
-                                </div>
-
-                                {selectedVisit.description && (
-                                    <div>
-                                        <span style={{ fontWeight: "600", color: "#6b7280" }}>Descrição:</span>
-                                        <p>{selectedVisit.description}</p>
-                                    </div>
-                                )}
-
-                                <div>
-                                    <span style={{ fontWeight: "600", color: "#6b7280" }}>Agendado em:</span>
-                                    {/* --- MUDANÇA: Usando a string 'selectedVisit.created_at' diretamente --- */}
-                                    <p>{selectedVisit.created_at}</p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>
-                            Fechar
-                        </Button>
-                        {selectedVisit && (
-                            <Button
-                                onClick={() => {
-                                    setShowDetailsDialog(false)
-                                    router.push(`/nurse-profile/${selectedVisit.nurse?.id}`)
-                                }}
-                                style={{ backgroundColor: "#15803d", color: "white" }}
-                            >
-                                Ver Perfil do Enfermeiro
-                            </Button>
-                        )}
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* ... (AlertDialog para Confirmação) ... */}
+            {/* AlertDialog para Confirmação de Conclusão (Mantido) */}
             <AlertDialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
+                {/* ... (Conteúdo do AlertDialog para concluir visita) ... */}
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Confirmar Conclusão da Visita</AlertDialogTitle>
@@ -708,7 +513,6 @@ export default function VisitsPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-
         </div>
     )
 }
