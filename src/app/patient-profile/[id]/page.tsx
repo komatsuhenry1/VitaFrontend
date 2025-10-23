@@ -170,10 +170,6 @@ export default function PatientProfile() {
             <Header />
 
             <main className="container mx-auto max-w-6xl p-4 md:p-8">
-                <Button onClick={() => router.back()} variant="outline" className="mb-6">
-                    ← Voltar
-                </Button>
-
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     {/* Coluna da Esquerda - Informações do Paciente */}
                     <aside className="md:col-span-1 space-y-6">

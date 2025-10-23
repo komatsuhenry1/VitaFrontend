@@ -236,14 +236,6 @@ export default function NurseProfile() {
             <Header />
 
             <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem" }}>
-                {/* Botão Voltar */}
-                <Button
-                    onClick={() => router.back()}
-                    variant="outline"
-                    style={{ marginBottom: "1.5rem", borderColor: "#15803d", color: "#15803d" }}
-                >
-                    ← Voltar à Lista
-                </Button>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "2rem" }}>
                     {/* Coluna Esquerda - Info Enfermeiro */}

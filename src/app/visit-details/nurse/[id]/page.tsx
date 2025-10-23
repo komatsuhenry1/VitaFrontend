@@ -344,25 +344,6 @@ export default function VisitDetailsPage() {
             <Header />
             <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem" }}>
                 <div style={{ marginBottom: "2.5rem" }}>
-                    <Button
-                        variant="ghost"
-                        onClick={() => router.push("/nurse/visits/nurse")}
-                        style={{
-                            marginBottom: "1.5rem",
-                            color: "#15803d",
-                            transition: "all 0.2s ease",
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = "#f0fdf4"
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = "transparent"
-                        }}
-                    >
-                        <ArrowLeft className="h-4 w-4 mr-2" />
-                        Voltar
-                    </Button>
-
                     <div
                         style={{
                             display: "flex",

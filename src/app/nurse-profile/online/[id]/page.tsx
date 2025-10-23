@@ -186,22 +186,6 @@ export default function ImmediateConsultationNurseProfile() {
             <Header />
 
             <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem" }}>
-                <Button
-                    onClick={() => router.back()}
-                    variant="outline"
-                    style={{
-                        marginBottom: "1.5rem",
-                        borderColor: "#15803d",
-                        color: "#15803d",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                    }}
-                >
-                    <ArrowLeft className="h-4 w-4" />
-                    Voltar ao Mapa
-                </Button>
-
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "2rem" }}>
                     {/* Left Column - Nurse Info */}
                     <div>

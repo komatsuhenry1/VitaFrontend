@@ -443,7 +443,7 @@ export default function VisitsPage() {
                         </CardContent>
                     </Card>
                 ) : (
-                    <Tabs defaultValue={confirmedVisits.length > 0 ? "confirmed" : (pendingVisits.length > 0 ? "pending" : "completed")} className="w-full"> {/* Default inteligente */}
+                    <Tabs defaultValue={confirmedVisits.length > 0 ? "pending" : (pendingVisits.length > 0 ? "pending" : "completed")} className="w-full"> {/* Default inteligente */}
                         <TabsList className="grid w-full grid-cols-3 mb-6">
                             {/* ... (TabsTrigger) ... */}
                             <TabsTrigger value="pending" className="flex items-center gap-2">
