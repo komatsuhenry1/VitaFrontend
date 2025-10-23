@@ -259,7 +259,7 @@ export default function VisitDetailsPage() {
 
             if (isValidCode) {
                 toast.success("Código confirmado! Visita concluída com sucesso.")
-                router.push("/nurse/visits")
+                router.push("/nurse/visits/nurse")
             } else {
                 toast.error("Código inválido. Verifique e tente novamente.")
             }
@@ -316,7 +316,7 @@ export default function VisitDetailsPage() {
                 <Header />
                 <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem", textAlign: "center" }}>
                     <h1 style={{ color: "#dc2626", marginBottom: "1rem" }}>Visita não encontrada</h1>
-                    <Button onClick={() => router.push("/nurse/visits")}>Voltar para Visitas</Button>
+                    <Button onClick={() => router.push("/nurse/visits/nurse")}>Voltar para Visitas</Button>
                 </div>
             </div>
         )

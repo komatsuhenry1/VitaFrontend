@@ -84,7 +84,7 @@ export default function LoginPage() {
           localStorage.setItem("token", token)
           localStorage.setItem("user", JSON.stringify(user))  
           toast.success("Login realizado com sucesso!")
-          router.push("/visit/nurses-list") // Rota ajustada como no Header
+          router.push("/nurses-list") // Rota ajustada como no Header
         } else {
           router.push("/")
         }

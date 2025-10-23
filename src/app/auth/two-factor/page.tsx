@@ -72,7 +72,7 @@ export default function ValidateCodePage() {
                         router.push("/dashboard/nurse")
                     } else if (userRole === "PATIENT") {
                         toast.success("Login realizado com sucesso!")
-                        router.push("/visit/nurses-list") // Rota ajustada como no Header
+                        router.push("/nurses-list") // Rota ajustada como no Header
                     } else if (userRole === "ADMIN") {
                         toast.success("Login realizado com sucesso!")
                         router.push("/dashboard/admin")

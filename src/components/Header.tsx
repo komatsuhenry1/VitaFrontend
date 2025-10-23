@@ -48,15 +48,15 @@ const navLinksConfig = {
   ],
   PATIENT: [
     { href: "/sobre", label: "Sobre" },
-    { href: "/visit/nurses-list", label: "Enfermeiros" },
-    { href: "/visits", label: "Visitas" },
+    { href: "/nurses-list", label: "Enfermeiros" },
+    { href: "/visits/nurse", label: "Visitas" },
     { href: "/chat/conversations", label: "Conversas" },
     { href: "/patient/map", label: "Mapa" },
   ],
   NURSE: [
     { href: "/sobre",  label: "Sobre" },
     { href: "/dashboard/nurse", label: "Dashboard" },
-    { href: "/visit/all-visits-patient", label: "Visitas" },
+    { href: "/visits/nurse", label: "Visitas" },
     { href: "/chat/conversations", label: "Conversas" },
     { href: "/availability", label: "Disponibilidade" },
   ],
@@ -138,7 +138,7 @@ export function Header() {
         logoUrl = "/dashboard/nurse"
         break
       case "PATIENT":
-        logoUrl = "/visit/nurses-list"
+        logoUrl = "/nurses-list"
         break
       case "ADMIN":
         logoUrl = "/dashboard/admin"
