@@ -49,7 +49,7 @@ const navLinksConfig = {
   PATIENT: [
     { href: "/sobre", label: "Sobre" },
     { href: "/nurses-list", label: "Enfermeiros" },
-    { href: "/visits/nurse", label: "Visitas" },
+    { href: "/visits/patient", label: "Visitas" },
     { href: "/chat/conversations", label: "Conversas" },
     { href: "/patient/map", label: "Mapa" },
   ],

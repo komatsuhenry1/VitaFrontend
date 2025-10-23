@@ -523,7 +523,7 @@ export default function VisitsPage() {
                         </CardContent>
                     </Card>
                 ) : (
-                    <Tabs defaultValue="confirmed" className="w-full">
+                    <Tabs defaultValue="pending" className="w-full">
                         <TabsList className="grid w-full grid-cols-3 mb-6">
                             <TabsTrigger value="pending" className="flex items-center gap-2">
                                 <Clock className="h-4 w-4" />
