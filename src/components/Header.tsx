@@ -49,7 +49,7 @@ const navLinksConfig = {
   PATIENT: [
     { href: "/sobre", label: "Sobre" },
     { href: "/visit/nurses-list", label: "Enfermeiros" },
-    { href: "/confirmed-visits", label: "Minhas Visitas" },
+    { href: "/visits", label: "Visitas" },
     { href: "/chat/conversations", label: "Conversas" },
     { href: "/patient/map", label: "Mapa" },
   ],
@@ -173,23 +173,7 @@ export function Header() {
                 <>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="relative">
-                        <Bell className="h-5 w-5" />
-                        {notificationsCount > 0 && (
-                          <Badge
-                            variant="destructive"
-                            className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0
-                         text-xs"
-                          >
-                            {notificationsCount}
-                          </Badge>
-                        )}
-                      </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-80">
-                      <DropdownMenuLabel>Notificações</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                    </DropdownMenuContent>
                   </DropdownMenu>
 
                   <DropdownMenu>

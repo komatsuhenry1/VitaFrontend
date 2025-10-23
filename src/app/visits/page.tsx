@@ -27,16 +27,15 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Clock, CheckCircle, Info, MessageCircle, CheckCheck } from "lucide-react"
+import { Clock, CheckCircle, Info, MessageCircle, CheckCheck, Calendar } from "lucide-react"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
-
+// ... (Interface Visit e VisitsResponse) ...
 interface Visit {
     id: string
     description: string
     reason: string
     visit_type: string
-    date: string
+    date: string // Já vem como string formatada
     status: string
     nurse: {
         id: string
@@ -44,11 +43,14 @@ interface Visit {
         specialization: string
         image: string
     }
-    created_at: string
+    created_at: string // Já vem como string formatada
 }
 
 interface VisitsResponse {
-    data: Visit[]
+    data: {
+        all_visits: Visit[]
+        visits_today: Visit[]
+    }
     message: string
     success: boolean
 }
@@ -56,6 +58,7 @@ interface VisitsResponse {
 export default function VisitsPage() {
     const router = useRouter()
     const [visits, setVisits] = useState<Visit[]>([])
+    const [visitsToday, setVisitsToday] = useState<Visit[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null)
@@ -64,6 +67,7 @@ export default function VisitsPage() {
     const [completingVisit, setCompletingVisit] = useState(false)
 
     useEffect(() => {
+        // ... (fetchVisits permanece o mesmo) ...
         const fetchVisits = async () => {
             try {
                 setLoading(true)
@@ -74,7 +78,7 @@ export default function VisitsPage() {
                     return
                 }
 
-                const response = await fetch(`${API_BASE_URL}/user/visits`, {
+                const response = await fetch("http://localhost:8081/api/v1/user/visits", {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",
@@ -83,20 +87,16 @@ export default function VisitsPage() {
                 })
 
                 if (!response.ok) {
-                    // Trata erros de rede ou de servidor (ex: 404, 500)
-                    throw new Error("Erro de comunicação com o servidor.")
+                    throw new Error("Erro ao carregar visitas")
                 }
 
                 const result: VisitsResponse = await response.json()
 
-                // [MUDANÇA] Lógica de tratamento da resposta da API ajustada
-                if (result.success) {
-                    // Se a API responder sucesso, aceitamos os dados.
-                    // Se `result.data` for `null` ou `undefined`, transformamos em `[]`
-                    setVisits(result.data || [])
+                if (result.success && result.data) {
+                    setVisits(result.data.all_visits || [])
+                    setVisitsToday(result.data.visits_today || [])
                 } else {
-                    // Se a API explicitamente disser que falhou, aí sim mostramos o erro.
-                    throw new Error(result.message || "Não foi possível carregar as visitas.")
+                    throw new Error(result.message || "Erro ao carregar visitas")
                 }
             } catch (err) {
                 setError(err instanceof Error ? err.message : "Erro desconhecido")
@@ -108,19 +108,22 @@ export default function VisitsPage() {
         fetchVisits()
     }, [router])
 
-    // ... O restante do seu componente permanece exatamente o mesmo
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString)
-        return date.toLocaleDateString("pt-BR", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-        })
-    }
+    // --- MUDANÇA: Função 'formatDate' removida ---
+    // A data já vem formatada do backend (ex: "23/10/2025 14:00")
+    // const formatDate = (dateString: string) => {
+    //   const date = new Date(dateString) // <-- ISSO CAUSA O ERRO "Invalid Date"
+    //   return date.toLocaleDateString("pt-BR", {
+    //     day: "2-digit",
+    //     month: "2-digit",
+    //     year: "numeric",
+    //     hour: "2-digit",
+    //     minute: "2-digit",
+    //   })
+    // }
+    // --- FIM DA MUDANÇA ---
 
     const getStatusColor = (status: string) => {
+        // ... (função permanece a mesma)
         switch (status) {
             case "PENDING":
                 return "#f59e0b"
@@ -134,6 +137,7 @@ export default function VisitsPage() {
     }
 
     const getStatusLabel = (status: string) => {
+        // ... (função permanece a mesma)
         switch (status) {
             case "PENDING":
                 return "Pendente"
@@ -147,6 +151,7 @@ export default function VisitsPage() {
     }
 
     const getVisitTypeLabel = (type: string) => {
+        // ... (função permanece a mesma)
         switch (type.toLowerCase()) {
             case "domiciliar":
                 return "Domiciliar"
@@ -174,12 +179,12 @@ export default function VisitsPage() {
                         alignItems: "start",
                     }}
                 >
-                    {/* Nurse Image */}
+                    {/* ... (Imagem da Enfermeira) ... */}
                     <div>
                         <img
                             src={
                                 visit.nurse?.image
-                                    ? `${API_BASE_URL}/user/file/${visit.nurse.image}`
+                                    ? `http://localhost:8081/api/v1/user/file/${visit.nurse.image}`
                                     : "/nurse-profile.jpg"
                             }
                             alt={visit.nurse?.name || "Enfermeiro"}
@@ -194,6 +199,7 @@ export default function VisitsPage() {
 
                     {/* Visit Details */}
                     <div>
+                        {/* ... (Nome e Badge) ... */}
                         <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.5rem" }}>
                             <h3 style={{ fontSize: "1.25rem", fontWeight: "600", color: "#1f2937" }}>
                                 {visit.nurse?.name || "Enfermeiro não especificado"}
@@ -215,14 +221,15 @@ export default function VisitsPage() {
                         >
                             <div>
                                 <span style={{ fontSize: "0.875rem", color: "#6b7280" }}>📅 Data:</span>
-                                <span style={{ marginLeft: "0.5rem", fontWeight: "500" }}>{formatDate(visit.date)}</span>
+                                {/* --- MUDANÇA: Usando a string 'visit.date' diretamente --- */}
+                                <span style={{ marginLeft: "0.5rem", fontWeight: "500" }}>{visit.date}</span>
                             </div>
                             <div>
                                 <span style={{ fontSize: "0.875rem", color: "#6b7280" }}>🏥 Tipo:</span>
                                 <span style={{ marginLeft: "0.5rem", fontWeight: "500" }}>{getVisitTypeLabel(visit.visit_type)}</span>
                             </div>
                         </div>
-
+                        {/* ... (Motivo e Descrição) ... */}
                         <div style={{ marginBottom: "0.5rem" }}>
                             <span style={{ fontSize: "0.875rem", color: "#6b7280", fontWeight: "600" }}>Motivo: </span>
                             <span style={{ color: "#4b5563" }}>{visit.reason}</span>
@@ -236,6 +243,7 @@ export default function VisitsPage() {
                         )}
                     </div>
 
+                    {/* ... (Botões de Ação) ... */}
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                         {status === "PENDING" && (
                             <Button
@@ -255,7 +263,7 @@ export default function VisitsPage() {
                             <>
                                 <Button
                                     variant="outline"
-                                    onClick={() => router.push(`/nurse-profile/${visit.nurse?.id}`)}
+                                    onClick={() => router.push(`/nurse/${visit.nurse?.id}`)}
                                     style={{ borderColor: "#15803d", color: "#15803d" }}
                                 >
                                     Ver Perfil
@@ -268,7 +276,7 @@ export default function VisitsPage() {
                                     style={{ backgroundColor: "#15803d", color: "white" }}
                                 >
                                     <CheckCheck className="h-4 w-4 mr-2" />
-                                    Concluir serviço
+                                    Confirmar Conclusão
                                 </Button>
                                 <Button
                                     variant="outline"
@@ -300,6 +308,7 @@ export default function VisitsPage() {
         </Card>
     )
 
+    // ... (EmptyState, handleCompleteVisit, handleOpenChat, loading, error...)
     const EmptyState = ({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) => (
         <Card>
             <CardContent style={{ padding: "3rem", textAlign: "center" }}>
@@ -317,8 +326,8 @@ export default function VisitsPage() {
             setCompletingVisit(true)
             const token = localStorage.getItem("token")
 
-            const response = await fetch(`${API_BASE_URL}/user/visit/${selectedVisit.id}`, {
-                method: "PATCH",
+            const response = await fetch(`http://localhost:8081/api/v1/user/visit/${selectedVisit.id}/complete`, {
+                method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
@@ -329,19 +338,18 @@ export default function VisitsPage() {
                 throw new Error("Erro ao concluir visita")
             }
 
-            // Refresh visits list
-            const visitsResponse = await fetch(`${API_BASE_URL}/user/visits`, {
+            const visitsResponse = await fetch("http://localhost:8081/api/v1/user/visits", {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
             })
-            console.log("chamou / user/ visits");
 
             const result: VisitsResponse = await visitsResponse.json()
             if (result.success && result.data) {
-                setVisits(result.data)
+                setVisits(result.data.all_visits || [])
+                setVisitsToday(result.data.visits_today || [])
             }
 
             setShowCompletionDialog(false)
@@ -356,30 +364,19 @@ export default function VisitsPage() {
     const handleOpenChat = (nurseId: string) => {
         router.push(`/chat/${nurseId}`)
     }
+
     if (loading) {
         return (
             <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
                 <Header />
-                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
-                    <div style={{ textAlign: "center" }}>
-                        <div
-                            style={{
-                                width: "40px",
-                                height: "40px",
-                                border: "4px solid #e5e7eb",
-                                borderTop: "4px solid #15803d",
-                                borderRadius: "50%",
-                                animation: "spin 1s linear infinite",
-                                margin: "0 auto 1rem",
-                            }}
-                        ></div>
-                        <p style={{ color: "#6b7280" }}>Carregando visitas...</p>
+                <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem", textAlign: "center" }}>
+                    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "200px" }}>
+                        <div style={{ color: "#15803d", fontSize: "1.125rem" }}>Carregando suas visitas...</div>
                     </div>
                 </div>
             </div>
         )
     }
-
 
     if (error) {
         return (
@@ -395,11 +392,13 @@ export default function VisitsPage() {
         )
     }
 
+
     return (
         <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
             <Header />
 
             <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem" }}>
+                {/* ... (Header da Página) ... */}
                 <div style={{ marginBottom: "2rem" }}>
                     <h1 style={{ fontSize: "2rem", fontWeight: "bold", color: "#1f2937", marginBottom: "0.5rem" }}>
                         Minhas Visitas
@@ -407,7 +406,106 @@ export default function VisitsPage() {
                     <p style={{ color: "#6b7280" }}>Acompanhe todas as suas consultas agendadas</p>
                 </div>
 
+
+                {/* Card "Visitas de Hoje" */}
+                {visitsToday.length > 0 && (
+                    <div style={{ marginBottom: "2rem" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
+                            <Calendar className="h-5 w-5" style={{ color: "#15803d" }} />
+                            <h2 style={{ fontSize: "1.5rem", fontWeight: "600", color: "#1f2937" }}>Visitas de Hoje</h2>
+                            <Badge style={{ backgroundColor: "#15803d", color: "white" }}>{visitsToday.length}</Badge>
+                        </div>
+
+                        <div
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))",
+                                gap: "1rem",
+                            }}
+                        >
+                            {visitsToday.map((visit) => (
+                                <Card
+                                    key={visit.id}
+                                    style={{
+                                        overflow: "hidden",
+                                        border: "2px solid #15803d",
+                                        backgroundColor: "#f0fdf4",
+                                    }}
+                                >
+                                    <CardContent style={{ padding: "1.5rem" }}>
+                                        {/* ... (Info Enfermeira) ... */}
+                                        <div style={{ display: "flex", alignItems: "start", gap: "1rem", marginBottom: "1rem" }}>
+                                            <img
+                                                src={
+                                                    visit.nurse?.image
+                                                        ? `http://localhost:8081/api/v1/user/file/${visit.nurse.image}`
+                                                        : "/nurse-profile.jpg"
+                                                }
+                                                alt={visit.nurse?.name || "Enfermeiro"}
+                                                style={{
+                                                    width: "60px",
+                                                    height: "60px",
+                                                    borderRadius: "50%",
+                                                    objectFit: "cover",
+                                                }}
+                                            />
+                                            <div style={{ flex: 1 }}>
+                                                <h3
+                                                    style={{ fontSize: "1.125rem", fontWeight: "600", color: "#1f2937", marginBottom: "0.25rem" }}
+                                                >
+                                                    {visit.nurse?.name || "Enfermeiro não especificado"}
+                                                </h3>
+                                                <p style={{ color: "#15803d", fontWeight: "500", fontSize: "0.875rem" }}>
+                                                    {visit.nurse?.specialization || "Enfermagem"}
+                                                </p>
+                                            </div>
+                                            <Badge style={{ backgroundColor: getStatusColor(visit.status) }}>
+                                                {getStatusLabel(visit.status)}
+                                            </Badge>
+                                        </div>
+
+                                        <div style={{ display: "grid", gap: "0.5rem", marginBottom: "1rem" }}>
+                                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                                <Clock className="h-4 w-4" style={{ color: "#6b7280" }} />
+                                                {/* --- MUDANÇA: Usando a string 'visit.date' diretamente --- */}
+                                                <span style={{ fontSize: "0.875rem", fontWeight: "500" }}>{visit.date}</span>
+                                            </div>
+                                            <div>
+                                                <span style={{ fontSize: "0.875rem", color: "#6b7280" }}>Tipo: </span>
+                                                <span style={{ fontSize: "0.875rem", fontWeight: "500" }}>
+                                                    {getVisitTypeLabel(visit.visit_type)}
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <span style={{ fontSize: "0.875rem", color: "#6b7280" }}>Motivo: </span>
+                                                <span style={{ fontSize: "0.875rem" }}>{visit.reason}</span>
+                                            </div>
+                                        </div>
+
+                                        <Button
+                                            onClick={() => {
+                                                setSelectedVisit(visit)
+                                                setShowDetailsDialog(true)
+                                            }}
+                                            style={{
+                                                width: "100%",
+                                                backgroundColor: "#15803d",
+                                                color: "white",
+                                            }}
+                                        >
+                                            <Info className="h-4 w-4 mr-2" />
+                                            Ver Detalhes da Visita
+                                        </Button>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* ... (Abas: Pendentes, Confirmadas, Concluídas) ... */}
                 {visits.length === 0 ? (
+                    // ... (Empty State)
                     <Card>
                         <CardContent style={{ padding: "3rem", textAlign: "center" }}>
                             <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>📅</div>
@@ -417,7 +515,7 @@ export default function VisitsPage() {
                             <p style={{ color: "#6b7280", marginBottom: "1.5rem" }}>
                                 Você ainda não tem visitas agendadas. Encontre um enfermeiro e agende sua primeira consulta!
                             </p>
-                            <Button onClick={() => router.push("/visit/nurses-list")} style={{ backgroundColor: "#15803d", color: "white" }}>
+                            <Button onClick={() => router.push("/")} style={{ backgroundColor: "#15803d", color: "white" }}>
                                 Buscar Enfermeiros
                             </Button>
                         </CardContent>
@@ -439,6 +537,7 @@ export default function VisitsPage() {
                             </TabsTrigger>
                         </TabsList>
 
+                        {/* Abas... */}
                         <TabsContent value="pending">
                             {pendingVisits.length === 0 ? (
                                 <EmptyState
@@ -486,6 +585,7 @@ export default function VisitsPage() {
                                 </div>
                             )}
                         </TabsContent>
+
                     </Tabs>
                 )}
             </div>
@@ -500,7 +600,7 @@ export default function VisitsPage() {
 
                     {selectedVisit && (
                         <div style={{ display: "grid", gap: "1.5rem" }}>
-                            {/* Nurse Info */}
+                            {/* ... (Info Enfermeira) ... */}
                             <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                                 <img
                                     src={
@@ -524,6 +624,7 @@ export default function VisitsPage() {
                                 </div>
                             </div>
 
+
                             {/* Visit Details */}
                             <div style={{ display: "grid", gap: "1rem" }}>
                                 <div>
@@ -535,7 +636,8 @@ export default function VisitsPage() {
 
                                 <div>
                                     <span style={{ fontWeight: "600", color: "#6b7280" }}>Data e Hora:</span>
-                                    <p>{formatDate(selectedVisit.date)}</p>
+                                    {/* --- MUDANÇA: Usando a string 'selectedVisit.date' diretamente --- */}
+                                    <p>{selectedVisit.date}</p>
                                 </div>
 
                                 <div>
@@ -557,7 +659,8 @@ export default function VisitsPage() {
 
                                 <div>
                                     <span style={{ fontWeight: "600", color: "#6b7280" }}>Agendado em:</span>
-                                    <p>{formatDate(selectedVisit.created_at)}</p>
+                                    {/* --- MUDANÇA: Usando a string 'selectedVisit.created_at' diretamente --- */}
+                                    <p>{selectedVisit.created_at}</p>
                                 </div>
                             </div>
                         </div>
@@ -571,7 +674,7 @@ export default function VisitsPage() {
                             <Button
                                 onClick={() => {
                                     setShowDetailsDialog(false)
-                                    router.push(`/nurse-profile/${selectedVisit.nurse?.id}`)
+                                    router.push(`/nurse/${selectedVisit.nurse?.id}`)
                                 }}
                                 style={{ backgroundColor: "#15803d", color: "white" }}
                             >
@@ -582,7 +685,7 @@ export default function VisitsPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Completion Confirmation Dialog */}
+            {/* ... (AlertDialog para Confirmação) ... */}
             <AlertDialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -603,6 +706,7 @@ export default function VisitsPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
         </div>
     )
 }
