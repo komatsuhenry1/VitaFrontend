@@ -4,10 +4,8 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-// --- MUDANÇA: Remover import do next/image se não for mais usado globalmente ---
-// import Image from "next/image" 
 import { Header } from "@/components/Header"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card" // Added CardHeader, CardTitle
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -19,7 +17,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
-// --- MUDANÇA: Importar AlertDialog ---
 import {
     AlertDialog,
     AlertDialogAction,
@@ -32,24 +29,24 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
-// --- MUDANÇA: Importar ícones como na página do paciente ---
-import { Clock, CheckCircle, User, Info, MessageCircle, CheckCheck, Calendar } from "lucide-react"
+import { Clock, CheckCircle, User, Info, MessageCircle, CheckCheck, Calendar, XCircle } from "lucide-react" // Added XCircle for cancel
+import { toast } from "sonner"
 
-// --- MUDANÇA: Definir API_BASE_URL consistentemente ---
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
+// ... (Interfaces Visit, VisitsResponseData, ApiResponse) ...
 interface Visit {
-    id: string // ID should be string based on API response
+    id: string
     description: string
     reason: string
     visit_type: string
-    created_at: string // Já vem formatado
-    date: string       // Já vem formatado
+    created_at: string
+    date: string
     status: string
     patient_name: string
     patient_id: string
     patient_image_id?: string
-    nurse_name: string // Mantido caso necessário, mas não exibido no card principal
+    nurse_name: string
     visit_value: number
 }
 
@@ -69,7 +66,6 @@ interface ApiResponse {
 
 export default function NurseVisitsPage() {
     const router = useRouter()
-    // --- MUDANÇA: Simplificar estado inicial ---
     const [visitsData, setVisitsData] = useState<VisitsResponseData>({
         pending: [],
         confirmed: [],
@@ -79,13 +75,13 @@ export default function NurseVisitsPage() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null)
-    const [showDetailsDialog, setShowDetailsDialog] = useState(false) // Renomeado para clareza
+    const [showDetailsDialog, setShowDetailsDialog] = useState(false)
     const [showConfirmDialog, setShowConfirmDialog] = useState(false)
-    const [showCancelForm, setShowCancelForm] = useState(false) // Flag para mostrar form dentro do Details Dialog
+    const [showCancelForm, setShowCancelForm] = useState(false)
     const [cancelReason, setCancelReason] = useState("")
     const [actionLoading, setActionLoading] = useState(false)
 
-    // A função fetchVisits agora busca os dados e os coloca no estado visitsData
+    // ... (fetchVisits, formatCurrency, getStatusColor, getStatusLabel, getVisitTypeLabel) ...
     const fetchVisits = async () => {
         try {
             // setLoading(true) // Loading já é true inicialmente
@@ -131,10 +127,6 @@ export default function NurseVisitsPage() {
         fetchVisits()
     }, [router]) // Adicionado router como dependência por causa do push
 
-    // --- MUDANÇA: Remover funções de formatação de data ---
-    // formatDate, formatDateLong, formatTime, getCancellationDeadline
-
-    // Função para formatar moeda permanece útil
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat("pt-BR", {
             style: "currency",
@@ -142,7 +134,6 @@ export default function NurseVisitsPage() {
         }).format(value)
     }
 
-    // Funções de Status e Tipo permanecem as mesmas
     const getStatusColor = (status: string) => {
         switch (status) {
             case "PENDING": return "#f59e0b";
@@ -172,8 +163,7 @@ export default function NurseVisitsPage() {
         }
     }
 
-
-    // Lógica de confirmação e cancelamento (ajustada para usar AlertDialog)
+    // ... (handleConfirmVisitAction, handleCancelVisitAction) ...
     const handleConfirmVisitAction = async () => { // Renomeado para evitar conflito
         if (!selectedVisit) return
 
@@ -181,13 +171,13 @@ export default function NurseVisitsPage() {
             setActionLoading(true)
             const token = localStorage.getItem("token")
             // Endpoint para CONFIRMAR
-            const response = await fetch(`${API_BASE_URL}/nurse/visit/${selectedVisit.id}/confirm`, {
-                method: "PUT", // Usar PUT ou PATCH conforme sua API
+            const response = await fetch(`${API_BASE_URL}/nurse/visit/${selectedVisit.id}`, {
+                method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
-                // Body geralmente não é necessário para confirmar, mas depende da sua API
+                body: JSON.stringify({ reason: cancelReason }),
             })
 
             if (!response.ok) {
@@ -198,6 +188,7 @@ export default function NurseVisitsPage() {
             await fetchVisits() // Recarrega a lista
             setShowConfirmDialog(false)
             setSelectedVisit(null)
+            toast.success("Visita confirmada com sucesso!")
         } catch (err) {
             alert(err instanceof Error ? err.message : "Erro ao confirmar visita") // Usar toast se preferir
         } finally {
@@ -215,25 +206,27 @@ export default function NurseVisitsPage() {
             setActionLoading(true)
             const token = localStorage.getItem("token")
             // Endpoint para CANCELAR
-            const response = await fetch(`${API_BASE_URL}/nurse/visit/${selectedVisit.id}/cancel`, {
-                method: "PUT", // Usar PUT ou PATCH conforme sua API
+            const response = await fetch(`${API_BASE_URL}/nurse/visit/${selectedVisit.id}`, {
+                method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({ reason: cancelReason }), // Envia o motivo
+                body: JSON.stringify({ reason: cancelReason }),
             })
+
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.message || "Erro ao cancelar visita");
             }
 
-            await fetchVisits() // Recarrega a lista
-            setShowDetailsDialog(false) // Fecha o dialog de detalhes onde o form está
+            await fetchVisits() 
+            setShowDetailsDialog(false) 
             setShowCancelForm(false)
             setSelectedVisit(null)
             setCancelReason("")
+            toast.success("Visita cancelada com sucesso!")
         } catch (err) {
             alert(err instanceof Error ? err.message : "Erro ao cancelar visita") // Usar toast se preferir
         } finally {
@@ -244,12 +237,10 @@ export default function NurseVisitsPage() {
 
     const { pending, confirmed, completed, visits_today } = visitsData
 
-    // --- MUDANÇA: VisitCard agora é interno e adaptado para enfermeiro ---
     const VisitCard = ({ visit, status }: { visit: Visit; status: string }) => {
-        // --- MUDANÇA: Lógica de imagem padronizada ---
         const patientImageUrl = visit.patient_image_id
             ? `${API_BASE_URL}/user/file/${visit.patient_image_id}`
-            : "/patient-placeholder.jpg" // Use um placeholder padrão
+            : "/patient-placeholder.jpg"
 
         return (
             <Card key={visit.id} style={{ overflow: "hidden" }}>
@@ -264,7 +255,6 @@ export default function NurseVisitsPage() {
                     >
                         {/* Patient Image */}
                         <div>
-                            {/* --- MUDANÇA: Usando <img> padrão --- */}
                             <img
                                 src={patientImageUrl}
                                 alt={visit.patient_name || "Paciente"}
@@ -273,15 +263,15 @@ export default function NurseVisitsPage() {
                                     height: "80px",
                                     borderRadius: "50%",
                                     objectFit: "cover",
-                                    backgroundColor: "#e5e7eb", // Cor de fundo caso a imagem falhe
+                                    backgroundColor: "#e5e7eb",
                                 }}
-                                // Adiciona um fallback simples caso a imagem principal falhe
                                 onError={(e) => (e.currentTarget.src = "/patient-placeholder.jpg")}
                             />
                         </div>
 
                         {/* Visit Details */}
                         <div>
+                            {/* ... (Nome, Badge, Data, Tipo, Valor, Motivo, Descrição) ... */}
                             <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.5rem" }}>
                                 <h3 style={{ fontSize: "1.25rem", fontWeight: "600", color: "#1f2937" }}>
                                     {visit.patient_name || "Paciente não especificado"}
@@ -326,13 +316,14 @@ export default function NurseVisitsPage() {
                                     <span style={{ color: "#4b5563" }}>{visit.description}</span>
                                 </div>
                             )}
+
                         </div>
 
                         {/* Action Buttons */}
                         <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                             <Button
                                 variant="outline"
-                                onClick={() => router.push(`/patient-profile/${visit.patient_id}`)} // Rota para perfil do paciente
+                                onClick={() => router.push(`/patient-profile/${visit.patient_id}`)}
                                 style={{ borderColor: "#15803d", color: "#15803d" }}
                             >
                                 <User className="h-4 w-4 mr-2" />
@@ -352,25 +343,38 @@ export default function NurseVisitsPage() {
                                 </Button>
                             )}
 
-                            {/* Botão de Cancelar agora é mostrado no Dialog de Detalhes */}
-                            {/* Botão Chat (se aplicável para enfermeiro) */}
+                            {/* --- MUDANÇA: Botão Cancelar de volta aqui --- */}
+                            {status === "CONFIRMED" && (
+                                <Button
+                                    variant="destructive"
+                                    onClick={() => {
+                                        setSelectedVisit(visit)
+                                        setShowDetailsDialog(true) // Abre o modal de detalhes
+                                        setShowCancelForm(true)  // E já mostra o form de cancelar
+                                    }}
+                                >
+                                    <XCircle className="h-4 w-4 mr-2" /> {/* Ícone de cancelar */}
+                                    Cancelar Visita
+                                </Button>
+                            )}
+                            {/* --- FIM DA MUDANÇA --- */}
+
                             <Button
                                 variant="outline"
-                                onClick={() => router.push(`/chat?selected=${visit.patient_id}`)} // Ajuste a rota do chat se necessário
+                                onClick={() => router.push(`/chat?selected=${visit.patient_id}`)}
                                 style={{ borderColor: "#0891b2", color: "#0891b2" }}
                             >
                                 <MessageCircle className="h-4 w-4 mr-2" />
                                 Chat
                             </Button>
 
-                            {/* Botão genérico de detalhes */}
                             <Button
                                 variant="outline"
                                 onClick={() => {
                                     setSelectedVisit(visit);
                                     setShowDetailsDialog(true);
-                                    // Decide se mostra o form de cancelamento baseado no status
-                                    setShowCancelForm(status === "CONFIRMED");
+                                    // --- MUDANÇA: Botão detalhes não ativa mais o form de cancelar ---
+                                    setShowCancelForm(false);
                                 }}
                                 style={{ borderColor: "#6b7280", color: "#6b7280" }}
                             >
@@ -383,10 +387,9 @@ export default function NurseVisitsPage() {
             </Card>
         )
     }
-    // --- FIM DA MUDANÇA ---
 
-    // --- MUDANÇA: EmptyState copiado da página do paciente ---
     const EmptyState = ({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) => (
+        // ... (EmptyState component)
         <Card>
             <CardContent style={{ padding: "3rem", textAlign: "center" }}>
                 <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>{icon}</div>
@@ -395,11 +398,9 @@ export default function NurseVisitsPage() {
             </CardContent>
         </Card>
     )
-    // --- FIM DA MUDANÇA ---
 
-
+    // ... (Loading and Error states)
     if (loading) {
-        // ... (Loading state igual ao da página do paciente)
         return (
             <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
                 <Header />
@@ -413,7 +414,6 @@ export default function NurseVisitsPage() {
     }
 
     if (error) {
-        // ... (Error state igual ao da página do paciente)
         return (
             <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
                 <Header />
@@ -430,9 +430,8 @@ export default function NurseVisitsPage() {
     return (
         <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
             <Header />
-
-            {/* --- MUDANÇA: Layout principal igual ao da página do paciente --- */}
             <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem" }}>
+                {/* ... (Header da Página) ... */}
                 <div style={{ marginBottom: "2rem" }}>
                     <h1 style={{ fontSize: "2rem", fontWeight: "bold", color: "#1f2937", marginBottom: "0.5rem" }}>
                         Minhas Visitas
@@ -456,16 +455,12 @@ export default function NurseVisitsPage() {
                             }}
                         >
                             {visits_today.map((visit) => (
-                                // Usando um card simplificado para "Visitas de Hoje" como no paciente
                                 <Card
                                     key={visit.id}
-                                    style={{
-                                        overflow: "hidden",
-                                        border: "2px solid #15803d",
-                                        backgroundColor: "#f0fdf4",
-                                    }}
+                                    style={{ overflow: "hidden", border: "2px solid #15803d", backgroundColor: "#f0fdf4" }}
                                 >
                                     <CardContent style={{ padding: "1.5rem" }}>
+                                        {/* ... (Conteúdo do Card de Visita de Hoje) ... */}
                                         <div style={{ display: "flex", alignItems: "start", gap: "1rem", marginBottom: "1rem" }}>
                                             <img
                                                 src={visit.patient_image_id ? `${API_BASE_URL}/user/file/${visit.patient_image_id}` : "/patient-placeholder.jpg"}
@@ -518,6 +513,7 @@ export default function NurseVisitsPage() {
                                             <Info className="h-4 w-4 mr-2" />
                                             Ver Detalhes da Visita
                                         </Button>
+
                                     </CardContent>
                                 </Card>
                             ))}
@@ -526,7 +522,8 @@ export default function NurseVisitsPage() {
                 )}
 
                 {/* Abas */}
-                {(pending.length === 0 && confirmed.length === 0 && completed.length === 0) ? (
+                {(pending.length === 0 && confirmed.length === 0 && completed.length === 0 && visits_today.length === 0) ? ( // Verifica visits_today também
+                    // ... (Empty State geral)
                     <Card>
                         <CardContent style={{ padding: "3rem", textAlign: "center" }}>
                             <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>📅</div>
@@ -538,6 +535,7 @@ export default function NurseVisitsPage() {
                     </Card>
                 ) : (
                     <Tabs defaultValue="pending" className="w-full">
+                        {/* ... (TabsList) */}
                         <TabsList className="grid w-full grid-cols-3 mb-6">
                             <TabsTrigger value="pending" className="flex items-center gap-2">
                                 <Clock className="h-4 w-4" />
@@ -553,6 +551,7 @@ export default function NurseVisitsPage() {
                             </TabsTrigger>
                         </TabsList>
 
+                        {/* ... (TabsContent para Pending, Confirmed, Completed) ... */}
                         <TabsContent value="pending">
                             {pending.length === 0 ? (
                                 <EmptyState icon={<Clock className="h-16 w-16 text-amber-500 mx-auto" />} title="Nenhuma visita pendente" description="Você não tem visitas aguardando sua confirmação." />
@@ -583,11 +582,10 @@ export default function NurseVisitsPage() {
                     </Tabs>
                 )}
             </div>
-            {/* --- FIM DA MUDANÇA --- */}
 
-
-            {/* Details Dialog (Adaptado) */}
+            {/* Details Dialog */}
             <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+                {/* ... (Conteúdo do Dialog de Detalhes, incluindo o form de cancelamento condicional e o botão Confirmar Cancelamento) ... */}
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>Detalhes da Visita</DialogTitle>
@@ -609,11 +607,20 @@ export default function NurseVisitsPage() {
                                         {selectedVisit.patient_name}
                                     </h3>
                                     {/* Pode adicionar link para perfil aqui se quiser */}
+                                    <Button
+                                        variant="link"
+                                        onClick={() => router.push(`/patient-profile/${selectedVisit.patient_id}`)}
+                                        className="p-0 h-auto text-green-600 hover:text-green-700" // Use Tailwind classes se disponíveis
+                                        style={{ padding: 0, height: 'auto', color: '#15803d', textDecoration: 'underline' }}
+                                    >
+                                        Ver perfil do paciente
+                                    </Button>
                                 </div>
                             </div>
 
                             {/* Visit Details */}
                             <div style={{ display: "grid", gap: "1rem" }}>
+                                {/* ... (Status, Data, Tipo, Valor, Motivo, Descrição, Agendado em) ... */}
                                 <div>
                                     <span style={{ fontWeight: "600", color: "#6b7280" }}>Status:</span>
                                     <Badge style={{ backgroundColor: getStatusColor(selectedVisit.status), marginLeft: "0.5rem" }}>
@@ -646,7 +653,6 @@ export default function NurseVisitsPage() {
                                     <span style={{ fontWeight: "600", color: "#6b7280" }}>Agendado em:</span>
                                     <p>{selectedVisit.created_at}</p> {/* Usa string */}
                                 </div>
-                                {/* Prazo de cancelamento não é relevante para o enfermeiro aqui */}
                             </div>
 
                             {/* Cancel Form (mostrado condicionalmente) */}
@@ -666,6 +672,7 @@ export default function NurseVisitsPage() {
                                             <SelectItem value="Outro motivo">Outro motivo</SelectItem>
                                         </SelectContent>
                                     </Select>
+                                    {/* --- MUDANÇA: Botão Confirmar Cancelamento fica aqui --- */}
                                     <Button
                                         variant="destructive"
                                         onClick={handleCancelVisitAction}
@@ -673,22 +680,33 @@ export default function NurseVisitsPage() {
                                     >
                                         {actionLoading ? "Cancelando..." : "Confirmar Cancelamento"}
                                     </Button>
+                                    {/* --- FIM DA MUDANÇA --- */}
                                 </div>
                             )}
                         </div>
                     )}
 
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>
-                            Fechar
-                        </Button>
-                        {/* Botão Ver Perfil do Paciente movido para o Card */}
+                        {/* --- MUDANÇA: Botão Voltar (se o form estiver visível) ou Fechar --- */}
+                        {showCancelForm ? (
+                            <Button variant="outline" onClick={() => setShowCancelForm(false)} disabled={actionLoading}>
+                                Voltar
+                            </Button>
+                        ) : (
+                            <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>
+                                Fechar
+                            </Button>
+                        )}
+                        {/* Botão Confirmar Cancelamento foi movido para dentro do form */}
                     </DialogFooter>
                 </DialogContent>
+
             </Dialog>
+
 
             {/* Confirmation Dialog (AlertDialog) */}
             <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+                {/* ... (Conteúdo do AlertDialog) ... */}
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Confirmar Visita</AlertDialogTitle>
@@ -714,6 +732,7 @@ export default function NurseVisitsPage() {
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
+
             </AlertDialog>
 
         </div>
