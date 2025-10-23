@@ -359,7 +359,7 @@ export function Header() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleLogout}>Confirmar Saída</AlertDialogAction>
+            <AlertDialogAction onClick={handleLogout} style={{ backgroundColor: "#dc2626" }}>Confirmar Saída</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
