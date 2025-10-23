@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { CheckCircle } from "lucide-react" // Import CheckCircle icon
+import { CheckCircle } from "lucide-react"
 
 import { useState, useEffect, useMemo } from "react"
 import { useRouter, useParams } from "next/navigation"
@@ -303,7 +303,10 @@ export default function VisitDetailsPage() {
                 <Header />
                 <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem", textAlign: "center" }}>
                     <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "200px" }}>
-                        <div style={{ color: "#15803d", fontSize: "1.125rem" }}>Carregando detalhes da visita...</div>
+                        <Loader2 className="h-8 w-8 animate-spin mr-3" style={{ color: "#15803d" }} />
+                        <div style={{ color: "#15803d", fontSize: "1.125rem", fontWeight: "500" }}>
+                            Carregando detalhes da visita...
+                        </div>
                     </div>
                 </div>
             </div>
@@ -315,8 +318,15 @@ export default function VisitDetailsPage() {
             <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
                 <Header />
                 <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem", textAlign: "center" }}>
-                    <h1 style={{ color: "#dc2626", marginBottom: "1rem" }}>Visita não encontrada</h1>
-                    <Button onClick={() => router.push("/nurse/visits/nurse")}>Voltar para Visitas</Button>
+                    <h1 style={{ color: "#dc2626", marginBottom: "1rem", fontSize: "1.5rem", fontWeight: "600" }}>
+                        Visita não encontrada
+                    </h1>
+                    <Button
+                        onClick={() => router.push("/nurse/visits/nurse")}
+                        style={{ backgroundColor: "#15803d", color: "white" }}
+                    >
+                        Voltar para Visitas
+                    </Button>
                 </div>
             </div>
         )
@@ -332,9 +342,7 @@ export default function VisitDetailsPage() {
         <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
             <Header />
             <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem" }}>
-                {/* Header with Back Button */}
-                <div style={{ marginBottom: "2rem" }}>
-
+                <div style={{ marginBottom: "2.5rem" }}>
                     <div
                         style={{
                             display: "flex",
@@ -342,36 +350,71 @@ export default function VisitDetailsPage() {
                             justifyContent: "space-between",
                             flexWrap: "wrap",
                             gap: "1rem",
+                            padding: "1.5rem",
+                            backgroundColor: "white",
+                            borderRadius: "0.75rem",
+                            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
                         }}
                     >
                         <div>
                             <h1 style={{ fontSize: "2rem", fontWeight: "bold", color: "#1f2937", marginBottom: "0.5rem" }}>
                                 Detalhes da Visita
                             </h1>
-                            <p style={{ color: "#6b7280" }}>Informações completas sobre a visita agendada</p>
+                            <p style={{ color: "#6b7280", fontSize: "1rem" }}>Informações completas sobre a visita agendada</p>
                         </div>
-                        <Badge style={{ backgroundColor: getStatusColor(visit.status), fontSize: "1rem", padding: "0.5rem 1rem" }}>
+                        <Badge
+                            style={{
+                                backgroundColor: getStatusColor(visit.status),
+                                fontSize: "1rem",
+                                padding: "0.75rem 1.5rem",
+                                borderRadius: "0.5rem",
+                                fontWeight: "600",
+                                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                            }}
+                        >
                             {getStatusLabel(visit.status)}
                         </Badge>
                     </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", marginBottom: "1.5rem" }}>
-                    {/* Visit Information Card */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <div
+                    style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(450px, 1fr))",
+                        gap: "1.5rem",
+                        marginBottom: "1.5rem",
+                    }}
+                >
+                    <Card
+                        style={{
+                            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.07)",
+                            border: "1px solid #e5e7eb",
+                            transition: "all 0.3s ease",
+                        }}
+                    >
+                        <CardHeader style={{ backgroundColor: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
+                            <CardTitle style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#1f2937" }}>
                                 <FileText className="h-5 w-5" style={{ color: "#15803d" }} />
                                 Informações da Visita
                             </CardTitle>
                         </CardHeader>
-                        <CardContent style={{ display: "grid", gap: "1rem" }}>
+                        <CardContent style={{ display: "grid", gap: "1.25rem", padding: "1.5rem" }}>
                             <div>
-                                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
-                                    <Calendar className="h-4 w-4" style={{ color: "#6b7280" }} />
-                                    <span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280" }}>Data e Hora</span>
+                                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                                    <Calendar className="h-4 w-4" style={{ color: "#15803d" }} />
+                                    <span
+                                        style={{
+                                            fontSize: "0.875rem",
+                                            fontWeight: "600",
+                                            color: "#6b7280",
+                                            textTransform: "uppercase",
+                                            letterSpacing: "0.05em",
+                                        }}
+                                    >
+                                        Data e Hora
+                                    </span>
                                 </div>
-                                <p style={{ fontSize: "1rem", color: "#1f2937", marginLeft: "1.5rem" }}>
+                                <p style={{ fontSize: "1.125rem", color: "#1f2937", marginLeft: "1.5rem", fontWeight: "500" }}>
                                     {formatDate(visit.visit_date)}
                                 </p>
                             </div>
@@ -379,11 +422,21 @@ export default function VisitDetailsPage() {
                             <Separator />
 
                             <div>
-                                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
-                                    <Home className="h-4 w-4" style={{ color: "#6b7280" }} />
-                                    <span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280" }}>Tipo de Visita</span>
+                                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                                    <Home className="h-4 w-4" style={{ color: "#15803d" }} />
+                                    <span
+                                        style={{
+                                            fontSize: "0.875rem",
+                                            fontWeight: "600",
+                                            color: "#6b7280",
+                                            textTransform: "uppercase",
+                                            letterSpacing: "0.05em",
+                                        }}
+                                    >
+                                        Tipo de Visita
+                                    </span>
                                 </div>
-                                <p style={{ fontSize: "1rem", color: "#1f2937", marginLeft: "1.5rem" }}>
+                                <p style={{ fontSize: "1.125rem", color: "#1f2937", marginLeft: "1.5rem", fontWeight: "500" }}>
                                     {getVisitTypeLabel(visit.visit_type)}
                                 </p>
                             </div>
@@ -391,11 +444,21 @@ export default function VisitDetailsPage() {
                             <Separator />
 
                             <div>
-                                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
-                                    <DollarSign className="h-4 w-4" style={{ color: "#6b7280" }} />
-                                    <span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280" }}>Valor</span>
+                                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                                    <DollarSign className="h-4 w-4" style={{ color: "#15803d" }} />
+                                    <span
+                                        style={{
+                                            fontSize: "0.875rem",
+                                            fontWeight: "600",
+                                            color: "#6b7280",
+                                            textTransform: "uppercase",
+                                            letterSpacing: "0.05em",
+                                        }}
+                                    >
+                                        Valor
+                                    </span>
                                 </div>
-                                <p style={{ fontSize: "1.25rem", fontWeight: "600", color: "#15803d", marginLeft: "1.5rem" }}>
+                                <p style={{ fontSize: "1.5rem", fontWeight: "700", color: "#15803d", marginLeft: "1.5rem" }}>
                                     {formatCurrency(visit.visit_value)}
                                 </p>
                             </div>
@@ -403,15 +466,37 @@ export default function VisitDetailsPage() {
                             <Separator />
 
                             <div>
-                                <span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280" }}>Motivo</span>
-                                <p style={{ fontSize: "1rem", color: "#1f2937", marginTop: "0.25rem" }}>{visit.reason}</p>
+                                <span
+                                    style={{
+                                        fontSize: "0.875rem",
+                                        fontWeight: "600",
+                                        color: "#6b7280",
+                                        textTransform: "uppercase",
+                                        letterSpacing: "0.05em",
+                                    }}
+                                >
+                                    Motivo
+                                </span>
+                                <p style={{ fontSize: "1rem", color: "#1f2937", marginTop: "0.5rem", lineHeight: "1.6" }}>
+                                    {visit.reason}
+                                </p>
                             </div>
 
                             <Separator />
 
                             <div>
-                                <span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280" }}>Descrição</span>
-                                <p style={{ fontSize: "1rem", color: "#1f2937", marginTop: "0.25rem", lineHeight: "1.6" }}>
+                                <span
+                                    style={{
+                                        fontSize: "0.875rem",
+                                        fontWeight: "600",
+                                        color: "#6b7280",
+                                        textTransform: "uppercase",
+                                        letterSpacing: "0.05em",
+                                    }}
+                                >
+                                    Descrição
+                                </span>
+                                <p style={{ fontSize: "1rem", color: "#1f2937", marginTop: "0.5rem", lineHeight: "1.7" }}>
                                     {visit.description}
                                 </p>
                             </div>
@@ -419,50 +504,93 @@ export default function VisitDetailsPage() {
                             {visit.cancel_reason && (
                                 <>
                                     <Separator />
-                                    <div>
-                                        <span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#dc2626" }}>
+                                    <div
+                                        style={{
+                                            padding: "1rem",
+                                            backgroundColor: "#fef2f2",
+                                            borderRadius: "0.5rem",
+                                            border: "1px solid #fecaca",
+                                        }}
+                                    >
+                                        <span
+                                            style={{
+                                                fontSize: "0.875rem",
+                                                fontWeight: "600",
+                                                color: "#dc2626",
+                                                textTransform: "uppercase",
+                                                letterSpacing: "0.05em",
+                                            }}
+                                        >
                                             Motivo do Cancelamento
                                         </span>
-                                        <p style={{ fontSize: "1rem", color: "#1f2937", marginTop: "0.25rem" }}>{visit.cancel_reason}</p>
+                                        <p style={{ fontSize: "1rem", color: "#991b1b", marginTop: "0.5rem" }}>{visit.cancel_reason}</p>
                                     </div>
                                 </>
                             )}
                         </CardContent>
                     </Card>
 
-                    {/* Patient Information Card */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <Card
+                        style={{
+                            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.07)",
+                            border: "1px solid #e5e7eb",
+                            transition: "all 0.3s ease",
+                        }}
+                    >
+                        <CardHeader style={{ backgroundColor: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
+                            <CardTitle style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#1f2937" }}>
                                 <User className="h-5 w-5" style={{ color: "#15803d" }} />
                                 Informações do Paciente
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.5rem" }}>
+                        <CardContent style={{ padding: "1.5rem" }}>
+                            <div
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "1rem",
+                                    marginBottom: "1.5rem",
+                                    padding: "1rem",
+                                    backgroundColor: "#f9fafb",
+                                    borderRadius: "0.75rem",
+                                }}
+                            >
                                 <img
                                     src={patientImageUrl || "/placeholder.svg"}
                                     alt={patient.name}
                                     style={{
-                                        width: "80px",
-                                        height: "80px",
+                                        width: "90px",
+                                        height: "90px",
                                         borderRadius: "50%",
                                         objectFit: "cover",
-                                        backgroundColor: "#e5e7eb",
+                                        border: "3px solid #15803d",
+                                        boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
                                     }}
                                     onError={(e) => (e.currentTarget.src = "/patient-placeholder.jpg")}
                                 />
-                                <div>
-                                    <h3 style={{ fontSize: "1.25rem", fontWeight: "600", color: "#1f2937" }}>{patient.name}</h3>
+                                <div style={{ flex: 1 }}>
+                                    <h3 style={{ fontSize: "1.375rem", fontWeight: "700", color: "#1f2937", marginBottom: "0.25rem" }}>
+                                        {patient.name}
+                                    </h3>
                                     <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>CPF: {patient.cpf}</p>
                                 </div>
                             </div>
 
-                            <div style={{ display: "grid", gap: "1rem" }}>
+                            <div style={{ display: "grid", gap: "1.25rem" }}>
                                 <div>
-                                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
-                                        <Mail className="h-4 w-4" style={{ color: "#6b7280" }} />
-                                        <span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280" }}>Email</span>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                                        <Mail className="h-4 w-4" style={{ color: "#15803d" }} />
+                                        <span
+                                            style={{
+                                                fontSize: "0.875rem",
+                                                fontWeight: "600",
+                                                color: "#6b7280",
+                                                textTransform: "uppercase",
+                                                letterSpacing: "0.05em",
+                                            }}
+                                        >
+                                            Email
+                                        </span>
                                     </div>
                                     <p style={{ fontSize: "1rem", color: "#1f2937", marginLeft: "1.5rem" }}>{patient.email}</p>
                                 </div>
@@ -470,9 +598,19 @@ export default function VisitDetailsPage() {
                                 <Separator />
 
                                 <div>
-                                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
-                                        <Phone className="h-4 w-4" style={{ color: "#6b7280" }} />
-                                        <span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280" }}>Telefone</span>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                                        <Phone className="h-4 w-4" style={{ color: "#15803d" }} />
+                                        <span
+                                            style={{
+                                                fontSize: "0.875rem",
+                                                fontWeight: "600",
+                                                color: "#6b7280",
+                                                textTransform: "uppercase",
+                                                letterSpacing: "0.05em",
+                                            }}
+                                        >
+                                            Telefone
+                                        </span>
                                     </div>
                                     <p style={{ fontSize: "1rem", color: "#1f2937", marginLeft: "1.5rem" }}>{patient.phone}</p>
                                 </div>
@@ -480,9 +618,19 @@ export default function VisitDetailsPage() {
                                 <Separator />
 
                                 <div>
-                                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
-                                        <MapPin className="h-4 w-4" style={{ color: "#6b7280" }} />
-                                        <span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280" }}>Endereço</span>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                                        <MapPin className="h-4 w-4" style={{ color: "#15803d" }} />
+                                        <span
+                                            style={{
+                                                fontSize: "0.875rem",
+                                                fontWeight: "600",
+                                                color: "#6b7280",
+                                                textTransform: "uppercase",
+                                                letterSpacing: "0.05em",
+                                            }}
+                                        >
+                                            Endereço
+                                        </span>
                                     </div>
                                     <div style={{ fontSize: "1rem", color: "#1f2937", marginLeft: "1.5rem", lineHeight: "1.6" }}>
                                         <p>
@@ -498,43 +646,80 @@ export default function VisitDetailsPage() {
                                 </div>
                             </div>
 
-                            <Separator style={{ margin: "1rem 0" }} />
+                            <Separator style={{ margin: "1.25rem 0" }} />
                             <div>
-                                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-                                    <MapPin className="h-4 w-4" style={{ color: "#6b7280" }} />
-                                    <span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
+                                    <MapPin className="h-4 w-4" style={{ color: "#15803d" }} />
+                                    <span
+                                        style={{
+                                            fontSize: "0.875rem",
+                                            fontWeight: "600",
+                                            color: "#6b7280",
+                                            textTransform: "uppercase",
+                                            letterSpacing: "0.05em",
+                                        }}
+                                    >
                                         Localização da Visita
                                     </span>
                                 </div>
-                                <AddressMapWithNoSSR address={fullAddress} />
+                                <div style={{ borderRadius: "0.5rem", overflow: "hidden", boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)" }}>
+                                    <AddressMapWithNoSSR address={fullAddress} />
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
                 </div>
 
                 {visit.status === "CONFIRMED" && (
-                    <Card style={{ marginBottom: "1.5rem" }}>
-                        <CardHeader>
-                            <CardTitle style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                <Shield className="h-5 w-5" style={{ color: "#15803d" }} />
+                    <Card
+                        style={{
+                            marginBottom: "1.5rem",
+                            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.07)",
+                            border: "2px solid #15803d",
+                            background: "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)",
+                        }}
+                    >
+                        <CardHeader style={{ borderBottom: "1px solid #d1fae5" }}>
+                            <CardTitle style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#1f2937" }}>
+                                <Shield className="h-6 w-6" style={{ color: "#15803d" }} />
                                 Confirmação de Atendimento
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <p style={{ color: "#6b7280", marginBottom: "1rem", lineHeight: "1.6" }}>
+                        <CardContent style={{ padding: "2rem" }}>
+                            <p
+                                style={{
+                                    color: "#6b7280",
+                                    marginBottom: "2rem",
+                                    lineHeight: "1.7",
+                                    fontSize: "1rem",
+                                    textAlign: "center",
+                                }}
+                            >
                                 Para confirmar que o atendimento foi realizado, solicite ao paciente o código de confirmação de 6
                                 dígitos e insira abaixo.
                             </p>
-                            <div style={{ display: "flex", gap: "1rem", alignItems: "flex-end" }}>
-                                <div style={{ flex: 1, maxWidth: "300px" }}>
+                            <div
+                                style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "center",
+                                    gap: "1.5rem",
+                                    maxWidth: "500px",
+                                    margin: "0 auto",
+                                }}
+                            >
+                                <div style={{ width: "100%" }}>
                                     <label
                                         htmlFor="confirmation-code"
                                         style={{
                                             display: "block",
                                             fontSize: "0.875rem",
-                                            fontWeight: "600",
-                                            color: "#374151",
-                                            marginBottom: "0.5rem",
+                                            fontWeight: "700",
+                                            color: "#15803d",
+                                            marginBottom: "0.75rem",
+                                            textAlign: "center",
+                                            textTransform: "uppercase",
+                                            letterSpacing: "0.05em",
                                         }}
                                     >
                                         Código de Confirmação
@@ -547,30 +732,64 @@ export default function VisitDetailsPage() {
                                         onChange={handleCodeChange}
                                         maxLength={6}
                                         style={{
-                                            fontSize: "1.5rem",
-                                            letterSpacing: "0.5rem",
+                                            fontSize: "2rem",
+                                            letterSpacing: "0.75rem",
                                             textAlign: "center",
-                                            fontWeight: "600",
+                                            fontWeight: "700",
+                                            padding: "1.5rem",
+                                            border: "2px solid #15803d",
+                                            borderRadius: "0.75rem",
+                                            backgroundColor: "white",
                                         }}
                                         disabled={codeLoading}
                                     />
-                                    <p style={{ fontSize: "0.75rem", color: "#6b7280", marginTop: "0.25rem" }}>
-                                        Digite os 6 dígitos do código
+                                    <p
+                                        style={{
+                                            fontSize: "0.875rem",
+                                            color: "#6b7280",
+                                            marginTop: "0.75rem",
+                                            textAlign: "center",
+                                            fontWeight: "500",
+                                        }}
+                                    >
+                                        Digite os 6 dígitos fornecidos pelo paciente
                                     </p>
                                 </div>
                                 <Button
                                     onClick={handleConfirmationCode}
                                     disabled={confirmationCode.length !== 6 || codeLoading}
-                                    style={{ backgroundColor: "#15803d", color: "white" }}
+                                    style={{
+                                        backgroundColor: "#15803d",
+                                        color: "white",
+                                        padding: "1.25rem 2.5rem",
+                                        fontSize: "1.125rem",
+                                        fontWeight: "700",
+                                        borderRadius: "0.75rem",
+                                        boxShadow: "0 4px 6px rgba(21, 128, 61, 0.3)",
+                                        transition: "all 0.2s ease",
+                                        width: "100%",
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (!codeLoading && confirmationCode.length === 6) {
+                                            e.currentTarget.style.backgroundColor = "#166534"
+                                            e.currentTarget.style.transform = "translateY(-2px)"
+                                            e.currentTarget.style.boxShadow = "0 6px 8px rgba(21, 128, 61, 0.4)"
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor = "#15803d"
+                                        e.currentTarget.style.transform = "translateY(0)"
+                                        e.currentTarget.style.boxShadow = "0 4px 6px rgba(21, 128, 61, 0.3)"
+                                    }}
                                 >
                                     {codeLoading ? (
                                         <>
-                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                            <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                                             Validando...
                                         </>
                                     ) : (
                                         <>
-                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                            <CheckCircle className="h-5 w-5 mr-2" />
                                             Confirmar Atendimento
                                         </>
                                     )}
@@ -580,35 +799,94 @@ export default function VisitDetailsPage() {
                     </Card>
                 )}
 
-                {/* Action Buttons */}
-                <Card>
-                    <CardContent style={{ padding: "1.5rem" }}>
-                        <div style={{ textAlign: "center" }}>
-                            <p style={{ color: "#6b7280", marginBottom: "1rem", fontSize: "0.875rem" }}>
-                                Use o botão abaixo apenas em situações de emergência
-                            </p>
-                            <Button
-                                onClick={() => setShowEmergencyDialog(true)}
-                                style={{
-                                    backgroundColor: "#dc2626",
-                                    color: "white",
-                                    fontWeight: "600",
-                                    fontSize: "1rem",
-                                    padding: "1rem 2rem",
-                                    height: "auto",
-                                }}
-                            >
-                                <AlertTriangle className="h-5 w-5 mr-2" />
-                                Emergência - Caso se sinta ameaçado
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
+                {visit.status === "CONFIRMED" && (
+                    <Card
+                        style={{
+                            marginBottom: "1.5rem",
+                            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.07)",
+                            border: "2px solid #dc2626",
+                            background: "linear-gradient(135deg, #ffffff 0%, #fef2f2 100%)",
+                        }}
+                    >
+                        <CardContent style={{ padding: "2rem" }}>
+                            <div style={{ textAlign: "center" }}>
+                                <div style={{ display: "flex", justifyContent: "center", marginBottom: "1rem" }}>
+                                    <AlertTriangle className="h-12 w-12" style={{ color: "#dc2626" }} />
+                                </div>
+                                <h3
+                                    style={{
+                                        fontSize: "1.5rem",
+                                        fontWeight: "700",
+                                        color: "#1f2937",
+                                        marginBottom: "0.75rem",
+                                    }}
+                                >
+                                    Segurança em Primeiro Lugar
+                                </h3>
+                                <p
+                                    style={{
+                                        color: "#6b7280",
+                                        marginBottom: "2rem",
+                                        lineHeight: "1.7",
+                                        fontSize: "1rem",
+                                        maxWidth: "600px",
+                                        margin: "0 auto 2rem",
+                                    }}
+                                >
+                                    Caso se sinta ameaçado ou em situação de risco durante o atendimento, pressione o botão abaixo. Um
+                                    alerta será enviado imediatamente às autoridades competentes.
+                                </p>
+                                <Button
+                                    onClick={() => setShowEmergencyDialog(true)}
+                                    style={{
+                                        backgroundColor: "#dc2626",
+                                        color: "white",
+                                        padding: "1.5rem 3rem",
+                                        fontSize: "1.125rem",
+                                        fontWeight: "700",
+                                        borderRadius: "0.75rem",
+                                        boxShadow: "0 4px 6px rgba(220, 38, 38, 0.3)",
+                                        transition: "all 0.2s ease",
+                                        border: "none",
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.backgroundColor = "#b91c1c"
+                                        e.currentTarget.style.transform = "translateY(-2px)"
+                                        e.currentTarget.style.boxShadow = "0 6px 8px rgba(220, 38, 38, 0.4)"
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor = "#dc2626"
+                                        e.currentTarget.style.transform = "translateY(0)"
+                                        e.currentTarget.style.boxShadow = "0 4px 6px rgba(220, 38, 38, 0.3)"
+                                    }}
+                                >
+                                    <AlertTriangle className="h-5 w-5 mr-2" />
+                                    Botão de Emergência
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
-                {/* Timestamps */}
-                <div style={{ marginTop: "1rem", fontSize: "0.875rem", color: "#6b7280", textAlign: "center" }}>
-                    <p>Criado em: {formatDate(visit.created_at)}</p>
-                    <p>Última atualização: {formatDate(visit.updated_at)}</p>
+                <div
+                    style={{
+                        marginTop: "2rem",
+                        padding: "1rem",
+                        fontSize: "0.875rem",
+                        color: "#6b7280",
+                        textAlign: "center",
+                        backgroundColor: "white",
+                        borderRadius: "0.5rem",
+                        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+                    }}
+                >
+                    <p style={{ marginBottom: "0.25rem" }}>
+                        Criado em: <span style={{ fontWeight: "600", color: "#1f2937" }}>{formatDate(visit.created_at)}</span>
+                    </p>
+                    <p>
+                        Última atualização:{" "}
+                        <span style={{ fontWeight: "600", color: "#1f2937" }}>{formatDate(visit.updated_at)}</span>
+                    </p>
                 </div>
             </div>
 
@@ -617,45 +895,34 @@ export default function VisitDetailsPage() {
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#dc2626" }}>
-                            <AlertTriangle className="h-5 w-5" />
-                            Alerta de Emergência
+                            <AlertTriangle className="h-6 w-6" />
+                            Confirmar Alerta de Emergência
                         </AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Você está prestes a acionar um alerta de emergência. Esta ação irá:
+                        <AlertDialogDescription style={{ lineHeight: "1.7", fontSize: "1rem" }}>
+                            Você está prestes a enviar um alerta de emergência. Esta ação notificará imediatamente as autoridades
+                            competentes sobre uma situação de risco.
+                            <br />
+                            <br />
+                            <strong style={{ color: "#dc2626" }}>Use este recurso apenas em situações reais de emergência.</strong>
+                            <br />
+                            <br />
+                            Deseja continuar?
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <div style={{ padding: "1rem 0" }}>
-                        <ul style={{ listStyle: "disc", paddingLeft: "1.5rem", color: "#374151", lineHeight: "1.8" }}>
-                            <li>Notificar os serviços de emergência</li>
-                            <li>Alertar a equipe de suporte do MedAssist</li>
-                            <li>Compartilhar sua localização atual</li>
-                            <li>Registrar o incidente no sistema</li>
-                        </ul>
-                        <div
-                            style={{
-                                marginTop: "1rem",
-                                padding: "0.75rem",
-                                backgroundColor: "#fef2f2",
-                                borderLeft: "4px solid #dc2626",
-                                borderRadius: "0.25rem",
-                            }}
-                        >
-                            <p style={{ fontSize: "0.875rem", color: "#991b1b", fontWeight: "500" }}>
-                                Use este botão apenas em situações de real emergência ou perigo.
-                            </p>
-                        </div>
-                    </div>
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={actionLoading}>Cancelar</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleEmergency}
                             disabled={actionLoading}
-                            style={{ backgroundColor: "#dc2626" }}
+                            style={{
+                                backgroundColor: "#dc2626",
+                                color: "white",
+                            }}
                         >
                             {actionLoading ? (
                                 <>
                                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Enviando Alerta...
+                                    Enviando...
                                 </>
                             ) : (
                                 <>
