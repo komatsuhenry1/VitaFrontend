@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { CheckCircle } from "lucide-react"
+import { MessageCircle } from "lucide-react"
 
 import { useState, useEffect, useMemo } from "react"
 import { useRouter, useParams } from "next/navigation"
@@ -343,6 +344,25 @@ export default function VisitDetailsPage() {
             <Header />
             <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem" }}>
                 <div style={{ marginBottom: "2.5rem" }}>
+                    <Button
+                        variant="ghost"
+                        onClick={() => router.push("/nurse/visits/nurse")}
+                        style={{
+                            marginBottom: "1.5rem",
+                            color: "#15803d",
+                            transition: "all 0.2s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = "#f0fdf4"
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = "transparent"
+                        }}
+                    >
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Voltar
+                    </Button>
+
                     <div
                         style={{
                             display: "flex",
@@ -574,6 +594,72 @@ export default function VisitDetailsPage() {
                                     </h3>
                                     <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>CPF: {patient.cpf}</p>
                                 </div>
+                            </div>
+
+                            <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1.5rem" }}>
+                                <Button
+                                    onClick={() => router.push(`/chat/${patient.id}`)}
+                                    style={{
+                                        flex: 1,
+                                        backgroundColor: "#15803d",
+                                        color: "white",
+                                        padding: "0.75rem 1.5rem",
+                                        fontSize: "1rem",
+                                        fontWeight: "600",
+                                        borderRadius: "0.5rem",
+                                        boxShadow: "0 2px 4px rgba(21, 128, 61, 0.2)",
+                                        transition: "all 0.2s ease",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        gap: "0.5rem",
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.backgroundColor = "#166534"
+                                        e.currentTarget.style.transform = "translateY(-2px)"
+                                        e.currentTarget.style.boxShadow = "0 4px 6px rgba(21, 128, 61, 0.3)"
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor = "#15803d"
+                                        e.currentTarget.style.transform = "translateY(0)"
+                                        e.currentTarget.style.boxShadow = "0 2px 4px rgba(21, 128, 61, 0.2)"
+                                    }}
+                                >
+                                    <MessageCircle className="h-4 w-4" />
+                                    Chat
+                                </Button>
+                                <Button
+                                    onClick={() => router.push(`/patient-profile/${patient.id}`)}
+                                    style={{
+                                        flex: 1,
+                                        backgroundColor: "white",
+                                        color: "#15803d",
+                                        padding: "0.75rem 1.5rem",
+                                        fontSize: "1rem",
+                                        fontWeight: "600",
+                                        borderRadius: "0.5rem",
+                                        border: "2px solid #15803d",
+                                        boxShadow: "0 2px 4px rgba(0, 0, 0, 0.05)",
+                                        transition: "all 0.2s ease",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        gap: "0.5rem",
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.backgroundColor = "#f0fdf4"
+                                        e.currentTarget.style.transform = "translateY(-2px)"
+                                        e.currentTarget.style.boxShadow = "0 4px 6px rgba(0, 0, 0, 0.1)"
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor = "white"
+                                        e.currentTarget.style.transform = "translateY(0)"
+                                        e.currentTarget.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.05)"
+                                    }}
+                                >
+                                    <User className="h-4 w-4" />
+                                    Ver Perfil
+                                </Button>
                             </div>
 
                             <div style={{ display: "grid", gap: "1.25rem" }}>
