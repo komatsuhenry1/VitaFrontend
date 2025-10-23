@@ -29,6 +29,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Clock, CheckCircle, Info, MessageCircle, CheckCheck, Calendar } from "lucide-react"
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
+
 // ... (Interface Visit e VisitsResponse) ...
 interface Visit {
     id: string
@@ -78,7 +80,7 @@ export default function VisitsPage() {
                     return
                 }
 
-                const response = await fetch("http://localhost:8081/api/v1/user/visits", {
+                const response = await fetch(`${API_BASE_URL}/user/visits`, {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",
@@ -326,7 +328,7 @@ export default function VisitsPage() {
             setCompletingVisit(true)
             const token = localStorage.getItem("token")
 
-            const response = await fetch(`http://localhost:8081/api/v1/user/visit/${selectedVisit.id}/complete`, {
+            const response = await fetch(`${API_BASE_URL}/user/visit/${selectedVisit.id}/complete`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -338,7 +340,7 @@ export default function VisitsPage() {
                 throw new Error("Erro ao concluir visita")
             }
 
-            const visitsResponse = await fetch("http://localhost:8081/api/v1/user/visits", {
+            const visitsResponse = await fetch(`${API_BASE_URL}/user/visits`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
@@ -674,7 +676,7 @@ export default function VisitsPage() {
                             <Button
                                 onClick={() => {
                                     setShowDetailsDialog(false)
-                                    router.push(`/nurse/${selectedVisit.nurse?.id}`)
+                                    router.push(`/nurse-profile/${selectedVisit.nurse?.id}`)
                                 }}
                                 style={{ backgroundColor: "#15803d", color: "white" }}
                             >
