@@ -74,7 +74,8 @@ export default function VisitsPage() {
                     router.push("/login")
                     return
                 }
-
+                
+                console.log("Fetching visits from:", `${API_BASE_URL}/user/visits`); // LOG 1: Verifica a URL
                 const response = await fetch(`${API_BASE_URL}/user/visits`, {
                     method: "GET",
                     headers: {
@@ -82,6 +83,8 @@ export default function VisitsPage() {
                         Authorization: `Bearer ${token}`,
                     },
                 })
+
+                console.log("Response status:", response.status); // LOG 2: Verifica o status
 
                 if (!response.ok) {
                     throw new Error("Erro ao carregar visitas")
