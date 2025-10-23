@@ -50,13 +50,14 @@ const navLinksConfig = {
     { href: "/sobre", label: "Sobre" },
     { href: "/visit/nurses-list", label: "Enfermeiros" },
     { href: "/confirmed-visits", label: "Minhas Visitas" },
+    { href: "/chat/conversations", label: "Conversas" },
     { href: "/patient/map", label: "Mapa" },
   ],
   NURSE: [
     { href: "/sobre",  label: "Sobre" },
     { href: "/dashboard/nurse", label: "Dashboard" },
     { href: "/visit/all-visits-patient", label: "Visitas" },
-    { href: "/chat/nurse-chats", label: "Conversas" },
+    { href: "/chat/conversations", label: "Conversas" },
     { href: "/availability", label: "Disponibilidade" },
   ],
   ADMIN: [

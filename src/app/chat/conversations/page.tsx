@@ -61,7 +61,6 @@ export default function ChatsPage() {
     const socketRef = useRef<WebSocket | null>(null)
     const router = useRouter()
 
-    // ... (Todos os hooks useEffect e funções permanecem os mesmos)
     useEffect(() => {
         const storedUser = localStorage.getItem("user")
         if (storedUser) {
@@ -70,6 +69,9 @@ export default function ChatsPage() {
     }, [])
 
     useEffect(() => {
+        // Só executa se 'user' já foi carregado
+        if (!user) return
+
         const fetchConversations = async () => {
             const token = localStorage.getItem("token")
             if (!token) {
@@ -77,8 +79,22 @@ export default function ChatsPage() {
                 return
             }
 
+            // --- MUDANÇA AQUI ---
+            // Define a URL correta baseado no 'role' do usuário
+            let conversationsUrl = ""
+            if (user.role === "NURSE") {
+                conversationsUrl = `${API_BASE_URL}/chat/nurse/conversations`
+            } else if (user.role === "PATIENT") {
+                conversationsUrl = `${API_BASE_URL}/chat/patient/conversations`
+            } else {
+                setLoading(false)
+                console.error("Role de usuário desconhecido:", user.role)
+                return // Não faz nada se o role não for reconhecido
+            }
+            // --- FIM DA MUDANÇA ---
+
             try {
-                const response = await fetch(`${API_BASE_URL}/chat/conversations`, {
+                const response = await fetch(conversationsUrl, { // Usa a URL dinâmica
                     headers: { Authorization: `Bearer ${token}` },
                     cache: "no-store",
                 })
@@ -97,8 +113,8 @@ export default function ChatsPage() {
         }
 
         fetchConversations()
-    }, [router])
-
+    }, [user, router]) // <--- MUDANÇA: Depende do 'user' estar carregado
+    
     useEffect(() => {
         if (!selectedChatId || !user) return
 
