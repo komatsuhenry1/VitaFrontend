@@ -217,6 +217,7 @@ export default function NurseVisitsPage() {
                         <div><img src={patientImageUrl} alt={visit.patient_name || "Paciente"} style={{ width: "80px", height: "80px", borderRadius: "50%", objectFit: "cover", backgroundColor: "#e5e7eb" }} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/patient-placeholder.jpg"; }} /></div>
                         {/* Detalhes Visita */}
                         <div>
+                            {/* ... (Nome, Badge, Data, Tipo, Valor, Motivo, Descrição) ... */}
                             <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.5rem" }}><h3 style={{ fontSize: "1.25rem", fontWeight: "600", color: "#1f2937" }}>{visit.patient_name || "Paciente"}</h3><Badge style={{ backgroundColor: getStatusColor(visit.status) }}>{getStatusLabel(visit.status)}</Badge></div>
                             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.75rem", marginBottom: "0.75rem" }}>
                                 <div><span style={{ fontSize: "0.875rem", color: "#6b7280" }}>📅 Data:</span><span style={{ marginLeft: "0.5rem", fontWeight: "500" }}>{visit.date}</span></div>
@@ -236,7 +237,7 @@ export default function NurseVisitsPage() {
                                 <> {/* Usar Fragment para agrupar múltiplos botões */}
                                     <Button variant="outline" onClick={() => { setSelectedVisit(visit); setShowCancelDialog(true); }} style={{ borderColor: "#dc2626", color: "#dc2626" }}><XCircle className="h-4 w-4 mr-2" />Cancelar</Button>
 
-                                    {/* --- MUDANÇA: Botão Confirmar Serviço adicionado aqui --- */}
+                                    {/* --- MUDANÇA: Botão Confirmar Serviço adicionado aqui TAMBÉM --- */}
                                     <Button
                                         onClick={() => {
                                             setSelectedVisit(visit);
