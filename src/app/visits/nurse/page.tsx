@@ -363,7 +363,7 @@ export default function NurseVisitsPage() {
             <Dialog open={showCancelDialog} onOpenChange={(open) => { if (!open) { setCancelReason("") }; setShowCancelDialog(open) }}>
                 {/* ... (Conteúdo do Dialog para cancelar) ... */}
                 <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader><DialogTitle>Cancelar Visita</DialogTitle><DialogDescription>Selecione o motivo. A visita voltará a "Pendente".</DialogDescription></DialogHeader>
+                    <DialogHeader><DialogTitle>Cancelar Visita</DialogTitle><DialogDescription>Selecione o motivo. A visita voltará a Pendente.</DialogDescription></DialogHeader>
                     <div className="grid gap-4 py-4"><div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="cancel-reason" className="text-right">Motivo</Label><Select value={cancelReason} onValueChange={setCancelReason}><SelectTrigger id="cancel-reason" className="col-span-3"><SelectValue placeholder="Selecione..." /></SelectTrigger><SelectContent>{cancelationReasons.map(reason => (<SelectItem key={reason.value} value={reason.value}>{reason.label}</SelectItem>))}</SelectContent></Select></div></div>
                     <DialogFooter><Button variant="ghost" onClick={() => setShowCancelDialog(false)} disabled={actionLoading}>Voltar</Button><Button variant="destructive" onClick={handleCancelVisitAction} disabled={actionLoading || !cancelReason}>{actionLoading ? "Cancelando..." : "Confirmar Cancelamento"}</Button></DialogFooter>
                 </DialogContent>
