@@ -621,7 +621,6 @@ export default function NurseVisitsPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
         </div>
     )
 }
