@@ -110,7 +110,7 @@ export default function PatientVisitDetailsPage() {
                 const result: ApiResponse = await response.json()
 
                 if (!response.ok) {
-                     // Tenta usar a mensagem da API, senão uma genérica
+                    // Tenta usar a mensagem da API, senão uma genérica
                     throw new Error(result.message || `Erro ${response.status}: Falha ao buscar dados da visita.`);
                 }
 
@@ -119,8 +119,8 @@ export default function PatientVisitDetailsPage() {
                     if (result.data.visit.cancel_reason === "") {
                         result.data.visit.cancel_reason = null;
                     }
-                     // Trata profile_image_id vazio como null
-                     if (result.data.nurse.profile_image_id === "") {
+                    // Trata profile_image_id vazio como null
+                    if (result.data.nurse.profile_image_id === "") {
                         result.data.nurse.profile_image_id = null;
                     }
 
@@ -170,7 +170,7 @@ export default function PatientVisitDetailsPage() {
                 toast.success("Alerta de emergência enviado com sucesso! Autoridades foram notificadas.")
                 setShowEmergencyDialog(false)
             } else {
-                 const errorData = await response.json().catch(() => ({}));
+                const errorData = await response.json().catch(() => ({}));
                 toast.error(errorData.message || "Erro ao enviar alerta de emergência. Tente novamente.");
             }
         } catch (error) {
@@ -211,14 +211,14 @@ export default function PatientVisitDetailsPage() {
     }
 
     if (!visit || !nurse) { /* ... Error/Not Found JSX ... */
-         return (
+        return (
             <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
                 <Header />
                 <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem", textAlign: "center" }}>
                     <h1 style={{ color: "#dc2626", marginBottom: "1rem", fontSize: "1.5rem", fontWeight: "600" }}>
-                         Visita não encontrada ou erro ao carregar.
+                        Visita não encontrada ou erro ao carregar.
                     </h1>
-                     <p style={{color: "#6b7280", marginBottom: "1.5rem"}}>Verifique o ID da visita ou tente novamente mais tarde.</p>
+                    <p style={{ color: "#6b7280", marginBottom: "1.5rem" }}>Verifique o ID da visita ou tente novamente mais tarde.</p>
                     <Button onClick={() => router.back()} style={{ backgroundColor: "#15803d", color: "white" }}>
                         Voltar
                     </Button>
@@ -241,9 +241,6 @@ export default function PatientVisitDetailsPage() {
             <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem" }}>
                 {/* ... (Header with Back Button and Title) ... */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                    <Button onClick={() => router.back()} variant="outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <ArrowLeft className="h-4 w-4" /> Voltar
-                    </Button>
                     <Badge style={{ backgroundColor: getStatusColor(visit.status), fontSize: "1rem", padding: "0.5rem 1rem" }}>
                         {getStatusLabel(visit.status)}
                     </Badge>
@@ -252,7 +249,7 @@ export default function PatientVisitDetailsPage() {
                     <h1 style={{ fontSize: "2rem", fontWeight: "bold", color: "#1f2937", marginBottom: "0.5rem" }}>
                         Detalhes da Visita
                     </h1>
-                     {/* Usa o nome do enfermeiro vindo da API */}
+                    {/* Usa o nome do enfermeiro vindo da API */}
                     <p style={{ color: "#6b7280" }}>Agendada com {nurse.name}</p>
                 </div>
 
@@ -266,16 +263,16 @@ export default function PatientVisitDetailsPage() {
                         </CardHeader>
                         <CardContent style={{ display: "grid", gap: "1.25rem", padding: "1.5rem" }}>
                             {/* ... (Exibe os dados de 'visit' - Data, Tipo, Valor, Motivo, Descrição) ... */}
-                             <div><div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}><Calendar className="h-4 w-4 text-green-700" /><span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280", textTransform: "uppercase" }}>Data e Hora</span></div><p style={{ fontSize: "1.125rem", color: "#1f2937", marginLeft: "1.5rem", fontWeight: "500" }}>{formatDate(visit.visit_date)}</p></div>
-                             <Separator />
-                             <div><div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}><Home className="h-4 w-4 text-green-700" /><span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280", textTransform: "uppercase" }}>Tipo de Visita</span></div><p style={{ fontSize: "1.125rem", color: "#1f2937", marginLeft: "1.5rem", fontWeight: "500" }}>{getVisitTypeLabel(visit.visit_type)}</p></div>
-                             <Separator />
-                             <div><div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}><DollarSign className="h-4 w-4 text-green-700" /><span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280", textTransform: "uppercase" }}>Valor</span></div><p style={{ fontSize: "1.5rem", fontWeight: "700", color: "#15803d", marginLeft: "1.5rem" }}>{formatCurrency(visit.visit_value)}</p></div>
-                             <Separator />
-                             <div><span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280", textTransform: "uppercase" }}>Motivo</span><p style={{ fontSize: "1rem", color: "#1f2937", marginTop: "0.5rem", lineHeight: "1.6" }}>{visit.reason}</p></div>
-                             <Separator />
-                             <div><span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280", textTransform: "uppercase" }}>Descrição</span><p style={{ fontSize: "1rem", color: "#1f2937", marginTop: "0.5rem", lineHeight: "1.7" }}>{visit.description}</p></div>
-                             {visit.cancel_reason && ( /* Mostra motivo do cancelamento se existir */
+                            <div><div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}><Calendar className="h-4 w-4 text-green-700" /><span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280", textTransform: "uppercase" }}>Data e Hora</span></div><p style={{ fontSize: "1.125rem", color: "#1f2937", marginLeft: "1.5rem", fontWeight: "500" }}>{formatDate(visit.visit_date)}</p></div>
+                            <Separator />
+                            <div><div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}><Home className="h-4 w-4 text-green-700" /><span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280", textTransform: "uppercase" }}>Tipo de Visita</span></div><p style={{ fontSize: "1.125rem", color: "#1f2937", marginLeft: "1.5rem", fontWeight: "500" }}>{getVisitTypeLabel(visit.visit_type)}</p></div>
+                            <Separator />
+                            <div><div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}><DollarSign className="h-4 w-4 text-green-700" /><span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280", textTransform: "uppercase" }}>Valor</span></div><p style={{ fontSize: "1.5rem", fontWeight: "700", color: "#15803d", marginLeft: "1.5rem" }}>{formatCurrency(visit.visit_value)}</p></div>
+                            <Separator />
+                            <div><span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280", textTransform: "uppercase" }}>Motivo</span><p style={{ fontSize: "1rem", color: "#1f2937", marginTop: "0.5rem", lineHeight: "1.6" }}>{visit.reason}</p></div>
+                            <Separator />
+                            <div><span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280", textTransform: "uppercase" }}>Descrição</span><p style={{ fontSize: "1rem", color: "#1f2937", marginTop: "0.5rem", lineHeight: "1.7" }}>{visit.description}</p></div>
+                            {visit.cancel_reason && ( /* Mostra motivo do cancelamento se existir */
                                 <>
                                     <Separator />
                                     <div style={{ padding: "1rem", backgroundColor: "#fef2f2", borderRadius: "0.5rem", border: "1px solid #fecaca" }}>
@@ -295,8 +292,8 @@ export default function PatientVisitDetailsPage() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent style={{ padding: "1.5rem" }}>
-                             {/* ... (Exibe os dados de 'nurse' - Imagem, Nome, Coren, Rating, Botões) ... */}
-                             <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.5rem", padding: "1rem", backgroundColor: "#f9fafb", borderRadius: "0.75rem" }}>
+                            {/* ... (Exibe os dados de 'nurse' - Imagem, Nome, Coren, Rating, Botões) ... */}
+                            <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.5rem", padding: "1rem", backgroundColor: "#f9fafb", borderRadius: "0.75rem" }}>
                                 <img
                                     src={nurseImageUrl}
                                     alt={nurse.name}
@@ -314,26 +311,18 @@ export default function PatientVisitDetailsPage() {
                                 </div>
                             </div>
                             <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1.5rem", flexWrap: "wrap" }}>
-                                {/* Link ajustado para a rota correta do perfil do enfermeiro */}
                                 <Button onClick={() => router.push(`/nurse-profile/${nurse.id}`)} style={{ backgroundColor: "#15803d", color: "white", flex: 1, minWidth: '150px', fontWeight: "600" }}><User className="h-4 w-4 mr-2" />Ver Perfil</Button>
-                                {/* Link ajustado para levar ao chat com o enfermeiro selecionado */}
                                 <Button onClick={() => router.push(`/chat/${nurse.id}`)} variant="outline" style={{ flex: 1, minWidth: '150px', fontWeight: "600", borderColor: "#15803d", color: "#15803d" }}><Mail className="h-4 w-4 mr-2" />Mensagem</Button>
                             </div>
                             <Separator style={{ marginBottom: "1.25rem" }} />
                             <div style={{ display: "grid", gap: "1.25rem" }}>
-                                {/* ... (Exibe os dados de 'nurse' - Especialização, Experiência, Email, Telefone) ... */}
-                                 <div><div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}><Briefcase className="h-4 w-4 text-green-700" /><span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280", textTransform: "uppercase" }}>Especialização</span></div><p style={{ fontSize: "1rem", color: "#1f2937", marginLeft: "1.5rem", fontWeight: "500" }}>{nurse.specialization}</p></div>
-                                 <Separator />
-                                 <div><div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}><Briefcase className="h-4 w-4 text-green-700" /><span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280", textTransform: "uppercase" }}>Experiência</span></div><p style={{ fontSize: "1rem", color: "#1f2937", marginLeft: "1.5rem", fontWeight: "500" }}>{nurse.years_experience} anos</p></div>
-                                 <Separator />
-                                 <div><div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}><Mail className="h-4 w-4 text-green-700" /><span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280", textTransform: "uppercase" }}>Email</span></div><p style={{ fontSize: "1rem", color: "#1f2937", marginLeft: "1.5rem" }}>{nurse.email}</p></div>
-                                 <Separator />
-                                 <div><div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}><Phone className="h-4 w-4 text-green-700" /><span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280", textTransform: "uppercase" }}>Telefone</span></div><p style={{ fontSize: "1rem", color: "#1f2937", marginLeft: "1.5rem" }}>{nurse.phone}</p></div>
-                                 {/* --- MUDANÇA: Seção de Endereço/Mapa Removida --- */}
-                                {/* <Separator />
-                                <div> ... Região de Atuação ... </div>
-                                <Separator style={{ margin: "1.25rem 0" }} />
-                                <div> ... Localização da Visita (Mapa) ... </div> */}
+                                <div><div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}><Briefcase className="h-4 w-4 text-green-700" /><span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280", textTransform: "uppercase" }}>Especialização</span></div><p style={{ fontSize: "1rem", color: "#1f2937", marginLeft: "1.5rem", fontWeight: "500" }}>{nurse.specialization}</p></div>
+                                <Separator />
+                                <div><div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}><Briefcase className="h-4 w-4 text-green-700" /><span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280", textTransform: "uppercase" }}>Experiência</span></div><p style={{ fontSize: "1rem", color: "#1f2937", marginLeft: "1.5rem", fontWeight: "500" }}>{nurse.years_experience} anos</p></div>
+                                <Separator />
+                                <div><div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}><Mail className="h-4 w-4 text-green-700" /><span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280", textTransform: "uppercase" }}>Email</span></div><p style={{ fontSize: "1rem", color: "#1f2937", marginLeft: "1.5rem" }}>{nurse.email}</p></div>
+                                <Separator />
+                                <div><div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}><Phone className="h-4 w-4 text-green-700" /><span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280", textTransform: "uppercase" }}>Telefone</span></div><p style={{ fontSize: "1rem", color: "#1f2937", marginLeft: "1.5rem" }}>{nurse.phone}</p></div>
                             </div>
                         </CardContent>
                     </Card>
@@ -344,8 +333,8 @@ export default function PatientVisitDetailsPage() {
                     <Card style={{ marginBottom: "1.5rem", boxShadow: "0 4px 6px rgba(0, 0, 0, 0.07)", border: "2px solid #15803d", background: "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)" }}>
                         <CardHeader style={{ borderBottom: "1px solid #d1fae5" }}><CardTitle style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#1f2937" }}><Shield className="h-6 w-6" style={{ color: "#15803d" }} />Código de Confirmação</CardTitle></CardHeader>
                         <CardContent style={{ padding: "2rem" }}>
-                             {/* ... (Conteúdo do Código de Confirmação) ... */}
-                              <p style={{ color: "#6b7280", marginBottom: "2rem", lineHeight: "1.7", fontSize: "1rem", textAlign: "center", }}>Forneça este código ao enfermeiro(a) ao final do atendimento para confirmar que o serviço foi realizado.</p>
+                            {/* ... (Conteúdo do Código de Confirmação) ... */}
+                            <p style={{ color: "#6b7280", marginBottom: "2rem", lineHeight: "1.7", fontSize: "1rem", textAlign: "center", }}>Forneça este código ao enfermeiro(a) ao final do atendimento para confirmar que o serviço foi realizado.</p>
                             <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "2.5rem", background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)", borderRadius: "1rem", border: "3px solid #15803d", boxShadow: "0 8px 16px rgba(21, 128, 61, 0.15)" }}>
                                 <div style={{ textAlign: "center" }}><p style={{ fontSize: "0.875rem", fontWeight: "700", color: "#15803d", marginBottom: "1rem", textTransform: "uppercase", letterSpacing: "0.1em" }}>Seu código de confirmação</p><p style={{ fontSize: "3.5rem", fontWeight: "900", color: "#15803d", letterSpacing: "0.75rem", fontFamily: "monospace", textShadow: "0 2px 4px rgba(21, 128, 61, 0.1)" }}>{visit.confirmation_code}</p><p style={{ fontSize: "0.875rem", color: "#6b7280", marginTop: "1rem", fontWeight: "500" }}>Código válido apenas para esta visita</p></div>
                             </div>
@@ -353,20 +342,20 @@ export default function PatientVisitDetailsPage() {
                     </Card>
                 )}
 
-                 {/* Emergency Button Card */}
+                {/* Emergency Button Card */}
                 {visit.status === "CONFIRMED" && (
                     <Card style={{ marginBottom: "1.5rem", boxShadow: "0 4px 6px rgba(0, 0, 0, 0.07)", border: "2px solid #dc2626", background: "linear-gradient(135deg, #ffffff 0%, #fef2f2 100%)" }}>
                         <CardContent style={{ padding: "2rem" }}>
-                             {/* ... (Conteúdo do Botão de Emergência) ... */}
-                             <div style={{ textAlign: "center" }}>
+                            {/* ... (Conteúdo do Botão de Emergência) ... */}
+                            <div style={{ textAlign: "center" }}>
                                 <div style={{ display: "flex", justifyContent: "center", marginBottom: "1rem" }}><AlertTriangle className="h-12 w-12" style={{ color: "#dc2626" }} /></div>
                                 <h3 style={{ fontSize: "1.5rem", fontWeight: "700", color: "#1f2937", marginBottom: "0.75rem" }}>Segurança em Primeiro Lugar</h3>
                                 <p style={{ color: "#6b7280", marginBottom: "2rem", lineHeight: "1.7", fontSize: "1rem", maxWidth: "600px", margin: "0 auto 2rem" }}>Caso se sinta ameaçado ou em situação de risco durante o atendimento, pressione o botão abaixo. Um alerta será enviado imediatamente às autoridades competentes.</p>
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
                                         <Button style={{ backgroundColor: "#dc2626", color: "white", padding: "1.5rem 3rem", fontSize: "1.125rem", fontWeight: "700", borderRadius: "0.75rem", boxShadow: "0 4px 6px rgba(220, 38, 38, 0.3)", transition: "all 0.2s ease", border: "none" }}
-                                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#b91c1c"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 6px 8px rgba(220, 38, 38, 0.4)"; }}
-                                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#dc2626"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 6px rgba(220, 38, 38, 0.3)"; }}>
+                                            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#b91c1c"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 6px 8px rgba(220, 38, 38, 0.4)"; }}
+                                            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#dc2626"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 6px rgba(220, 38, 38, 0.3)"; }}>
                                             <AlertTriangle className="h-5 w-5 mr-2" />Botão de Emergência
                                         </Button>
                                     </AlertDialogTrigger>
