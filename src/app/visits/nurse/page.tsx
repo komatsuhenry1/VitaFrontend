@@ -157,18 +157,14 @@ export default function NurseVisitsPage() {
         }
     }
 
-    // --- MUDANÇA: Remover handleCancelVisitAction ---
-    // A lógica de cancelamento será movida para a página de detalhes da visita
-
-    // Lógica de confirmação (mantida, usa AlertDialog)
     const handleConfirmVisitAction = async () => {
         if (!selectedVisit) return
 
         try {
             setActionLoading(true)
             const token = localStorage.getItem("token")
-            const response = await fetch(`${API_BASE_URL}/nurse/visit/${selectedVisit.id}/confirm`, { // Usa /confirm endpoint
-                method: "PUT",
+            const response = await fetch(`${API_BASE_URL}/nurse/visit/${selectedVisit.id}`, { // Usa /confirm endpoint
+                method: "PATCH",
                 headers: { "Authorization": `Bearer ${token}` },
             })
 
