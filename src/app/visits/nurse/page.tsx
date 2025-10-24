@@ -9,10 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-// --- MUDANÇA: Remover imports do Dialog de Detalhes e Select ---
-// import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-// import { Label } from "@/components/ui/label"
+// --- MUDANÇA: Re-adicionar Dialog, Select e Label ---
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -57,6 +57,14 @@ interface ApiResponse {
     success: boolean
 }
 
+// --- MUDANÇA: Definir as opções de cancelamento em um local ---
+const cancelationReasons = [
+    { value: "emergencia_pessoal", label: "Emergência Pessoal" },
+    { value: "conflito_agenda", label: "Conflito de Agenda" },
+    { value: "paciente_solicitou", label: "Paciente Solicitou" },
+    { value: "outro", label: "Outro" },
+]
+
 export default function NurseVisitsPage() {
     const router = useRouter()
     const [visitsData, setVisitsData] = useState<VisitsResponseData>({
@@ -67,13 +75,21 @@ export default function NurseVisitsPage() {
     })
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null) // Mantido para confirmação
+    const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null)
     // --- MUDANÇA: Remover estados do Dialog de Detalhes ---
     // const [showDetailsDialog, setShowDetailsDialog] = useState(false)
-    const [showConfirmDialog, setShowConfirmDialog] = useState(false)
-    // const [showCancelForm, setShowCancelForm] = useState(false)
-    // const [cancelReason, setCancelReason] = useState("")
+
+    // --- MUDANÇA: Reverter para estados separados para cada Dialog ---
+    const [showConfirmDialog, setShowConfirmDialog] = useState(false) // Para o AlertDialog de Confirmação
+    const [showCancelDialog, setShowCancelDialog] = useState(false) // Para o Dialog de Cancelamento
+
+    // --- MUDANÇA: Novo estado para o motivo do cancelamento ---
+    const [cancelReason, setCancelReason] = useState("")
+
     const [actionLoading, setActionLoading] = useState(false)
+    // --- MUDANÇA: Remover actionType, pois teremos handlers separados ---
+    // const [actionType, setActionType] = useState<"confirm" | "cancel" | null>(null)
+
 
     // ... (fetchVisits, formatCurrency, getStatusColor, getStatusLabel, getVisitTypeLabel) ...
     const fetchVisits = async () => {
@@ -157,14 +173,15 @@ export default function NurseVisitsPage() {
         }
     }
 
+    // --- MUDANÇA: Este handler volta a ser apenas para CONFIRMAR ---
     const handleConfirmVisitAction = async () => {
         if (!selectedVisit) return
 
         try {
             setActionLoading(true)
             const token = localStorage.getItem("token")
-            const response = await fetch(`${API_BASE_URL}/nurse/visit/${selectedVisit.id}`, { // Usa /confirm endpoint
-                method: "PATCH",
+            const response = await fetch(`${API_BASE_URL}/nurse/visit/${selectedVisit.id}`, {
+                method: "PATCH", // Sem body
                 headers: { "Authorization": `Bearer ${token}` },
             })
 
@@ -174,14 +191,57 @@ export default function NurseVisitsPage() {
             }
 
             await fetchVisits()
-            setShowConfirmDialog(false)
+            setShowConfirmDialog(false) // Fecha o dialog de confirmação
             setSelectedVisit(null)
             toast.success("Visita confirmada com sucesso!")
         } catch (err) {
-            // Usar toast para erro
             toast.error(err instanceof Error ? err.message : "Erro ao confirmar visita")
         } finally {
             setActionLoading(false)
+        }
+    }
+
+    // --- MUDANÇA: Novo handler específico para CANCELAR com motivo ---
+    const handleCancelVisitAction = async () => {
+        if (!selectedVisit) return;
+
+        // Validação do motivo
+        if (!cancelReason) {
+            toast.error("Por favor, selecione um motivo para o cancelamento.");
+            return;
+        }
+
+        try {
+            setActionLoading(true);
+            const token = localStorage.getItem("token");
+
+            // Prepara o body da requisição
+            const body = JSON.stringify({ reason: cancelReason });
+
+            const response = await fetch(`${API_BASE_URL}/nurse/visit/${selectedVisit.id}`, {
+                method: "PATCH",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json" // Importante
+                },
+                body: body, // Envia o motivo
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || "Erro ao cancelar visita");
+            }
+
+            await fetchVisits();
+            setShowCancelDialog(false); // Fecha o dialog de cancelamento
+            setSelectedVisit(null);
+            setCancelReason(""); // Limpa o estado do motivo
+            toast.success("Visita cancelada com sucesso!");
+
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Erro ao cancelar visita");
+        } finally {
+            setActionLoading(false);
         }
     }
 
@@ -208,7 +268,7 @@ export default function NurseVisitsPage() {
 
                         {/* Visit Details */}
                         <div>
-                            {/* ... (Nome, Badge, Data, Tipo, Valor, Motivo, Descrição) ... */}
+                            {/* ... (Detalhes da visita) ... */}
                             <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.5rem" }}>
                                 <h3 style={{ fontSize: "1.25rem", fontWeight: "600", color: "#1f2937" }}>
                                     {visit.patient_name || "Paciente não especificado"}
@@ -260,6 +320,7 @@ export default function NurseVisitsPage() {
                                 <Button
                                     onClick={() => {
                                         setSelectedVisit(visit)
+                                        // --- MUDANÇA: Volta a chamar o dialog de confirmação ---
                                         setShowConfirmDialog(true)
                                     }}
                                     style={{ backgroundColor: "#15803d", color: "white" }}
@@ -269,8 +330,21 @@ export default function NurseVisitsPage() {
                                 </Button>
                             )}
 
-                            {/* --- MUDANÇA: Botão Cancelar removido daqui --- */}
-                            {/* {status === "CONFIRMED" && ( ... )} */}
+                            {/* --- MUDANÇA: Botão Cancelar agora chama o dialog de CANCELAMENTO --- */}
+                            {status === "CONFIRMED" && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        setSelectedVisit(visit)
+                                        // --- MUDANÇA: Chama o novo dialog ---
+                                        setShowCancelDialog(true)
+                                    }}
+                                    style={{ borderColor: "#dc2626", color: "#dc2626" }} // Vermelho para cancelar
+                                >
+                                    <XCircle className="h-4 w-4 mr-2" />
+                                    Cancelar Visita
+                                </Button>
+                            )}
 
                             <Button
                                 variant="outline"
@@ -281,7 +355,6 @@ export default function NurseVisitsPage() {
                                 Chat
                             </Button>
 
-                            {/* --- MUDANÇA: Botão Detalhes agora navega --- */}
                             <Button
                                 variant="outline"
                                 onClick={() => router.push(`/visit-details/${visit.id}`)} // Navega para a nova página
@@ -347,7 +420,7 @@ export default function NurseVisitsPage() {
                     <p style={{ color: "#6b7280" }}>Gerencie suas visitas agendadas</p>
                 </div>
 
-                {/* Seção "Visitas de Hoje" */}
+                {/* Seção "Visitas de Hoje" (Sem alterações) */}
                 {visits_today.length > 0 && (
                     <div style={{ marginBottom: "2rem" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
@@ -410,7 +483,7 @@ export default function NurseVisitsPage() {
                     </div>
                 )}
 
-                {/* Abas */}
+                {/* Abas (Sem alterações) */}
                 {(pending.length === 0 && confirmed.length === 0 && completed.length === 0 && visits_today.length === 0) ? (
                     <EmptyState icon="📅" title="Nenhuma visita encontrada" description="Você ainda não tem visitas registradas no sistema." />
                 ) : (
@@ -465,9 +538,8 @@ export default function NurseVisitsPage() {
             {/* --- MUDANÇA: Dialog de Detalhes REMOVIDO --- */}
             {/* <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}> ... </Dialog> */}
 
-            {/* Confirmation Dialog (AlertDialog) - Mantido */}
+            {/* --- MUDANÇA: AlertDialog volta a ser apenas para CONFIRMAR --- */}
             <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-                {/* ... (Conteúdo do AlertDialog para confirmar visita) ... */}
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Confirmar Visita</AlertDialogTitle>
@@ -475,7 +547,7 @@ export default function NurseVisitsPage() {
                             Você confirma que está disponível e aceita esta visita?
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    {selectedVisit && ( // Mostra um resumo
+                    {selectedVisit && (
                         <div style={{ display: "grid", gap: "0.5rem", padding: "1rem 0", fontSize: "0.9rem" }}>
                             <p><strong>Paciente:</strong> {selectedVisit.patient_name}</p>
                             <p><strong>Data:</strong> {selectedVisit.date}</p>
@@ -494,6 +566,61 @@ export default function NurseVisitsPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* --- MUDANÇA: NOVO Dialog para CANCELAR com motivo --- */}
+            <Dialog open={showCancelDialog} onOpenChange={(open) => {
+                if (!open) {
+                    setCancelReason("") // Limpa o motivo ao fechar
+                }
+                setShowCancelDialog(open)
+            }}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Cancelar Visita</DialogTitle>
+                        <DialogDescription>
+                            Selecione o motivo do cancelamento. A visita retornará ao status "Pendente".
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="cancel-reason" className="text-right">
+                                Motivo
+                            </Label>
+                            <Select
+                                value={cancelReason}
+                                onValueChange={setCancelReason}
+                            >
+                                <SelectTrigger id="cancel-reason" className="col-span-3">
+                                    <SelectValue placeholder="Selecione um motivo..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {cancelationReasons.map(reason => (
+                                        <SelectItem key={reason.value} value={reason.value}>
+                                            {reason.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="ghost"
+                            onClick={() => setShowCancelDialog(false)}
+                            disabled={actionLoading}
+                        >
+                            Voltar
+                        </Button>
+                        <Button
+                            variant="destructive" // Cor vermelha para ação destrutiva
+                            onClick={handleCancelVisitAction}
+                            disabled={actionLoading || !cancelReason} // Desabilita se estiver carregando OU sem motivo
+                        >
+                            {actionLoading ? "Cancelando..." : "Confirmar Cancelamento"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
         </div>
     )
