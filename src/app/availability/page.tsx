@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
-// 1. Textarea foi importado para o campo de biografia
 import { Textarea } from "@/components/ui/textarea"
 import { Clock, DollarSign, Calendar, Loader2, Plus, X, Award, MapPin } from "lucide-react"
 import { toast } from "sonner"
@@ -24,7 +23,8 @@ interface AvailabilityForm {
     price_per_hour: number
     max_patients_per_day: number
     days_available: string[]
-    bio: string // 2. Campo 'bio' adicionado à interface
+    bio: string
+    department: string
 }
 
 export default function NurseAvailabilityPage() {
@@ -40,7 +40,8 @@ export default function NurseAvailabilityPage() {
         price_per_hour: 0,
         max_patients_per_day: 10,
         days_available: [],
-        bio: "", // 3. Campo 'bio' inicializado no estado
+        bio: "",
+        department: "",
     })
 
     // States dos campos dinâmicos
@@ -83,7 +84,8 @@ export default function NurseAvailabilityPage() {
                         price_per_hour: result.data.price || 0,
                         max_patients_per_day: result.data.max_patients_per_day || 10,
                         days_available: result.data.days_available || [],
-                        bio: result.data.bio || "", // 4. Carregando 'bio' da API
+                        bio: result.data.bio || "",
+                        department: result.data.department || "",
                     })
                     setServices(result.data.services || [])
                     setQualifications(result.data.qualifications || [])
@@ -121,7 +123,8 @@ export default function NurseAvailabilityPage() {
                     services: services,
                     qualifications: qualifications,
                     available_neighborhoods: neighborhoods,
-                    bio: availabilityForm.bio, // 5. Enviando 'bio' ao salvar
+                    bio: availabilityForm.bio,
+                    department: availabilityForm.department,
                 }),
             })
 
@@ -138,7 +141,7 @@ export default function NurseAvailabilityPage() {
         }
     }
 
-    // ... (demais funções mantidas iguais: toggleDayAvailability, addService, removeService, etc.) ...
+    // ... (demais funções mantidas iguais) ...
     const toggleDayAvailability = (day: string) => {
         setAvailabilityForm((prev) => ({
             ...prev,
@@ -194,7 +197,7 @@ export default function NurseAvailabilityPage() {
     }
 
     if (loading) {
-        // ... (JSX de loading mantido igual)
+        // ... (JSX de loading mantido igual) ...
         return (
             <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
                 <Header />
@@ -316,19 +319,60 @@ export default function NurseAvailabilityPage() {
                                         <SelectValue placeholder="Selecione sua especialização" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="pediatria">Pediatria</SelectItem>
-                                        <SelectItem value="geriatria">Geriatria</SelectItem>
-                                        <SelectItem value="cardiologia">Cardiologia</SelectItem>
-                                        <SelectItem value="oncologia">Oncologia</SelectItem>
-                                        <SelectItem value="geral">Enfermagem Geral</SelectItem>
-                                        <SelectItem value="uti">UTI</SelectItem>
-                                        <SelectItem value="emergencia">Emergência</SelectItem>
-                                        <SelectItem value="home_care">Home Care</SelectItem>
+                                        <SelectItem value="Pediatria">Pediatria</SelectItem>
+                                        <SelectItem value="Geriatria">Geriatria</SelectItem>
+                                        <SelectItem value="UTI/Terapia Intensiva">UTI/Terapia Intensiva</SelectItem>
+                                        <SelectItem value="Cardiologia">Cardiologia</SelectItem>
+                                        <SelectItem value="Oncologia">Oncologia</SelectItem>
+                                        <SelectItem value="Obstetrícia">Obstetrícia</SelectItem>
+                                        <SelectItem value="Emergência">Emergência</SelectItem>
+                                        <SelectItem value="Domiciliar">Domiciliar</SelectItem>
+                                        <SelectItem value="Psiquiatria">Psiquiatria</SelectItem>
+                                        <SelectItem value="Nefrologia">Nefrologia</SelectItem>
+                                        <SelectItem value="Ortopedia">Ortopedia</SelectItem>
+                                        <SelectItem value="Neurologia">Neurologia</SelectItem>
+                                        <SelectItem value="Clínica Médica">Clínica Médica</SelectItem>
+                                        <SelectItem value="Cirurgia">Cirurgia</SelectItem>
+                                        <SelectItem value="Saúde Mental">Saúde Mental</SelectItem>
+                                        <SelectItem value="Outra">Outra</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
-                            {/* 6. Bloco JSX para 'bio' adicionado */}
+                            {/* ==================
+                             MUDANÇA FEITA AQUI
+                            ==================
+                            O Input foi substituído pelo Select com as opções fornecidas.
+                            */}
+                            <div>
+                                <Label htmlFor="department">Departamento/Área de Atuação *</Label>
+                                <Select
+                                    value={availabilityForm.department}
+                                    onValueChange={(value) => setAvailabilityForm({ ...availabilityForm, department: value })}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecione a área de atuação" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Unidade de Terapia Intensiva (UTI)">
+                                            Unidade de Terapia Intensiva (UTI)
+                                        </SelectItem>
+                                        <SelectItem value="Centro Cirúrgico">Centro Cirúrgico</SelectItem>
+                                        <SelectItem value="Emergência/Pronto-Socorro">Emergência/Pronto-Socorro</SelectItem>
+                                        <SelectItem value="Clínica Médica">Clínica Médica</SelectItem>
+                                        <SelectItem value="Pediatria">Pediatria</SelectItem>
+                                        <SelectItem value="Ginecologia e Obstetrícia">Ginecologia e Obstetrícia</SelectItem>
+                                        <SelectItem value="Cardiologia">Cardiologia</SelectItem>
+                                        <SelectItem value="Oncologia">Oncologia</SelectItem>
+                                        <SelectItem value="Home Care/Atendimento Domiciliar">
+                                            Home Care/Atendimento Domiciliar
+                                        </SelectItem>
+                                        <SelectItem value="Saúde da Família (PSF)">Saúde da Família (PSF)</SelectItem>
+                                        <SelectItem value="Outro">Outro</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
                             <div>
                                 <Label htmlFor="bio">Biografia</Label>
                                 <Textarea
@@ -336,7 +380,7 @@ export default function NurseAvailabilityPage() {
                                     value={availabilityForm.bio}
                                     onChange={(e) => setAvailabilityForm({ ...availabilityForm, bio: e.target.value })}
                                     placeholder="Escreva um breve resumo sobre você, sua experiência e sua abordagem de cuidado..."
-                                    className="min-h-[120px]" // Define uma altura mínima
+                                    className="min-h-[120px]"
                                 />
                             </div>
 
