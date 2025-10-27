@@ -110,14 +110,14 @@ export default function NurseMyProfile() {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },
-                    cache: "no-store", // Prevent caching to always get fresh data
+                    cache: "no-store", 
                 })
 
                 if (response.ok) {
                     const result = await response.json()
                     const data: NurseProfile = result.data
 
-                    console.log("[v0] Fetched nurse data:", data) // Debug log
+                    console.log("[v0] Fetched nurse data:", data) 
 
                     setNurseData(data)
 

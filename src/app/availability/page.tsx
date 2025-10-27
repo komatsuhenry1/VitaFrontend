@@ -10,7 +10,9 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
-import { Clock, DollarSign, Calendar, Loader2, Plus, X, Award, MapPin } from "lucide-react" // MapPin adicionado de volta
+// 1. Textarea foi importado para o campo de biografia
+import { Textarea } from "@/components/ui/textarea"
+import { Clock, DollarSign, Calendar, Loader2, Plus, X, Award, MapPin } from "lucide-react"
 import { toast } from "sonner"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
@@ -22,6 +24,7 @@ interface AvailabilityForm {
     price_per_hour: number
     max_patients_per_day: number
     days_available: string[]
+    bio: string // 2. Campo 'bio' adicionado à interface
 }
 
 export default function NurseAvailabilityPage() {
@@ -37,6 +40,7 @@ export default function NurseAvailabilityPage() {
         price_per_hour: 0,
         max_patients_per_day: 10,
         days_available: [],
+        bio: "", // 3. Campo 'bio' inicializado no estado
     })
 
     // States dos campos dinâmicos
@@ -46,7 +50,6 @@ export default function NurseAvailabilityPage() {
     const [qualifications, setQualifications] = useState<string[]>([])
     const [selectedQualification, setSelectedQualification] = useState("")
 
-    // ✅ LÓGICA DE BAIRROS RESTAURADA
     const [neighborhoods, setNeighborhoods] = useState<string[]>([])
     const [selectedNeighborhood, setSelectedNeighborhood] = useState("")
 
@@ -59,7 +62,6 @@ export default function NurseAvailabilityPage() {
                     return
                 }
 
-                // ✅ ENDPOINT CORRIGIDO PARA CARREGAR TODAS AS CONFIGURAÇÕES
                 const response = await fetch(`${API_BASE_URL}/nurse/availability`, {
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -73,8 +75,7 @@ export default function NurseAvailabilityPage() {
                 const result = await response.json()
 
                 if (result.success && result.data) {
-                    // Preenche todos os dados do formulário
-                    setAvailability(result.data.online ?? true) // 'online' parece ser o campo correto aqui
+                    setAvailability(result.data.online ?? true)
                     setAvailabilityForm({
                         start_time: result.data.start_time || "08:00",
                         end_time: result.data.end_time || "18:00",
@@ -82,10 +83,10 @@ export default function NurseAvailabilityPage() {
                         price_per_hour: result.data.price || 0,
                         max_patients_per_day: result.data.max_patients_per_day || 10,
                         days_available: result.data.days_available || [],
+                        bio: result.data.bio || "", // 4. Carregando 'bio' da API
                     })
                     setServices(result.data.services || [])
                     setQualifications(result.data.qualifications || [])
-                    // ✅ POPULA OS BAIRROS COM DADOS DA API
                     setNeighborhoods(result.data.available_neighborhoods || [])
                 }
             } catch (err) {
@@ -97,7 +98,7 @@ export default function NurseAvailabilityPage() {
         }
 
         fetchNurseData()
-    }, [router]) // router adicionado para consistência
+    }, [router])
 
     const handleSaveAvailability = async () => {
         setIsSaving(true)
@@ -116,11 +117,11 @@ export default function NurseAvailabilityPage() {
                     price: availabilityForm.price_per_hour,
                     max_patients_per_day: availabilityForm.max_patients_per_day,
                     days_available: availabilityForm.days_available,
-                    online: availability, // Enviando 'online' em vez de 'available'
+                    online: availability,
                     services: services,
                     qualifications: qualifications,
-                    // ✅ ENVIANDO OS BAIRROS PARA SALVAR
                     available_neighborhoods: neighborhoods,
+                    bio: availabilityForm.bio, // 5. Enviando 'bio' ao salvar
                 }),
             })
 
@@ -137,6 +138,7 @@ export default function NurseAvailabilityPage() {
         }
     }
 
+    // ... (demais funções mantidas iguais: toggleDayAvailability, addService, removeService, etc.) ...
     const toggleDayAvailability = (day: string) => {
         setAvailabilityForm((prev) => ({
             ...prev,
@@ -146,7 +148,6 @@ export default function NurseAvailabilityPage() {
         }))
     }
 
-    // Funções para Serviços
     const addService = () => {
         if (selectedService && !services.includes(selectedService)) {
             setServices([...services, selectedService])
@@ -162,7 +163,6 @@ export default function NurseAvailabilityPage() {
         toast.success("Serviço removido!")
     }
 
-    // Funções para Qualificações
     const addQualification = () => {
         if (selectedQualification && !qualifications.includes(selectedQualification)) {
             setQualifications([...qualifications, selectedQualification])
@@ -178,7 +178,6 @@ export default function NurseAvailabilityPage() {
         toast.success("Qualificação removida!")
     }
 
-    // ✅ FUNÇÕES PARA BAIRROS RESTAURADAS
     const addNeighborhood = () => {
         if (selectedNeighborhood && !neighborhoods.includes(selectedNeighborhood)) {
             setNeighborhoods([...neighborhoods, selectedNeighborhood])
@@ -195,6 +194,7 @@ export default function NurseAvailabilityPage() {
     }
 
     if (loading) {
+        // ... (JSX de loading mantido igual)
         return (
             <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
                 <Header />
@@ -224,6 +224,7 @@ export default function NurseAvailabilityPage() {
 
             {/* Page Header */}
             <section style={{ padding: "2rem 1rem", backgroundColor: "#ffffff", borderBottom: "1px solid #e5e7eb" }}>
+                {/* ... (JSX do Header da Página mantido igual) ... */}
                 <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
                     <h1 style={{ fontSize: "2rem", fontWeight: "bold", color: "#1f2937", marginBottom: "0.5rem" }}>
                         Configurações de Disponibilidade
@@ -235,9 +236,9 @@ export default function NurseAvailabilityPage() {
             {/* Main Content */}
             <section style={{ padding: "2rem 1rem", maxWidth: "1200px", margin: "0 auto" }}>
                 <div className="space-y-6">
-
                     {/* Working Hours Card */}
                     <Card>
+                        {/* ... (JSX do Card de Horários mantido igual) ... */}
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <Clock size={20} />
@@ -271,6 +272,7 @@ export default function NurseAvailabilityPage() {
 
                     {/* Days Available Card */}
                     <Card>
+                        {/* ... (JSX do Card de Dias mantido igual) ... */}
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <Calendar size={20} />
@@ -301,7 +303,7 @@ export default function NurseAvailabilityPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle>Informações Profissionais</CardTitle>
-                            <CardDescription>Configure sua especialização e valores</CardDescription>
+                            <CardDescription>Configure sua especialização, biografia e valores</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div>
@@ -324,6 +326,18 @@ export default function NurseAvailabilityPage() {
                                         <SelectItem value="home_care">Home Care</SelectItem>
                                     </SelectContent>
                                 </Select>
+                            </div>
+
+                            {/* 6. Bloco JSX para 'bio' adicionado */}
+                            <div>
+                                <Label htmlFor="bio">Biografia</Label>
+                                <Textarea
+                                    id="bio"
+                                    value={availabilityForm.bio}
+                                    onChange={(e) => setAvailabilityForm({ ...availabilityForm, bio: e.target.value })}
+                                    placeholder="Escreva um breve resumo sobre você, sua experiência e sua abordagem de cuidado..."
+                                    className="min-h-[120px]" // Define uma altura mínima
+                                />
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -367,8 +381,9 @@ export default function NurseAvailabilityPage() {
                         </CardContent>
                     </Card>
 
-                    {/* ✅ CARD DE BAIRROS RESTAURADO */}
+                    {/* Card Bairros */}
                     <Card>
+                        {/* ... (JSX do Card de Bairros mantido igual) ... */}
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <MapPin size={20} />
@@ -444,6 +459,7 @@ export default function NurseAvailabilityPage() {
 
                     {/* Qualifications Card */}
                     <Card>
+                        {/* ... (JSX do Card de Qualificações mantido igual) ... */}
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <Award size={20} />
@@ -529,6 +545,7 @@ export default function NurseAvailabilityPage() {
 
                     {/* Services Card */}
                     <Card>
+                        {/* ... (JSX do Card de Serviços mantido igual) ... */}
                         <CardHeader>
                             <CardTitle>Serviços Oferecidos</CardTitle>
                             <CardDescription>Selecione os serviços que você está apto a prestar</CardDescription>
