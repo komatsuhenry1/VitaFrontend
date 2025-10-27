@@ -120,13 +120,12 @@ export default function NurseVisitsPage() {
     const getVisitTypeLabel = (type: string) => { /* ... */ switch (type?.toLowerCase()) { case "domiciliar": return "Domiciliar"; case "hospitalar": return "Hospitalar"; case "clinica": return "Clínica"; case "consulta": return "Consulta"; case "emergencia": return "Emergência"; default: return type || "N/A"; } }
 
 
-    // ... (handleConfirmVisitAction - Aceite, handleCancelVisitAction - Cancelamento) ...
     const handleConfirmVisitAction = async () => { /* ... (Aceitar visita PENDENTE) ... */
         if (!selectedVisit) return;
         try {
             setActionLoading(true); const token = localStorage.getItem("token");
-            const response = await fetch(`${API_BASE_URL}/nurse/visit/${selectedVisit.id}/confirm`, { // Endpoint correto para confirmar
-                method: "PUT", headers: { "Authorization": `Bearer ${token}` }
+            const response = await fetch(`${API_BASE_URL}/nurse/visit/${selectedVisit.id}`, { // Endpoint correto para confirmar
+                method: "PATCH", headers: { "Authorization": `Bearer ${token}` }
             }); // Ajustar endpoint e método se necessário
             if (!response.ok) { const errorData = await response.json().catch(() => ({})); throw new Error(errorData.message || "Erro ao confirmar"); }
             await fetchVisits(); setShowConfirmDialog(false); setSelectedVisit(null); toast.success("Visita confirmada!");
@@ -137,8 +136,8 @@ export default function NurseVisitsPage() {
         if (!selectedVisit || !cancelReason) { toast.error("Selecione um motivo."); return; }
         try {
             setActionLoading(true); const token = localStorage.getItem("token");
-            const response = await fetch(`${API_BASE_URL}/nurse/visit/${selectedVisit.id}/cancel`, { // Endpoint correto para cancelar
-                method: "PUT", headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ reason: cancelReason })
+            const response = await fetch(`${API_BASE_URL}/nurse/visit/${selectedVisit.id}`, { // Endpoint correto para cancelar
+                method: "PATCH", headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ reason: cancelReason })
             }); // Ajustar endpoint e método se necessário
             if (!response.ok) { const errorData = await response.json().catch(() => ({})); throw new Error(errorData.message || "Erro ao cancelar"); }
             await fetchVisits(); setShowCancelDialog(false); setSelectedVisit(null); setCancelReason(""); toast.success("Visita cancelada!");
