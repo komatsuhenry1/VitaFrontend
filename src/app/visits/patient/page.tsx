@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-// --- MUDANÇA: Remover imports do Dialog de Detalhes ---
-// import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+// --- MUDANÇA: Remover imports do Dialog de Detalhes (já removido) ---
+// --- MUDANÇA: Remover imports do AlertDialog de Conclusão ---
+/*
 import {
     AlertDialog,
     AlertDialogAction,
@@ -21,6 +22,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+*/
 import { Clock, CheckCircle, Info, MessageCircle, CheckCheck, Calendar } from "lucide-react"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
@@ -57,11 +59,11 @@ export default function VisitsPage() {
     const [visitsToday, setVisitsToday] = useState<Visit[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null) // Mantido para confirmação
-    // --- MUDANÇA: Remover estado do Dialog de Detalhes ---
-    // const [showDetailsDialog, setShowDetailsDialog] = useState(false)
-    const [showCompletionDialog, setShowCompletionDialog] = useState(false)
-    const [completingVisit, setCompletingVisit] = useState(false)
+
+    // --- MUDANÇA: Remover estados do Dialog de Conclusão ---
+    // const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null)
+    // const [showCompletionDialog, setShowCompletionDialog] = useState(false)
+    // const [completingVisit, setCompletingVisit] = useState(false)
 
     // ... (useEffect fetchVisits) ...
     useEffect(() => {
@@ -74,8 +76,8 @@ export default function VisitsPage() {
                     router.push("/login")
                     return
                 }
-                
-                console.log("Fetching visits from:", `${API_BASE_URL}/user/visits`); // LOG 1: Verifica a URL
+
+                console.log("Fetching visits from:", `${API_BASE_URL}/user/visits`);
                 const response = await fetch(`${API_BASE_URL}/user/visits`, {
                     method: "GET",
                     headers: {
@@ -84,7 +86,7 @@ export default function VisitsPage() {
                     },
                 })
 
-                console.log("Response status:", response.status); // LOG 2: Verifica o status
+                console.log("Response status:", response.status);
 
                 if (!response.ok) {
                     throw new Error("Erro ao carregar visitas")
@@ -192,7 +194,7 @@ export default function VisitsPage() {
 
                     {/* Action Buttons */}
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                        {/* --- MUDANÇA: Botões Ver Detalhes agora navegam --- */}
+                        {/* ... (Botões PENDING/COMPLETED) ... */}
                         {(status === "PENDING" || status === "COMPLETED") && (
                             <Button
                                 variant="outline"
@@ -216,7 +218,8 @@ export default function VisitsPage() {
                                 >
                                     Ver Perfil
                                 </Button>
-                                <Button
+                                {/* --- MUDANÇA: Botão "Confirmar Conclusão" removido --- */}
+                                {/* <Button
                                     onClick={() => {
                                         setSelectedVisit(visit)
                                         setShowCompletionDialog(true)
@@ -225,7 +228,8 @@ export default function VisitsPage() {
                                 >
                                     <CheckCheck className="h-4 w-4 mr-2" />
                                     Confirmar Conclusão
-                                </Button>
+                                </Button> 
+                                */}
                                 <Button
                                     variant="outline"
                                     onClick={() => handleOpenChat(visit.nurse?.id)}
@@ -251,7 +255,7 @@ export default function VisitsPage() {
         </Card>
     )
 
-    // ... (EmptyState, handleCompleteVisit, handleOpenChat, loading, error...)
+    // ... (EmptyState, handleOpenChat, loading, error...)
     const EmptyState = ({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) => (
         <Card>
             <CardContent style={{ padding: "3rem", textAlign: "center" }}>
@@ -262,6 +266,8 @@ export default function VisitsPage() {
         </Card>
     )
 
+    // --- MUDANÇA: Função handleCompleteVisit removida ---
+    /*
     const handleCompleteVisit = async () => {
         if (!selectedVisit) return
 
@@ -300,34 +306,30 @@ export default function VisitsPage() {
 
             setShowCompletionDialog(false)
             setSelectedVisit(null)
-            // Add toast notification for success
-            // toast.success("Visita concluída com sucesso!");
         } catch (err) {
-            // Use toast for error notification
-            // toast.error(err instanceof Error ? err.message : "Erro ao concluir visita");
             alert(err instanceof Error ? err.message : "Erro ao concluir visita") // Fallback alert
         } finally {
             setCompletingVisit(false)
         }
     }
+    */
 
     const handleOpenChat = (nurseId: string | undefined) => { // Make nurseId optional
         if (nurseId) {
-            router.push(`/chat?selected=${nurseId}`) // Use query param for chat page
+            router.push(`/chat/${nurseId}`) // Use query param for chat page
         } else {
-            // toast.error("Não foi possível iniciar o chat: ID do enfermeiro não encontrado.");
             alert("Não foi possível iniciar o chat: ID do enfermeiro não encontrado."); // Fallback
         }
     }
 
     if (loading) {
+        // ... (JSX de Loading) ...
         return (
             <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
                 <Header />
                 <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem", textAlign: "center" }}>
                     <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "200px" }}>
                         <div style={{ color: "#15803d", fontSize: "1.125rem" }}>Carregando suas visitas...</div>
-                        {/* Consider adding a spinner here */}
                     </div>
                 </div>
             </div>
@@ -335,12 +337,13 @@ export default function VisitsPage() {
     }
 
     if (error) {
+        // ... (JSX de Erro) ...
         return (
             <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
                 <Header />
                 <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem", textAlign: "center" }}>
                     <h1 style={{ color: "#dc2626", marginBottom: "1rem" }}>{error}</h1>
-                    <Button onClick={() => window.location.reload()} style={{ marginTop: "1rem" }}> {/* Reload page on error */}
+                    <Button onClick={() => window.location.reload()} style={{ marginTop: "1rem" }}>
                         Tentar Novamente
                     </Button>
                 </div>
@@ -366,6 +369,7 @@ export default function VisitsPage() {
                 {/* Card "Visitas de Hoje" */}
                 {visitsToday.length > 0 && (
                     <div style={{ marginBottom: "2rem" }}>
+                        {/* ... (JSX Visitas de Hoje) ... */}
                         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
                             <Calendar className="h-5 w-5" style={{ color: "#15803d" }} />
                             <h2 style={{ fontSize: "1.5rem", fontWeight: "600", color: "#1f2937" }}>Visitas de Hoje</h2>
@@ -375,7 +379,6 @@ export default function VisitsPage() {
                             {visitsToday.map((visit) => (
                                 <Card key={visit.id} style={{ overflow: "hidden", border: "2px solid #15803d", backgroundColor: "#f0fdf4" }}>
                                     <CardContent style={{ padding: "1.5rem" }}>
-                                        {/* ... (Info Enfermeira) ... */}
                                         <div style={{ display: "flex", alignItems: "start", gap: "1rem", marginBottom: "1rem" }}>
                                             <img
                                                 src={visit.nurse?.image ? `${API_BASE_URL}/user/file/${visit.nurse.image}` : "/nurse-profile.jpg"}
@@ -410,7 +413,6 @@ export default function VisitsPage() {
                                                 <span style={{ fontSize: "0.875rem" }}>{visit.reason}</span>
                                             </div>
                                         </div>
-                                        {/* --- MUDANÇA: Botão navega --- */}
                                         <Button
                                             onClick={() => router.push(`/visit-details/patient/${visit.id}`)} // Navega
                                             style={{ width: "100%", backgroundColor: "#15803d", color: "white" }}
@@ -426,7 +428,7 @@ export default function VisitsPage() {
                 )}
 
                 {/* Abas */}
-                {visits.length === 0 && visitsToday.length === 0 ? ( // Verifica visitsToday também
+                {visits.length === 0 && visitsToday.length === 0 ? (
                     // ... (Empty State geral)
                     <Card>
                         <CardContent style={{ padding: "3rem", textAlign: "center" }}>
@@ -460,6 +462,7 @@ export default function VisitsPage() {
                             </TabsTrigger>
                         </TabsList>
 
+                        {/* ... (TabsContent) ... */}
                         <TabsContent value="pending">
                             {pendingVisits.length === 0 ? (
                                 <EmptyState icon={<Clock className="h-16 w-16 text-amber-500 mx-auto" />} title="Nenhuma visita pendente" description="Você não tem visitas aguardando confirmação." />
@@ -491,12 +494,11 @@ export default function VisitsPage() {
                 )}
             </div>
 
-            {/* --- MUDANÇA: Dialog de Detalhes REMOVIDO --- */}
-            {/* <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}> ... </Dialog> */}
+            {/* --- MUDANÇA: Dialog de Detalhes REMOVIDO (já removido) --- */}
 
-            {/* AlertDialog para Confirmação de Conclusão (Mantido) */}
+            {/* --- MUDANÇA: AlertDialog de Conclusão REMOVIDO --- */}
+            {/*
             <AlertDialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
-                {/* ... (Conteúdo do AlertDialog para concluir visita) ... */}
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Confirmar Conclusão da Visita</AlertDialogTitle>
@@ -516,6 +518,7 @@ export default function VisitsPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            */}
         </div>
     )
 }
