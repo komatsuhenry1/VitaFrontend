@@ -25,7 +25,7 @@ interface NurseData {
     department: string
     image: string
     available: boolean // <--- É ESTE CAMPO
-    location: string
+    neighborhood: string
     bio: string
     qualifications: string[]
     services: string[]
@@ -299,7 +299,7 @@ export default function NurseProfile() {
                                 <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#15803d", marginBottom: "0.25rem" }}>
                                     {nurse.price > 0 ? `R$ ${nurse.price}/hora` : "Preço a combinar"}
                                 </div>
-                                <p style={{ color: "#6b7280", fontSize: "0.875rem", marginBottom: "1.5rem" }}>📍 {nurse.location}</p>
+                                <p style={{ color: "#6b7280", fontSize: "0.875rem", marginBottom: "1.5rem" }}>📍 {nurse.neighborhood}</p>
 
                                 <Button
                                     onClick={() => setShowBookingForm(true)}
