@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { ArrowLeft, Loader2 } from "lucide-react"
@@ -22,8 +23,8 @@ interface NurseData {
     shift: string
     department: string
     image: string
-    online: boolean
-    location: string
+    online: boolean // <-- MUDANÇA: de 'available' para 'online'
+    neighborhood: string
     bio: string
     qualifications: string[]
     services: string[]
@@ -33,10 +34,10 @@ interface NurseData {
         comment: string
         date: string
     }>
-    availability: Array<{
-        day: string
-        hours: string
-    }>
+    // <-- MUDANÇA: 'availability' removido e campos da API adicionados
+    days_available: string[] | null
+    start_time: string | null
+    end_time: string | null
 }
 
 interface ApiResponse {
@@ -59,7 +60,13 @@ export default function ImmediateConsultationNurseProfile() {
 
     // Estados para o diálogo de consulta imediata
     const [showConsultationDialog, setShowConsultationDialog] = useState(false)
-    const [consultationMessage, setConsultationMessage] = useState("")
+    const [description, setDescription] = useState("")
+    const [reason, setReason] = useState("")
+    const [cep, setCep] = useState("")
+    const [street, setStreet] = useState("")
+    const [number, setNumber] = useState("")
+    const [complement, setComplement] = useState("")
+    const [neighborhood, setNeighborhood] = useState("")
     const [sending, setSending] = useState(false)
 
     const socketRef = useRef<WebSocket | null>(null)
@@ -118,8 +125,15 @@ export default function ImmediateConsultationNurseProfile() {
     }, [])
 
     const handleRequestConsultation = async () => {
-        if (!consultationMessage.trim()) {
-            toast.error("Por favor, descreva o motivo da consulta")
+        if (
+            !description.trim() ||
+            !reason.trim() ||
+            !cep.trim() ||
+            !street.trim() ||
+            !number.trim() ||
+            !neighborhood.trim()
+        ) {
+            toast.error("Por favor, preencha todos os campos obrigatórios")
             return
         }
 
@@ -131,9 +145,19 @@ export default function ImmediateConsultationNurseProfile() {
         try {
             setSending(true)
 
+            const consultationData = {
+                description: description.trim(),
+                reason: reason.trim(),
+                cep: cep.trim(),
+                street: street.trim(),
+                number: number.trim(),
+                complement: complement.trim(),
+                neighborhood: neighborhood.trim(),
+            }
+
             const messagePayload = {
                 receiver_id: nurseId,
-                message: consultationMessage.trim(),
+                message: `Solicitação de Consulta Imediata:\n\nMotivo: ${consultationData.reason}\n\nDescrição: ${consultationData.description}\n\nEndereço:\n${consultationData.street}, ${consultationData.number}${consultationData.complement ? ` - ${consultationData.complement}` : ""}\n${consultationData.neighborhood}\nCEP: ${consultationData.cep}`,
             }
 
             socketRef.current.send(JSON.stringify(messagePayload))
@@ -186,6 +210,8 @@ export default function ImmediateConsultationNurseProfile() {
             <Header />
 
             <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem" }}>
+
+
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "2rem" }}>
                     {/* Left Column - Nurse Info */}
                     <div>
@@ -213,10 +239,10 @@ export default function ImmediateConsultationNurseProfile() {
 
                                 <div style={{ display: "flex", justifyContent: "center", gap: "1rem", marginBottom: "1rem" }}>
                                     <Badge
-                                        variant={nurse.online ? "default" : "secondary"}
-                                        style={{ backgroundColor: nurse.online ? "#15803d" : "#6b7280" }}
+                                        variant={nurse.online ? "default" : "secondary"} // <-- MUDANÇA
+                                        style={{ backgroundColor: nurse.online ? "#15803d" : "#6b7280" }} // <-- MUDANÇA
                                     >
-                                        {nurse.online ? "Online Agora" : "Offline"}
+                                        {nurse.online ? "Online Agora" : "Offline"} {/* <-- MUDANÇA */}
                                     </Badge>
                                 </div>
 
@@ -236,44 +262,55 @@ export default function ImmediateConsultationNurseProfile() {
                                 <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#15803d", marginBottom: "0.25rem" }}>
                                     {nurse.price > 0 ? `R$ ${nurse.price}/hora` : "Preço a combinar"}
                                 </div>
-                                <p style={{ color: "#6b7280", fontSize: "0.875rem", marginBottom: "1.5rem" }}>📍 {nurse.location}</p>
+                                <p style={{ color: "#6b7280", fontSize: "0.875rem", marginBottom: "1.5rem" }}>📍 {nurse.neighborhood}</p>
 
                                 <Button
                                     onClick={() => setShowConsultationDialog(true)}
-                                    disabled={!nurse.online}
+                                    disabled={!nurse.online} // <-- MUDANÇA
                                     style={{
-                                        backgroundColor: nurse.online ? "#15803d" : "#9ca3af",
+                                        backgroundColor: nurse.online ? "#15803d" : "#9ca3af", // <-- MUDANÇA
                                         color: "white",
                                         width: "100%",
-                                        cursor: nurse.online ? "pointer" : "not-allowed",
+                                        cursor: nurse.online ? "pointer" : "not-allowed", // <-- MUDANÇA
                                     }}
                                 >
-                                    {nurse.online ? "Solicitar Consulta Imediata" : "Enfermeiro Indisponível"}
+                                    {nurse.online ? "Solicitar Consulta Imediata" : "Enfermeiro Indisponível"} {/* <-- MUDANÇA */}
                                 </Button>
                             </CardContent>
                         </Card>
 
                         {/* Availability */}
+                        {/* <-- MUDANÇA: Bloco inteiro de disponibilidade atualizado */}
                         <Card>
                             <CardHeader>
                                 <CardTitle style={{ color: "#15803d" }}>Disponibilidade</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                {nurse.availability && nurse.availability.length > 0 ? (
-                                    nurse.availability.map((slot, index) => (
-                                        <div
-                                            key={index}
-                                            style={{
-                                                display: "flex",
-                                                justifyContent: "space-between",
-                                                padding: "0.5rem 0",
-                                                borderBottom: index < nurse.availability.length - 1 ? "1px solid #e5e7eb" : "none",
-                                            }}
-                                        >
-                                            <span style={{ fontWeight: "600" }}>{slot.day}</span>
-                                            <span style={{ color: "#6b7280" }}>{slot.hours}</span>
+                                {nurse.days_available && nurse.days_available.length > 0 && nurse.start_time && nurse.end_time ? (
+                                    <>
+                                        <div style={{ marginBottom: "1rem" }}>
+                                            <span style={{ fontWeight: "600", display: "block", marginBottom: "0.25rem" }}>
+                                                Horário:
+                                            </span>
+                                            <span style={{ color: "#6b7280" }}>{`${nurse.start_time} - ${nurse.end_time}`}</span>
                                         </div>
-                                    ))
+                                        <div>
+                                            <span style={{ fontWeight: "600", display: "block", marginBottom: "0.5rem" }}>
+                                                Dias da Semana:
+                                            </span>
+                                            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                                                {nurse.days_available.map((day) => (
+                                                    <Badge
+                                                        key={day}
+                                                        variant="outline"
+                                                        style={{ borderColor: "#15803d", color: "#15803d" }}
+                                                    >
+                                                        {day}
+                                                    </Badge>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </>
                                 ) : (
                                     <p style={{ color: "#6b7280", textAlign: "center" }}>Disponibilidade não informada</p>
                                 )}
@@ -308,7 +345,8 @@ export default function ImmediateConsultationNurseProfile() {
                                                 key={index}
                                                 style={{
                                                     padding: "0.5rem 0",
-                                                    borderBottom: index < nurse.qualifications.length - 1 ? "1px solid #e5e7eb" : "none",
+                                                    borderBottom:
+                                                        index < nurse.qualifications.length - 1 ? "1px solid #e5e7eb" : "none",
                                                 }}
                                             >
                                                 <span style={{ color: "#15803d", marginRight: "0.5rem" }}>✓</span>
@@ -391,22 +429,109 @@ export default function ImmediateConsultationNurseProfile() {
             </div>
 
             <Dialog open={showConsultationDialog} onOpenChange={setShowConsultationDialog}>
-                <DialogContent style={{ maxWidth: "500px" }}>
+                <DialogContent style={{ maxWidth: "600px", maxHeight: "90vh", overflowY: "auto" }}>
                     <DialogHeader>
                         <DialogTitle style={{ color: "#15803d", fontSize: "1.5rem" }}>Solicitar Consulta Imediata</DialogTitle>
                         <DialogDescription>
-                            Descreva brevemente o motivo da consulta. Sua mensagem será enviada diretamente para {nurse.name}.
+                            Preencha os dados abaixo para solicitar uma consulta imediata com {nurse.name}.
                         </DialogDescription>
                     </DialogHeader>
 
                     <div style={{ marginTop: "1rem" }}>
+                        {/* Motivo da Consulta */}
                         <div style={{ marginBottom: "1rem" }}>
-                            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>Motivo da Consulta</label>
+                            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>
+                                Motivo da Consulta <span style={{ color: "#dc2626" }}>*</span>
+                            </label>
+                            <Input
+                                placeholder="Ex: Aplicação de medicação, Curativo, Aferição de pressão..."
+                                value={reason}
+                                onChange={(e) => setReason(e.target.value)}
+                                disabled={sending}
+                            />
+                        </div>
+
+                        {/* Descrição */}
+                        <div style={{ marginBottom: "1rem" }}>
+                            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>
+                                Descrição <span style={{ color: "#dc2626" }}>*</span>
+                            </label>
                             <Textarea
-                                placeholder="Ex: Preciso de atendimento domiciliar para aplicação de medicação..."
-                                value={consultationMessage}
-                                onChange={(e) => setConsultationMessage(e.target.value)}
-                                rows={5}
+                                placeholder="Descreva detalhadamente o atendimento necessário..."
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                rows={3}
+                                disabled={sending}
+                            />
+                        </div>
+
+                        {/* Endereço para Atendimento */}
+                        <div
+                            style={{ marginTop: "1.5rem", marginBottom: "1rem", paddingTop: "1rem", borderTop: "1px solid #e5e7eb" }}
+                        >
+                            <h3 style={{ fontWeight: "600", color: "#1f2937", marginBottom: "1rem" }}>Endereço para Atendimento</h3>
+                        </div>
+
+                        {/* CEP */}
+                        <div style={{ marginBottom: "1rem" }}>
+                            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>
+                                CEP <span style={{ color: "#dc2626" }}>*</span>
+                            </label>
+                            <Input
+                                placeholder="00000-000"
+                                value={cep}
+                                onChange={(e) => setCep(e.target.value)}
+                                disabled={sending}
+                                maxLength={9}
+                            />
+                        </div>
+
+                        {/* Rua e Número */}
+                        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                            <div>
+                                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>
+                                    Rua <span style={{ color: "#dc2626" }}>*</span>
+                                </label>
+                                <Input
+                                    placeholder="Nome da rua"
+                                    value={street}
+                                    onChange={(e) => setStreet(e.target.value)}
+                                    disabled={sending}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>
+                                    Número <span style={{ color: "#dc2626" }}>*</span>
+                                </label>
+                                <Input
+                                    placeholder="123"
+                                    value={number}
+                                    onChange={(e) => setNumber(e.target.value)}
+                                    disabled={sending}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Complemento */}
+                        <div style={{ marginBottom: "1rem" }}>
+                            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>Complemento</label>
+                            <Input
+                                placeholder="Apto, Bloco, etc. (opcional)"
+                                value={complement}
+                                onChange={(e) => setComplement(e.target.value)}
+                                disabled={sending}
+                            />
+                        </div>
+
+                        {/* Bairro */}
+                        <div style={{ marginBottom: "1.5rem" }}>
+                            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>
+                                Bairro <span style={{ color: "#dc2626" }}>*</span>
+                            </label>
+                            <Input
+                                placeholder="Nome do bairro"
+                                value={neighborhood}
+                                onChange={(e) => setNeighborhood(e.target.value)}
                                 disabled={sending}
                             />
                         </div>
@@ -431,7 +556,15 @@ export default function ImmediateConsultationNurseProfile() {
                                     justifyContent: "center",
                                     gap: "0.5rem",
                                 }}
-                                disabled={!consultationMessage.trim() || sending}
+                                disabled={
+                                    !description.trim() ||
+                                    !reason.trim() ||
+                                    !cep.trim() ||
+                                    !street.trim() ||
+                                    !number.trim() ||
+                                    !neighborhood.trim() ||
+                                    sending
+                                }
                             >
                                 {sending ? (
                                     <>
