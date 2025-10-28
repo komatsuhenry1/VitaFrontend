@@ -9,6 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
+// --- ADICIONADO ---
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+// --- FIM DA ADIÇÃO ---
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { ArrowLeft, Loader2 } from "lucide-react"
@@ -23,7 +26,7 @@ interface NurseData {
     shift: string
     department: string
     image: string
-    online: boolean // <-- MUDANÇA: de 'available' para 'online'
+    online: boolean
     neighborhood: string
     bio: string
     qualifications: string[]
@@ -34,7 +37,6 @@ interface NurseData {
         comment: string
         date: string
     }>
-    // <-- MUDANÇA: 'availability' removido e campos da API adicionados
     days_available: string[] | null
     start_time: string | null
     end_time: string | null
@@ -62,6 +64,9 @@ export default function ImmediateConsultationNurseProfile() {
     const [showConsultationDialog, setShowConsultationDialog] = useState(false)
     const [description, setDescription] = useState("")
     const [reason, setReason] = useState("")
+    // --- ADICIONADO ---
+    const [visitType, setVisitType] = useState("domiciliar")
+    // --- FIM DA ADIÇÃO ---
     const [cep, setCep] = useState("")
     const [street, setStreet] = useState("")
     const [number, setNumber] = useState("")
@@ -125,14 +130,17 @@ export default function ImmediateConsultationNurseProfile() {
     }, [])
 
     const handleRequestConsultation = async () => {
+        // --- ALTERADO ---
         if (
             !description.trim() ||
             !reason.trim() ||
+            !visitType.trim() || // Validação adicionada
             !cep.trim() ||
             !street.trim() ||
             !number.trim() ||
             !neighborhood.trim()
         ) {
+            // --- FIM DA ALTERAÇÃO ---
             toast.error("Por favor, preencha todos os campos obrigatórios")
             return
         }
@@ -148,6 +156,9 @@ export default function ImmediateConsultationNurseProfile() {
             const consultationData = {
                 description: description.trim(),
                 reason: reason.trim(),
+                // --- ADICIONADO ---
+                visit_type: visitType,
+                // --- FIM DA ADIÇÃO ---
                 cep: cep.trim(),
                 street: street.trim(),
                 number: number.trim(),
@@ -155,10 +166,13 @@ export default function ImmediateConsultationNurseProfile() {
                 neighborhood: neighborhood.trim(),
             }
 
+            // --- ALTERADO ---
+            // Adicionado "Tipo de Visita" à mensagem
             const messagePayload = {
                 receiver_id: nurseId,
-                message: `Solicitação de Consulta Imediata:\n\nMotivo: ${consultationData.reason}\n\nDescrição: ${consultationData.description}\n\nEndereço:\n${consultationData.street}, ${consultationData.number}${consultationData.complement ? ` - ${consultationData.complement}` : ""}\n${consultationData.neighborhood}\nCEP: ${consultationData.cep}`,
+                message: `Solicitação de Consulta Imediata:\n\nTipo de Visita: ${consultationData.visit_type}\n\nMotivo: ${consultationData.reason}\n\nDescrição: ${consultationData.description}\n\nEndereço:\n${consultationData.street}, ${consultationData.number}${consultationData.complement ? ` - ${consultationData.complement}` : ""}\n${consultationData.neighborhood}\nCEP: ${consultationData.cep}`,
             }
+            // --- FIM DA ALTERAÇÃO ---
 
             socketRef.current.send(JSON.stringify(messagePayload))
 
@@ -210,7 +224,21 @@ export default function ImmediateConsultationNurseProfile() {
             <Header />
 
             <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem" }}>
-
+                <Button
+                    onClick={() => router.back()}
+                    variant="outline"
+                    style={{
+                        marginBottom: "1.5rem",
+                        borderColor: "#15803d",
+                        color: "#15803d",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                    }}
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                    Voltar ao Mapa
+                </Button>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "2rem" }}>
                     {/* Left Column - Nurse Info */}
@@ -239,10 +267,10 @@ export default function ImmediateConsultationNurseProfile() {
 
                                 <div style={{ display: "flex", justifyContent: "center", gap: "1rem", marginBottom: "1rem" }}>
                                     <Badge
-                                        variant={nurse.online ? "default" : "secondary"} // <-- MUDANÇA
-                                        style={{ backgroundColor: nurse.online ? "#15803d" : "#6b7280" }} // <-- MUDANÇA
+                                        variant={nurse.online ? "default" : "secondary"}
+                                        style={{ backgroundColor: nurse.online ? "#15803d" : "#6b7280" }}
                                     >
-                                        {nurse.online ? "Online Agora" : "Offline"} {/* <-- MUDANÇA */}
+                                        {nurse.online ? "Online Agora" : "Offline"}
                                     </Badge>
                                 </div>
 
@@ -266,21 +294,20 @@ export default function ImmediateConsultationNurseProfile() {
 
                                 <Button
                                     onClick={() => setShowConsultationDialog(true)}
-                                    disabled={!nurse.online} // <-- MUDANÇA
+                                    disabled={!nurse.online}
                                     style={{
-                                        backgroundColor: nurse.online ? "#15803d" : "#9ca3af", // <-- MUDANÇA
+                                        backgroundColor: nurse.online ? "#15803d" : "#9ca3af",
                                         color: "white",
                                         width: "100%",
-                                        cursor: nurse.online ? "pointer" : "not-allowed", // <-- MUDANÇA
+                                        cursor: nurse.online ? "pointer" : "not-allowed",
                                     }}
                                 >
-                                    {nurse.online ? "Solicitar Consulta Imediata" : "Enfermeiro Indisponível"} {/* <-- MUDANÇA */}
+                                    {nurse.online ? "Solicitar Consulta Imediata" : "Enfermeiro Indisponível"}
                                 </Button>
                             </CardContent>
                         </Card>
 
                         {/* Availability */}
-                        {/* <-- MUDANÇA: Bloco inteiro de disponibilidade atualizado */}
                         <Card>
                             <CardHeader>
                                 <CardTitle style={{ color: "#15803d" }}>Disponibilidade</CardTitle>
@@ -465,6 +492,24 @@ export default function ImmediateConsultationNurseProfile() {
                             />
                         </div>
 
+                        {/* --- BLOCO ADICIONADO --- */}
+                        <div style={{ marginBottom: "1rem" }}>
+                            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>
+                                Tipo de Visita <span style={{ color: "#dc2626" }}>*</span>
+                            </label>
+                            <Select value={visitType} onValueChange={setVisitType} disabled={sending}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecione o tipo de visita" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="domiciliar">Domiciliar</SelectItem>
+                                    <SelectItem value="hospitalar">Hospitalar</SelectItem>
+                                    <SelectItem value="clinica">Clínica</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        {/* --- FIM DO BLOCO ADICIONADO --- */}
+
                         {/* Endereço para Atendimento */}
                         <div
                             style={{ marginTop: "1.5rem", marginBottom: "1rem", paddingTop: "1rem", borderTop: "1px solid #e5e7eb" }}
@@ -513,7 +558,7 @@ export default function ImmediateConsultationNurseProfile() {
                         </div>
 
                         {/* Complemento */}
-                        <div style={{ marginBottom: "1rem" }}>
+                        <div style={{ marginBottom: "1sem" }}>
                             <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>Complemento</label>
                             <Input
                                 placeholder="Apto, Bloco, etc. (opcional)"
@@ -556,15 +601,18 @@ export default function ImmediateConsultationNurseProfile() {
                                     justifyContent: "center",
                                     gap: "0.5rem",
                                 }}
+                                // --- ALTERADO ---
                                 disabled={
                                     !description.trim() ||
                                     !reason.trim() ||
+                                    !visitType.trim() ||
                                     !cep.trim() ||
                                     !street.trim() ||
                                     !number.trim() ||
                                     !neighborhood.trim() ||
                                     sending
                                 }
+                            // --- FIM DA ALTERAÇÃO ---
                             >
                                 {sending ? (
                                     <>
