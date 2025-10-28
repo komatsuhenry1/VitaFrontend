@@ -6,20 +6,20 @@ import { Header } from "@/components/Header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Wifi, WifiOff, Loader2, Calendar, Clock, MapPin, DollarSign, BellRing } from "lucide-react"
+// import Link from "next/link" // Removido se não usado
+import { Wifi, WifiOff, Loader2, Calendar, Clock, MapPin, DollarSign, BellRing, User } // User IMPORTADO
+  from "lucide-react"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input" // Input importado (caso precise para disponibilidade)
-import { Label } from "@/components/ui/label"   // Label importado (caso precise para disponibilidade)
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import Image from "next/image" // Image importado
+import { Badge } from "@/components/ui/badge" // Badge importado
 
-// ==================
-// ALTERAÇÃO 1: Definir a URL BASE sem o caminho
-// ==================
-const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_BASE_URL || "ws://localhost:8081" // SEM /ws/chat aqui
-
+const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_BASE_URL || "ws://localhost:8081"
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
 
-// Interfaces (mantidas iguais)
+// --- Interfaces ---
 interface Schedule {
   id: string
   status: string
@@ -69,9 +69,19 @@ interface NurseData {
   }>
 }
 
+// Interface da notificação ATUALIZADA
+interface VisitNotification {
+  type: string
+  visit_id: string
+  patient_name: string
+  patient_id: string // <-- CORRIGIDO: Adicionado aqui
+  reason: string
+  value: number
+  address: string
+}
+
 // Estilo Hero (mantido igual)
 const heroStyle = {
-  // ...
   backgroundImage: `
     linear-gradient(rgba(21, 128, 61, 0.7), rgba(83, 83, 83, 0.8)),
     url('/dashboard_imagem.png')
@@ -84,7 +94,6 @@ const heroStyle = {
 
 // Funções utilitárias (mantidas iguais)
 const formatDateTime = (isoDate: string) => {
-  // ...
   const date = new Date(isoDate)
   const dateStr = date.toLocaleDateString("pt-BR", {
     day: "2-digit",
@@ -99,7 +108,6 @@ const formatDateTime = (isoDate: string) => {
 }
 
 const getStatusBadge = (status: string) => {
-  // ...
   const statusMap: Record<string, { color: string; bg: string; label: string }> = {
     PENDING: { color: "#f59e0b", bg: "#fef3c7", label: "Pendente" },
     CONFIRMED: { color: "#10b981", bg: "#d1fae5", label: "Confirmado" },
@@ -109,28 +117,18 @@ const getStatusBadge = (status: string) => {
   return statusMap[status] || { color: "#6b7280", bg: "#f3f4f6", label: status }
 }
 
-// Estrutura esperada da notificação (mantida)
-interface VisitNotification {
-  type: string
-  visit_id: string
-  patient_name: string
-  reason: string
-  value: number
-  address: string
-}
-
 export default function NurseDashboard() {
   const router = useRouter()
   const [nurseData, setNurseData] = useState<NurseData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Estados do WebSocket (mantidos)
+  // Estados do WebSocket
   const [isOnline, setIsOnline] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
   const webSocketRef = useRef<WebSocket | null>(null)
 
-  // Estados da notificação (mantidos)
+  // Estados da notificação
   const [showNotification, setShowNotification] = useState(false)
   const [currentNotification, setCurrentNotification] = useState<VisitNotification | null>(null)
 
@@ -149,7 +147,6 @@ export default function NurseDashboard() {
   // useEffect para buscar dados (mantido igual)
   useEffect(() => {
     const fetchNurseData = async () => {
-      // ... (lógica de fetch mantida igual)
       try {
         const token = localStorage.getItem("token")
         const user = JSON.parse(localStorage.getItem("user") || "{}")
@@ -197,7 +194,6 @@ export default function NurseDashboard() {
 
     fetchNurseData()
 
-    // useEffect de limpeza (mantido igual)
     return () => {
       webSocketRef.current?.close()
       console.log("WebSocket desconectado ao sair do componente.")
@@ -220,18 +216,13 @@ export default function NurseDashboard() {
     console.log("Tentando conectar WebSocket...")
     setIsConnecting(true)
 
-    console.log("WS_BASE_URL sendo usado:", WS_BASE_URL); // Log para depuração
-
-    // ==================
-    // ALTERAÇÃO 2: Adiciona o caminho /ws/chat aqui, como na ChatPage
-    // ==================
+    console.log("WS_BASE_URL sendo usado:", WS_BASE_URL)
     const wsUrl = `${WS_BASE_URL}/ws/chat?token=${token}`
-
-    console.log("URL final da conexão:", wsUrl); // Log para depuração
+    console.log("URL final da conexão:", wsUrl)
 
     try {
       const ws = new WebSocket(wsUrl)
-      webSocketRef.current = ws // Armazena a instância
+      webSocketRef.current = ws
 
       ws.onopen = () => {
         console.log("WebSocket conectado com sucesso!")
@@ -263,27 +254,23 @@ export default function NurseDashboard() {
         webSocketRef.current = null
         if (!event.wasClean) {
           toast.warning("Desconectado inesperadamente.")
-          // Considerar lógica de reconexão aqui
         } else {
           toast.info("Você ficou offline.")
         }
       }
 
       ws.onerror = (errorEvent) => {
-        // O evento 'error' geralmente é seguido por 'close'.
-        // Logamos o erro mas deixamos o 'onclose' tratar a UI.
         console.error("Erro no WebSocket:", errorEvent)
-        // Apenas garantimos que o estado de conexão esteja falso
-        setIsConnecting(false);
-        setIsOnline(false); // Garante que está offline em caso de erro
-        webSocketRef.current = null // Limpa a referência
+        setIsConnecting(false)
+        setIsOnline(false)
+        webSocketRef.current = null
         toast.error("Erro na conexão WebSocket. Verifique o console.")
       }
     } catch (error) {
-      console.error("Falha ao criar instância do WebSocket:", error);
-      toast.error("Não foi possível iniciar a conexão WebSocket.");
-      setIsConnecting(false);
-      setIsOnline(false);
+      console.error("Falha ao criar instância do WebSocket:", error)
+      toast.error("Não foi possível iniciar a conexão WebSocket.")
+      setIsConnecting(false)
+      setIsOnline(false)
     }
   }
 
@@ -325,9 +312,22 @@ export default function NurseDashboard() {
     setCurrentNotification(null)
   }
 
+  // ============================================
+  // CORRIGIDO: Definição da função adicionada
+  // ============================================
+  const handleViewPatientProfile = (patientId: string | undefined) => {
+    if (!patientId) {
+      toast.error("ID do paciente não encontrado na notificação.");
+      return;
+    }
+    setShowNotification(false);
+    setCurrentNotification(null);
+    router.push(`/patient-profile/${patientId}`);
+  }
+
+
   // Funções de disponibilidade (mantidas iguais)
   const handleSaveAvailability = async () => {
-    // ... (lógica mantida igual)
     setIsSavingAvailability(true)
     try {
       const token = localStorage.getItem("token")
@@ -344,7 +344,7 @@ export default function NurseDashboard() {
           price: availabilityForm.price_per_hour,
           max_patients_per_day: availabilityForm.max_patients_per_day,
           days_available: availabilityForm.days_available,
-          available: availability, // Você ainda usa 'available' aqui? Se sim, ok.
+          available: availability,
         }),
       })
 
@@ -362,7 +362,6 @@ export default function NurseDashboard() {
   }
 
   const toggleDayAvailability = (day: string) => {
-    // ... (lógica mantida igual)
     setAvailabilityForm((prev) => ({
       ...prev,
       days_available: prev.days_available.includes(day)
@@ -373,7 +372,6 @@ export default function NurseDashboard() {
 
   // JSX de Loading e Erro (mantidos iguais)
   if (loading) {
-    // ...
     return (
       <div style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}>
         <Header />
@@ -395,7 +393,6 @@ export default function NurseDashboard() {
   }
 
   if (error) {
-    // ...
     return (
       <div style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}>
         <Header />
@@ -426,11 +423,8 @@ export default function NurseDashboard() {
   // Lógica de filtragem e pacientes (mantida igual)
   const upcomingSchedules =
     nurseData.schedules?.filter((schedule) => schedule.status === "PENDING" || schedule.status === "CONFIRMED") || []
-
   const completedSchedules = nurseData.schedules?.filter((schedule) => schedule.status === "COMPLETED") || []
-
   const uniquePatients = completedSchedules.reduce(
-    // ...
     (acc, schedule) => {
       if (!acc.find((p) => p.patient_id === schedule.patient_id)) {
         acc.push({
@@ -460,10 +454,9 @@ export default function NurseDashboard() {
     <div style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}>
       <Header />
 
-      {/* Hero Section (Botão atualizado) */}
+      {/* Hero Section (mantida igual) */}
       <section style={heroStyle}>
         <div style={{ maxWidth: "1200px", margin: "0 auto", textAlign: "center" }}>
-          {/* ... (Título e subtítulo mantidos) ... */}
           <h1 style={{ fontSize: "2.5rem", fontWeight: "bold", marginBottom: "1rem" }}>Dashboard do Enfermeiro</h1>
           <p style={{ fontSize: "1.25rem", opacity: 0.9, marginBottom: "2rem" }}>
             Gerencie seus atendimentos e acompanhe sua carreira profissional
@@ -474,7 +467,6 @@ export default function NurseDashboard() {
               onClick={handleToggleOnline}
               disabled={isConnecting}
               style={{
-                // ... (estilos mantidos)
                 display: "flex",
                 alignItems: "center",
                 gap: "0.75rem",
@@ -494,7 +486,7 @@ export default function NurseDashboard() {
                 transform: isConnecting ? "scale(0.95)" : "scale(1)",
                 opacity: isConnecting ? 0.7 : 1,
               }}
-              onMouseEnter={(e) => { // Efeitos de hover mantidos
+              onMouseEnter={(e) => {
                 if (!isConnecting) {
                   e.currentTarget.style.transform = "scale(1.05)"
                 }
@@ -533,7 +525,6 @@ export default function NurseDashboard() {
             </button>
           </div>
 
-          {/* Stats Cards (mantidos) */}
           <div
             style={{
               display: "grid",
@@ -542,7 +533,6 @@ export default function NurseDashboard() {
               marginTop: "2rem",
             }}
           >
-            {/* ... (Seus 4 cards de stats) ... */}
             <Card style={{ backgroundColor: "rgba(255, 255, 255, 0.1)", border: "none" }}>
               <CardContent style={{ padding: "1.5rem", textAlign: "center" }}>
                 <div style={{ fontSize: "2rem", fontWeight: "bold", color: "white" }}>
@@ -583,13 +573,11 @@ export default function NurseDashboard() {
       {/* Dashboard Content (Tabs - mantidos) */}
       <section style={{ padding: "3rem 1rem", maxWidth: "1200px", margin: "0 auto" }}>
         <Tabs defaultValue="schedule" className="w-full">
-          {/* ... (TabsList e TabsContent mantidos) ... */}
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="schedule">Agenda</TabsTrigger>
             <TabsTrigger value="patients">Pacientes</TabsTrigger>
             <TabsTrigger value="history">Histórico</TabsTrigger>
           </TabsList>
-          {/* Conteúdo das Tabs (mantido igual) */}
           {/* Schedule Tab */}
           <TabsContent value="schedule" className="space-y-4">
             <Card>
@@ -613,7 +601,6 @@ export default function NurseDashboard() {
                           }}
                         >
                           <CardContent style={{ padding: "1.5rem" }}>
-                            {/* ... Conteúdo do Card de Agendamento ... */}
                             <div
                               style={{
                                 display: "flex",
@@ -730,7 +717,6 @@ export default function NurseDashboard() {
                           }}
                         >
                           <CardContent style={{ padding: "1.5rem" }}>
-                            {/* ... Conteúdo do Card de Paciente ... */}
                             <div style={{ marginBottom: "1rem" }}>
                               <h3
                                 style={{
@@ -804,7 +790,6 @@ export default function NurseDashboard() {
                           }}
                         >
                           <CardContent style={{ padding: "1.5rem" }}>
-                            {/* ... Conteúdo do Card de Histórico ... */}
                             <div
                               style={{
                                 display: "flex",
@@ -893,7 +878,7 @@ export default function NurseDashboard() {
         </Tabs>
       </section>
 
-      {/* Dialog de Notificação (mantido igual) */}
+      {/* DIALOG PARA NOTIFICAÇÃO DE VISITA (BOTÃO CORRIGIDO) */}
       <Dialog open={showNotification} onOpenChange={setShowNotification}>
         <DialogContent>
           <DialogHeader>
@@ -921,16 +906,27 @@ export default function NurseDashboard() {
               </p>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => handleRejectVisit(currentNotification?.visit_id)}>
-              Rejeitar
-            </Button>
+          <DialogFooter className="sm:justify-between">
             <Button
-              className="bg-green-700 hover:bg-green-800"
-              onClick={() => handleAcceptVisit(currentNotification?.visit_id)}
+              variant="secondary"
+              // CORRIGIDO: onClick chama a função definida
+              onClick={() => handleViewPatientProfile(currentNotification?.patient_id)}
+              disabled={!currentNotification?.patient_id}
+              className="flex items-center gap-2"
             >
-              Aceitar Visita
+              <User size={16} /> Ver Perfil do Paciente
             </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => handleRejectVisit(currentNotification?.visit_id)}>
+                Rejeitar
+              </Button>
+              <Button
+                className="bg-green-700 hover:bg-green-800"
+                onClick={() => handleAcceptVisit(currentNotification?.visit_id)}
+              >
+                Aceitar Visita
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

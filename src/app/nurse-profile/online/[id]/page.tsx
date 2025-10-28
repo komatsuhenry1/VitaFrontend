@@ -272,9 +272,6 @@ export default function ImmediateConsultationNurseProfile() {
             <Header />
 
             <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem" }}>
-                <Button variant="outline" onClick={() => router.back()} className="mb-6">
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
-                </Button>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "2rem" }}>
                     {/* Left Column - Nurse Info (mantido igual) */}
