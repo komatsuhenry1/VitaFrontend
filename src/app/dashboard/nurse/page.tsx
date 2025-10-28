@@ -1,16 +1,25 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/Header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Wifi, WifiOff, Loader2, Calendar, Clock, MapPin, DollarSign } from "lucide-react"
+import { Wifi, WifiOff, Loader2, Calendar, Clock, MapPin, DollarSign, BellRing } from "lucide-react"
 import { toast } from "sonner"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input" // Input importado (caso precise para disponibilidade)
+import { Label } from "@/components/ui/label"   // Label importado (caso precise para disponibilidade)
+
+// ==================
+// ALTERAÇÃO 1: Definir a URL BASE sem o caminho
+// ==================
+const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_BASE_URL || "ws://localhost:8081" // SEM /ws/chat aqui
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
 
+// Interfaces (mantidas iguais)
 interface Schedule {
   id: string
   status: string
@@ -60,7 +69,9 @@ interface NurseData {
   }>
 }
 
+// Estilo Hero (mantido igual)
 const heroStyle = {
+  // ...
   backgroundImage: `
     linear-gradient(rgba(21, 128, 61, 0.7), rgba(83, 83, 83, 0.8)),
     url('/dashboard_imagem.png')
@@ -71,7 +82,9 @@ const heroStyle = {
   padding: "5rem 0",
 }
 
+// Funções utilitárias (mantidas iguais)
 const formatDateTime = (isoDate: string) => {
+  // ...
   const date = new Date(isoDate)
   const dateStr = date.toLocaleDateString("pt-BR", {
     day: "2-digit",
@@ -86,6 +99,7 @@ const formatDateTime = (isoDate: string) => {
 }
 
 const getStatusBadge = (status: string) => {
+  // ...
   const statusMap: Record<string, { color: string; bg: string; label: string }> = {
     PENDING: { color: "#f59e0b", bg: "#fef3c7", label: "Pendente" },
     CONFIRMED: { color: "#10b981", bg: "#d1fae5", label: "Confirmado" },
@@ -95,15 +109,33 @@ const getStatusBadge = (status: string) => {
   return statusMap[status] || { color: "#6b7280", bg: "#f3f4f6", label: status }
 }
 
+// Estrutura esperada da notificação (mantida)
+interface VisitNotification {
+  type: string
+  visit_id: string
+  patient_name: string
+  reason: string
+  value: number
+  address: string
+}
+
 export default function NurseDashboard() {
   const router = useRouter()
   const [nurseData, setNurseData] = useState<NurseData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [availability, setAvailability] = useState(true)
-  const [isOnline, setIsOnline] = useState(false)
-  const [isToggling, setIsToggling] = useState(false)
 
+  // Estados do WebSocket (mantidos)
+  const [isOnline, setIsOnline] = useState(false)
+  const [isConnecting, setIsConnecting] = useState(false)
+  const webSocketRef = useRef<WebSocket | null>(null)
+
+  // Estados da notificação (mantidos)
+  const [showNotification, setShowNotification] = useState(false)
+  const [currentNotification, setCurrentNotification] = useState<VisitNotification | null>(null)
+
+  // Estados de disponibilidade (mantidos)
+  const [availability, setAvailability] = useState(true)
   const [availabilityForm, setAvailabilityForm] = useState({
     start_time: "08:00",
     end_time: "18:00",
@@ -114,8 +146,10 @@ export default function NurseDashboard() {
   })
   const [isSavingAvailability, setIsSavingAvailability] = useState(false)
 
+  // useEffect para buscar dados (mantido igual)
   useEffect(() => {
     const fetchNurseData = async () => {
+      // ... (lógica de fetch mantida igual)
       try {
         const token = localStorage.getItem("token")
         const user = JSON.parse(localStorage.getItem("user") || "{}")
@@ -141,7 +175,6 @@ export default function NurseDashboard() {
         if (result.success && result.data) {
           setNurseData(result.data)
           setAvailability(result.data.available)
-          setIsOnline(result.data.online)
 
           setAvailabilityForm({
             start_time: result.data.start_time || "08:00",
@@ -163,32 +196,138 @@ export default function NurseDashboard() {
     }
 
     fetchNurseData()
+
+    // useEffect de limpeza (mantido igual)
+    return () => {
+      webSocketRef.current?.close()
+      console.log("WebSocket desconectado ao sair do componente.")
+    }
   }, [router])
 
-  const toggleOnlineStatus = async () => {
-    setIsToggling(true)
-    try {
-      const response = await fetch(`${API_BASE_URL}/nurse/online`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-          "Content-Type": "application/json",
-        },
-      })
+  // Função para CONECTAR o WebSocket
+  const connectWebSocket = () => {
+    const token = localStorage.getItem("token")
+    if (!token) {
+      toast.error("Erro de autenticação. Faça login novamente.")
+      return
+    }
 
-      if (response.ok) {
-        setIsOnline(!isOnline)
-      } else {
-        console.error("Failed to toggle online status")
+    if (webSocketRef.current && webSocketRef.current.readyState === WebSocket.OPEN) {
+      console.warn("WebSocket já está conectado.")
+      return
+    }
+
+    console.log("Tentando conectar WebSocket...")
+    setIsConnecting(true)
+
+    console.log("WS_BASE_URL sendo usado:", WS_BASE_URL); // Log para depuração
+
+    // ==================
+    // ALTERAÇÃO 2: Adiciona o caminho /ws/chat aqui, como na ChatPage
+    // ==================
+    const wsUrl = `${WS_BASE_URL}/ws/chat?token=${token}`
+
+    console.log("URL final da conexão:", wsUrl); // Log para depuração
+
+    try {
+      const ws = new WebSocket(wsUrl)
+      webSocketRef.current = ws // Armazena a instância
+
+      ws.onopen = () => {
+        console.log("WebSocket conectado com sucesso!")
+        setIsOnline(true)
+        setIsConnecting(false)
+        toast.success("Você está online!")
+      }
+
+      ws.onmessage = (event) => {
+        console.log("Mensagem recebida:", event.data)
+        try {
+          const messageData = JSON.parse(event.data)
+
+          if (messageData.type === "IMMEDIATE_VISIT_REQUEST") {
+            setCurrentNotification(messageData as VisitNotification)
+            setShowNotification(true)
+          } else {
+            console.log("Mensagem de outro tipo recebida:", messageData)
+          }
+        } catch (e) {
+          console.error("Erro ao processar mensagem WebSocket:", e)
+        }
+      }
+
+      ws.onclose = (event) => {
+        console.log("WebSocket desconectado:", event.code, event.reason)
+        setIsOnline(false)
+        setIsConnecting(false)
+        webSocketRef.current = null
+        if (!event.wasClean) {
+          toast.warning("Desconectado inesperadamente.")
+          // Considerar lógica de reconexão aqui
+        } else {
+          toast.info("Você ficou offline.")
+        }
+      }
+
+      ws.onerror = (errorEvent) => {
+        // O evento 'error' geralmente é seguido por 'close'.
+        // Logamos o erro mas deixamos o 'onclose' tratar a UI.
+        console.error("Erro no WebSocket:", errorEvent)
+        // Apenas garantimos que o estado de conexão esteja falso
+        setIsConnecting(false);
+        setIsOnline(false); // Garante que está offline em caso de erro
+        webSocketRef.current = null // Limpa a referência
+        toast.error("Erro na conexão WebSocket. Verifique o console.")
       }
     } catch (error) {
-      console.error("Error toggling online status:", error)
-    } finally {
-      setIsToggling(false)
+      console.error("Falha ao criar instância do WebSocket:", error);
+      toast.error("Não foi possível iniciar a conexão WebSocket.");
+      setIsConnecting(false);
+      setIsOnline(false);
     }
   }
 
+  // Função para DESCONECTAR o WebSocket (mantida igual)
+  const disconnectWebSocket = () => {
+    if (webSocketRef.current) {
+      console.log("Desconectando WebSocket...")
+      setIsConnecting(true)
+      webSocketRef.current.close(1000, "Logout pelo usuário")
+    } else {
+      console.warn("Nenhuma conexão WebSocket para fechar.")
+      setIsOnline(false)
+    }
+  }
+
+  // Função do botão principal (mantida igual)
+  const handleToggleOnline = () => {
+    if (isOnline) {
+      disconnectWebSocket()
+    } else {
+      connectWebSocket()
+    }
+  }
+
+  // Funções de aceitar/rejeitar visita (mantidas iguais - placeholders)
+  const handleAcceptVisit = (visitId: string | undefined) => {
+    if (!visitId) return
+    console.log("Aceitando visita:", visitId)
+    toast.info(`Aceitando visita ${visitId}... (Lógica a implementar)`)
+    setShowNotification(false)
+    setCurrentNotification(null)
+  }
+
+  const handleRejectVisit = (visitId: string | undefined) => {
+    if (!visitId) return
+    console.log("Rejeitando visita:", visitId)
+    toast.warning(`Rejeitando visita ${visitId}... (Lógica a implementar)`)
+    setShowNotification(false)
+    setCurrentNotification(null)
+  }
+
+  // Funções de disponibilidade (mantidas iguais)
   const handleSaveAvailability = async () => {
+    // ... (lógica mantida igual)
     setIsSavingAvailability(true)
     try {
       const token = localStorage.getItem("token")
@@ -205,7 +344,7 @@ export default function NurseDashboard() {
           price: availabilityForm.price_per_hour,
           max_patients_per_day: availabilityForm.max_patients_per_day,
           days_available: availabilityForm.days_available,
-          available: availability,
+          available: availability, // Você ainda usa 'available' aqui? Se sim, ok.
         }),
       })
 
@@ -223,6 +362,7 @@ export default function NurseDashboard() {
   }
 
   const toggleDayAvailability = (day: string) => {
+    // ... (lógica mantida igual)
     setAvailabilityForm((prev) => ({
       ...prev,
       days_available: prev.days_available.includes(day)
@@ -231,7 +371,9 @@ export default function NurseDashboard() {
     }))
   }
 
+  // JSX de Loading e Erro (mantidos iguais)
   if (loading) {
+    // ...
     return (
       <div style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}>
         <Header />
@@ -253,6 +395,7 @@ export default function NurseDashboard() {
   }
 
   if (error) {
+    // ...
     return (
       <div style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}>
         <Header />
@@ -280,13 +423,14 @@ export default function NurseDashboard() {
     return null
   }
 
+  // Lógica de filtragem e pacientes (mantida igual)
   const upcomingSchedules =
     nurseData.schedules?.filter((schedule) => schedule.status === "PENDING" || schedule.status === "CONFIRMED") || []
 
   const completedSchedules = nurseData.schedules?.filter((schedule) => schedule.status === "COMPLETED") || []
 
-  // Extract unique patients from completed schedules
   const uniquePatients = completedSchedules.reduce(
+    // ...
     (acc, schedule) => {
       if (!acc.find((p) => p.patient_id === schedule.patient_id)) {
         acc.push({
@@ -316,9 +460,10 @@ export default function NurseDashboard() {
     <div style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}>
       <Header />
 
-      {/* Hero Section */}
+      {/* Hero Section (Botão atualizado) */}
       <section style={heroStyle}>
         <div style={{ maxWidth: "1200px", margin: "0 auto", textAlign: "center" }}>
+          {/* ... (Título e subtítulo mantidos) ... */}
           <h1 style={{ fontSize: "2.5rem", fontWeight: "bold", marginBottom: "1rem" }}>Dashboard do Enfermeiro</h1>
           <p style={{ fontSize: "1.25rem", opacity: 0.9, marginBottom: "2rem" }}>
             Gerencie seus atendimentos e acompanhe sua carreira profissional
@@ -326,9 +471,10 @@ export default function NurseDashboard() {
 
           <div style={{ display: "flex", justifyContent: "center", marginBottom: "2rem" }}>
             <button
-              onClick={toggleOnlineStatus}
-              disabled={isToggling}
+              onClick={handleToggleOnline}
+              disabled={isConnecting}
               style={{
+                // ... (estilos mantidos)
                 display: "flex",
                 alignItems: "center",
                 gap: "0.75rem",
@@ -340,33 +486,41 @@ export default function NurseDashboard() {
                 borderColor: isOnline ? "#10b981" : "#6b7280",
                 backgroundColor: isOnline ? "#10b981" : "#374151",
                 color: "white",
-                cursor: isToggling ? "not-allowed" : "pointer",
+                cursor: isConnecting ? "wait" : "pointer",
                 transition: "all 0.3s ease",
                 boxShadow: isOnline
                   ? "0 0 20px rgba(16, 185, 129, 0.5), 0 0 40px rgba(16, 185, 129, 0.3)"
                   : "0 4px 6px rgba(0, 0, 0, 0.1)",
-                transform: isToggling ? "scale(0.95)" : "scale(1)",
-                opacity: isToggling ? 0.7 : 1,
+                transform: isConnecting ? "scale(0.95)" : "scale(1)",
+                opacity: isConnecting ? 0.7 : 1,
               }}
-              onMouseEnter={(e) => {
-                if (!isToggling) {
+              onMouseEnter={(e) => { // Efeitos de hover mantidos
+                if (!isConnecting) {
                   e.currentTarget.style.transform = "scale(1.05)"
                 }
               }}
               onMouseLeave={(e) => {
-                if (!isToggling) {
+                if (!isConnecting) {
                   e.currentTarget.style.transform = "scale(1)"
                 }
               }}
             >
-              {isToggling ? (
+              {isConnecting ? (
                 <Loader2 className="animate-spin" size={24} />
               ) : isOnline ? (
                 <Wifi size={24} />
               ) : (
                 <WifiOff size={24} />
               )}
-              <span>{isToggling ? "Alterando..." : isOnline ? "ONLINE - Disponível" : "OFFLINE - Indisponível"}</span>
+              <span>
+                {isConnecting
+                  ? isOnline
+                    ? "Desconectando..."
+                    : "Conectando..."
+                  : isOnline
+                    ? "ONLINE - Clique para ficar Offline"
+                    : "OFFLINE - Clique para ficar Online"}
+              </span>
               <div
                 style={{
                   width: "12px",
@@ -379,7 +533,7 @@ export default function NurseDashboard() {
             </button>
           </div>
 
-          {/* Stats Cards */}
+          {/* Stats Cards (mantidos) */}
           <div
             style={{
               display: "grid",
@@ -388,6 +542,7 @@ export default function NurseDashboard() {
               marginTop: "2rem",
             }}
           >
+            {/* ... (Seus 4 cards de stats) ... */}
             <Card style={{ backgroundColor: "rgba(255, 255, 255, 0.1)", border: "none" }}>
               <CardContent style={{ padding: "1.5rem", textAlign: "center" }}>
                 <div style={{ fontSize: "2rem", fontWeight: "bold", color: "white" }}>
@@ -407,7 +562,7 @@ export default function NurseDashboard() {
             <Card style={{ backgroundColor: "rgba(255, 255, 255, 0.1)", border: "none" }}>
               <CardContent style={{ padding: "1.5rem", textAlign: "center" }}>
                 <div style={{ fontSize: "2rem", fontWeight: "bold", color: "white" }}>
-                  {nurseData.rating.toFixed(1)}
+                  {nurseData.rating > 0 ? nurseData.rating.toFixed(1) : "N/A"}
                 </div>
                 <div style={{ fontSize: "0.875rem", color: "rgba(255, 255, 255, 0.8)" }}>Avaliação Média</div>
               </CardContent>
@@ -425,15 +580,16 @@ export default function NurseDashboard() {
         </div>
       </section>
 
-      {/* Dashboard Content */}
+      {/* Dashboard Content (Tabs - mantidos) */}
       <section style={{ padding: "3rem 1rem", maxWidth: "1200px", margin: "0 auto" }}>
         <Tabs defaultValue="schedule" className="w-full">
+          {/* ... (TabsList e TabsContent mantidos) ... */}
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="schedule">Agenda</TabsTrigger>
             <TabsTrigger value="patients">Pacientes</TabsTrigger>
             <TabsTrigger value="history">Histórico</TabsTrigger>
           </TabsList>
-
+          {/* Conteúdo das Tabs (mantido igual) */}
           {/* Schedule Tab */}
           <TabsContent value="schedule" className="space-y-4">
             <Card>
@@ -457,6 +613,7 @@ export default function NurseDashboard() {
                           }}
                         >
                           <CardContent style={{ padding: "1.5rem" }}>
+                            {/* ... Conteúdo do Card de Agendamento ... */}
                             <div
                               style={{
                                 display: "flex",
@@ -573,6 +730,7 @@ export default function NurseDashboard() {
                           }}
                         >
                           <CardContent style={{ padding: "1.5rem" }}>
+                            {/* ... Conteúdo do Card de Paciente ... */}
                             <div style={{ marginBottom: "1rem" }}>
                               <h3
                                 style={{
@@ -646,6 +804,7 @@ export default function NurseDashboard() {
                           }}
                         >
                           <CardContent style={{ padding: "1.5rem" }}>
+                            {/* ... Conteúdo do Card de Histórico ... */}
                             <div
                               style={{
                                 display: "flex",
@@ -733,6 +892,48 @@ export default function NurseDashboard() {
           </TabsContent>
         </Tabs>
       </section>
+
+      {/* Dialog de Notificação (mantido igual) */}
+      <Dialog open={showNotification} onOpenChange={setShowNotification}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BellRing className="text-yellow-500" />
+              Nova Solicitação de Visita Imediata!
+            </DialogTitle>
+            <DialogDescription>
+              Você recebeu um novo pedido de atendimento. Por favor, revise os detalhes abaixo e responda rapidamente.
+            </DialogDescription>
+          </DialogHeader>
+          {currentNotification && (
+            <div className="space-y-3 py-4">
+              <p>
+                <span className="font-semibold">Paciente:</span> {currentNotification.patient_name}
+              </p>
+              <p>
+                <span className="font-semibold">Motivo:</span> {currentNotification.reason}
+              </p>
+              <p>
+                <span className="font-semibold">Endereço:</span> {currentNotification.address}
+              </p>
+              <p>
+                <span className="font-semibold">Valor Estimado:</span> R$ {currentNotification.value.toFixed(2)}
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => handleRejectVisit(currentNotification?.visit_id)}>
+              Rejeitar
+            </Button>
+            <Button
+              className="bg-green-700 hover:bg-green-800"
+              onClick={() => handleAcceptVisit(currentNotification?.visit_id)}
+            >
+              Aceitar Visita
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

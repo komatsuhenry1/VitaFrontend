@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
+import { Label } from "@/components/ui/label"
 import Image from "next/image"
 import { Header } from "@/components/Header"
 import { Button } from "@/components/ui/button"
@@ -9,20 +10,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
-// --- ADICIONADO ---
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-// --- FIM DA ADIÇÃO ---
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { ArrowLeft, Loader2 } from "lucide-react"
 
+// Interfaces (mantidas iguais)
 interface NurseData {
     id: string
     name: string
     specialization: string
     experience: number
     rating: number
-    price: number
+    price: number // Precisamos do preço
     shift: string
     department: string
     image: string
@@ -49,7 +49,6 @@ interface ApiResponse {
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
-const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_BASE_URL
 
 export default function ImmediateConsultationNurseProfile() {
     const params = useParams()
@@ -60,13 +59,20 @@ export default function ImmediateConsultationNurseProfile() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
-    // Estados para o diálogo de consulta imediata
+    // Helper para pegar o horário atual formatado (ex: "14:30")
+    const getFormattedCurrentTime = () => {
+        const now = new Date()
+        const hours = now.getHours().toString().padStart(2, "0")
+        const minutes = now.getMinutes().toString().padStart(2, "0")
+        return `${hours}:${minutes}`
+    }
+
+    // Estados para o diálogo
     const [showConsultationDialog, setShowConsultationDialog] = useState(false)
     const [description, setDescription] = useState("")
     const [reason, setReason] = useState("")
-    // --- ADICIONADO ---
     const [visitType, setVisitType] = useState("domiciliar")
-    // --- FIM DA ADIÇÃO ---
+    const [visitTime, setVisitTime] = useState(getFormattedCurrentTime()) // NOVO ESTADO
     const [cep, setCep] = useState("")
     const [street, setStreet] = useState("")
     const [number, setNumber] = useState("")
@@ -74,8 +80,7 @@ export default function ImmediateConsultationNurseProfile() {
     const [neighborhood, setNeighborhood] = useState("")
     const [sending, setSending] = useState(false)
 
-    const socketRef = useRef<WebSocket | null>(null)
-
+    // useEffect para buscar dados do enfermeiro (mantido igual)
     useEffect(() => {
         const fetchNurseData = async () => {
             try {
@@ -91,6 +96,8 @@ export default function ImmediateConsultationNurseProfile() {
                 const result: ApiResponse = await response.json()
 
                 if (!response.ok) {
+                    // Adicionamos o log da resposta de erro aqui também
+                    console.error("Erro ao buscar dados do enfermeiro (resposta do backend):", result)
                     throw new Error(result.message || "Erro ao buscar dados do enfermeiro.")
                 }
 
@@ -100,6 +107,8 @@ export default function ImmediateConsultationNurseProfile() {
                     throw new Error(result.message || "Erro ao carregar dados do enfermeiro")
                 }
             } catch (err) {
+                // Logamos o erro final
+                console.error("Erro no fetchNurseData:", err)
                 setError(err instanceof Error ? err.message : "Erro desconhecido")
             } finally {
                 setLoading(false)
@@ -111,84 +120,122 @@ export default function ImmediateConsultationNurseProfile() {
         }
     }, [nurseId])
 
-    useEffect(() => {
-        const token = localStorage.getItem("token")
-        if (!token) return
-
-        const socket = new WebSocket(`${WS_BASE_URL}/ws/chat?token=${token}`)
-        socketRef.current = socket
-
-        socket.onopen = () => console.log("[v0] WebSocket: Conexão estabelecida para consulta imediata")
-        socket.onclose = () => console.log("[v0] WebSocket: Conexão encerrada")
-        socket.onerror = (error) => console.error("[v0] WebSocket: Erro detectado:", error)
-
-        return () => {
-            if (socketRef.current) {
-                socketRef.current.close()
-            }
-        }
-    }, [])
-
+    // ============================================
+    // ALTERAÇÃO PRINCIPAL: handleRequestConsultation
+    // ============================================
     const handleRequestConsultation = async () => {
-        // --- ALTERADO ---
+        // Validação dos campos (mantida e correta)
         if (
             !description.trim() ||
             !reason.trim() ||
-            !visitType.trim() || // Validação adicionada
+            !visitType.trim() ||
+            !visitTime.trim() || // <-- ADICIONADO
             !cep.trim() ||
             !street.trim() ||
             !number.trim() ||
             !neighborhood.trim()
         ) {
-            // --- FIM DA ALTERAÇÃO ---
             toast.error("Por favor, preencha todos os campos obrigatórios")
             return
         }
 
-        if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
-            toast.error("Erro de conexão. Tente novamente.")
+        // Verifica se temos os dados do enfermeiro (nurseId já é validado pelo useRouter)
+        if (!nurse) {
+            toast.error("Dados do enfermeiro não carregados. Tente novamente.")
             return
         }
 
+        // Pega o token do paciente
+        const token = localStorage.getItem("token")
+        if (!token) {
+            toast.error("Erro de autenticação. Faça login novamente.")
+            router.push("/login") // Redireciona para login se não houver token
+            return
+        }
+
+        setSending(true) // Inicia o estado de envio
+
+        // --- PREPARA A DATA ---
+        // Criar a data de hoje
+        const today = new Date()
+        const [hours, minutes] = visitTime.split(":")
+
+        // Definir o horário no objeto Date (no fuso horário local)
+        today.setHours(parseInt(hours, 10))
+        today.setMinutes(parseInt(minutes, 10))
+        today.setSeconds(0)
+        today.setMilliseconds(0)
+
+        // Formatar para ISO 8601 em UTC (formato "Z")
+        const visitDateISO = today.toISOString()
+        // --- FIM PREPARA A DATA ---
+
+        // Monta o corpo da requisição conforme o DTO esperado pelo backend
+        const requestBody = {
+            nurse_id: nurse.id, // ID do enfermeiro vindo do estado 'nurse'
+            value: nurse.price, // <-- ADICIONADO (Vem do perfil do enfermeiro)
+            date: visitDateISO, // <-- ADICIONADO (Data/hora formatada)
+            description: description.trim(),
+            reason: reason.trim(),
+            visit_type: visitType,
+            cep: cep.trim(),
+            street: street.trim(),
+            number: number.trim(),
+            complement: complement.trim(),
+            neighborhood: neighborhood.trim(),
+        }
+
         try {
-            setSending(true)
+            // Faz a chamada POST para o endpoint correto
+            const response = await fetch(`${API_BASE_URL}/user/immediate-visit`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`, // Token do PACIENTE
+                },
+                body: JSON.stringify(requestBody),
+            })
 
-            const consultationData = {
-                description: description.trim(),
-                reason: reason.trim(),
-                // --- ADICIONADO ---
-                visit_type: visitType,
-                // --- FIM DA ADIÇÃO ---
-                cep: cep.trim(),
-                street: street.trim(),
-                number: number.trim(),
-                complement: complement.trim(),
-                neighborhood: neighborhood.trim(),
+            // Processa a resposta do backend
+            if (response.ok) {
+                const result = await response.json() // Opcional, se precisar de dados da resposta
+                toast.success(result.message || "Solicitação enviada com sucesso!")
+
+                // Fecha o dialog
+                setShowConsultationDialog(false)
+
+                // Limpa os campos (opcional)
+                setDescription("")
+                setReason("")
+                setVisitTime(getFormattedCurrentTime()) // <-- RESETADO
+                setCep("")
+                setStreet("")
+                setNumber("")
+                setComplement("")
+                setNeighborhood("")
+                setVisitType("domiciliar")
+
+                // Redireciona para a tela de espera ou confirmação (ajuste a rota se necessário)
+                // Poderia ser uma nova página tipo /solicitacao/[visitId]/aguardando
+                toast.info("Aguardando confirmação do enfermeiro...")
+                // router.push(`/chats?selected=${nurseId}`) // Ou redireciona para o chat
+            } else {
+                // Tenta pegar a mensagem de erro do backend
+                const errorResult = await response.json()
+                console.error("Resposta de erro completa do backend:", errorResult)
+                // Tenta pegar 'error' ou 'message' do JSON de resposta
+                throw new Error(errorResult.message || errorResult.error || `Erro ${response.status}: Falha ao solicitar visita.`)
             }
-
-            // --- ALTERADO ---
-            // Adicionado "Tipo de Visita" à mensagem
-            const messagePayload = {
-                receiver_id: nurseId,
-                message: `Solicitação de Consulta Imediata:\n\nTipo de Visita: ${consultationData.visit_type}\n\nMotivo: ${consultationData.reason}\n\nDescrição: ${consultationData.description}\n\nEndereço:\n${consultationData.street}, ${consultationData.number}${consultationData.complement ? ` - ${consultationData.complement}` : ""}\n${consultationData.neighborhood}\nCEP: ${consultationData.cep}`,
-            }
-            // --- FIM DA ALTERAÇÃO ---
-
-            socketRef.current.send(JSON.stringify(messagePayload))
-
-            toast.success("Solicitação enviada com sucesso!")
-
-            setTimeout(() => {
-                router.push(`/chats?selected=${nurseId}`)
-            }, 1000)
         } catch (err) {
-            toast.error("Erro ao enviar solicitação. Tente novamente.")
-            console.error("[v0] Erro ao enviar mensagem:", err)
+            // Mostra o erro para o usuário
+            toast.error(err instanceof Error ? err.message : "Erro desconhecido ao enviar solicitação.")
+            console.error("Erro ao solicitar visita imediata (no catch final):", err) // Loga o erro já processado
         } finally {
             setSending(false)
         }
     }
 
+    // JSX de Loading e Erro (mantidos iguais)
     if (loading) {
         return (
             <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
@@ -219,29 +266,18 @@ export default function ImmediateConsultationNurseProfile() {
 
     const imageUrl = nurse?.image ? `${API_BASE_URL}/user/file/${nurse.image}` : "/placeholder-avatar.png"
 
+    // JSX principal (mantido igual, exceto pelo Dialog)
     return (
         <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
             <Header />
 
             <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem" }}>
-                <Button
-                    onClick={() => router.back()}
-                    variant="outline"
-                    style={{
-                        marginBottom: "1.5rem",
-                        borderColor: "#15803d",
-                        color: "#15803d",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                    }}
-                >
-                    <ArrowLeft className="h-4 w-4" />
-                    Voltar ao Mapa
+                <Button variant="outline" onClick={() => router.back()} className="mb-6">
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
                 </Button>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "2rem" }}>
-                    {/* Left Column - Nurse Info */}
+                    {/* Left Column - Nurse Info (mantido igual) */}
                     <div>
                         <Card style={{ marginBottom: "1.5rem" }}>
                             <CardContent style={{ padding: "2rem", textAlign: "center" }}>
@@ -276,7 +312,9 @@ export default function ImmediateConsultationNurseProfile() {
 
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }}>
                                     <div style={{ textAlign: "center" }}>
-                                        <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#15803d" }}>{nurse.experience}</div>
+                                        <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#15803d" }}>
+                                            {nurse.experience}
+                                        </div>
                                         <div style={{ fontSize: "0.875rem", color: "#6b7280" }}>Anos de experiência</div>
                                     </div>
                                     <div style={{ textAlign: "center" }}>
@@ -307,7 +345,7 @@ export default function ImmediateConsultationNurseProfile() {
                             </CardContent>
                         </Card>
 
-                        {/* Availability */}
+                        {/* Availability (mantido igual) */}
                         <Card>
                             <CardHeader>
                                 <CardTitle style={{ color: "#15803d" }}>Disponibilidade</CardTitle>
@@ -345,9 +383,9 @@ export default function ImmediateConsultationNurseProfile() {
                         </Card>
                     </div>
 
-                    {/* Right Column - Details */}
+                    {/* Right Column - Details (mantido igual) */}
                     <div>
-                        {/* Bio */}
+                        {/* ... (Cards de Bio, Qualificações, Serviços e Avaliações mantidos iguais) ... */}
                         <Card style={{ marginBottom: "1.5rem" }}>
                             <CardHeader>
                                 <CardTitle style={{ color: "#15803d" }}>Sobre</CardTitle>
@@ -359,7 +397,6 @@ export default function ImmediateConsultationNurseProfile() {
                             </CardContent>
                         </Card>
 
-                        {/* Qualifications */}
                         <Card style={{ marginBottom: "1.5rem" }}>
                             <CardHeader>
                                 <CardTitle style={{ color: "#15803d" }}>Qualificações</CardTitle>
@@ -387,7 +424,6 @@ export default function ImmediateConsultationNurseProfile() {
                             </CardContent>
                         </Card>
 
-                        {/* Services */}
                         <Card style={{ marginBottom: "1.5rem" }}>
                             <CardHeader>
                                 <CardTitle style={{ color: "#15803d" }}>Serviços Oferecidos</CardTitle>
@@ -414,7 +450,6 @@ export default function ImmediateConsultationNurseProfile() {
                             </CardContent>
                         </Card>
 
-                        {/* Reviews */}
                         <Card>
                             <CardHeader>
                                 <CardTitle style={{ color: "#15803d" }}>Avaliações dos Pacientes</CardTitle>
@@ -429,6 +464,7 @@ export default function ImmediateConsultationNurseProfile() {
                                                 borderBottom: index < nurse.reviews.length - 1 ? "1px solid #e5e7eb" : "none",
                                             }}
                                         >
+                                            {/* ... Conteúdo da Avaliação ... */}
                                             <div
                                                 style={{
                                                     display: "flex",
@@ -455,23 +491,26 @@ export default function ImmediateConsultationNurseProfile() {
                 </div>
             </div>
 
+            {/* Dialog de Solicitação (Função handleRequestConsultation atualizada) */}
             <Dialog open={showConsultationDialog} onOpenChange={setShowConsultationDialog}>
                 <DialogContent style={{ maxWidth: "600px", maxHeight: "90vh", overflowY: "auto" }}>
+                    {/* Conteúdo do Dialog (mantido igual) */}
                     <DialogHeader>
                         <DialogTitle style={{ color: "#15803d", fontSize: "1.5rem" }}>Solicitar Consulta Imediata</DialogTitle>
                         <DialogDescription>
-                            Preencha os dados abaixo para solicitar uma consulta imediata com {nurse.name}.
+                            Preencha os dados abaixo para solicitar uma consulta imediata com {nurse?.name}.
                         </DialogDescription>
                     </DialogHeader>
 
                     <div style={{ marginTop: "1rem" }}>
                         {/* Motivo da Consulta */}
                         <div style={{ marginBottom: "1rem" }}>
-                            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>
+                            <Label htmlFor="reason">
                                 Motivo da Consulta <span style={{ color: "#dc2626" }}>*</span>
-                            </label>
+                            </Label>
                             <Input
-                                placeholder="Ex: Aplicação de medicação, Curativo, Aferição de pressão..."
+                                id="reason"
+                                placeholder="Ex: Aplicação de medicação, Curativo..."
                                 value={reason}
                                 onChange={(e) => setReason(e.target.value)}
                                 disabled={sending}
@@ -479,11 +518,12 @@ export default function ImmediateConsultationNurseProfile() {
                         </div>
 
                         {/* Descrição */}
-                        <div style={{ marginBottom: "1rem" }}>
-                            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>
+                        <div style={{ marginBottom: "1sem" }}>
+                            <Label htmlFor="description">
                                 Descrição <span style={{ color: "#dc2626" }}>*</span>
-                            </label>
+                            </Label>
                             <Textarea
+                                id="description"
                                 placeholder="Descreva detalhadamente o atendimento necessário..."
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
@@ -492,13 +532,13 @@ export default function ImmediateConsultationNurseProfile() {
                             />
                         </div>
 
-                        {/* --- BLOCO ADICIONADO --- */}
+                        {/* Tipo de Visita */}
                         <div style={{ marginBottom: "1rem" }}>
-                            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>
+                            <Label htmlFor="visitType">
                                 Tipo de Visita <span style={{ color: "#dc2626" }}>*</span>
-                            </label>
+                            </Label>
                             <Select value={visitType} onValueChange={setVisitType} disabled={sending}>
-                                <SelectTrigger>
+                                <SelectTrigger id="visitType">
                                     <SelectValue placeholder="Selecione o tipo de visita" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -508,7 +548,20 @@ export default function ImmediateConsultationNurseProfile() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        {/* --- FIM DO BLOCO ADICIONADO --- */}
+
+                        {/* Horário da Visita */}
+                        <div style={{ marginBottom: "1rem" }}>
+                            <Label htmlFor="visitTime">
+                                Horário da Visita (Hoje) <span style={{ color: "#dc2626" }}>*</span>
+                            </Label>
+                            <Input
+                                id="visitTime"
+                                type="time"
+                                value={visitTime}
+                                onChange={(e) => setVisitTime(e.target.value)}
+                                disabled={sending}
+                            />
+                        </div>
 
                         {/* Endereço para Atendimento */}
                         <div
@@ -519,10 +572,11 @@ export default function ImmediateConsultationNurseProfile() {
 
                         {/* CEP */}
                         <div style={{ marginBottom: "1rem" }}>
-                            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>
+                            <Label htmlFor="cep">
                                 CEP <span style={{ color: "#dc2626" }}>*</span>
-                            </label>
+                            </Label>
                             <Input
+                                id="cep"
                                 placeholder="00000-000"
                                 value={cep}
                                 onChange={(e) => setCep(e.target.value)}
@@ -534,10 +588,11 @@ export default function ImmediateConsultationNurseProfile() {
                         {/* Rua e Número */}
                         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
                             <div>
-                                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>
+                                <Label htmlFor="street">
                                     Rua <span style={{ color: "#dc2626" }}>*</span>
-                                </label>
+                                </Label>
                                 <Input
+                                    id="street"
                                     placeholder="Nome da rua"
                                     value={street}
                                     onChange={(e) => setStreet(e.target.value)}
@@ -545,10 +600,11 @@ export default function ImmediateConsultationNurseProfile() {
                                 />
                             </div>
                             <div>
-                                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>
+                                <Label htmlFor="number">
                                     Número <span style={{ color: "#dc2626" }}>*</span>
-                                </label>
+                                </Label>
                                 <Input
+                                    id="number"
                                     placeholder="123"
                                     value={number}
                                     onChange={(e) => setNumber(e.target.value)}
@@ -558,9 +614,12 @@ export default function ImmediateConsultationNurseProfile() {
                         </div>
 
                         {/* Complemento */}
-                        <div style={{ marginBottom: "1sem" }}>
-                            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>Complemento</label>
+                        <div style={{ marginBottom: "1rem" }}>
+                            {" "}
+                            {/* Ajuste de margem */}
+                            <Label htmlFor="complement">Complemento</Label>
                             <Input
+                                id="complement"
                                 placeholder="Apto, Bloco, etc. (opcional)"
                                 value={complement}
                                 onChange={(e) => setComplement(e.target.value)}
@@ -570,10 +629,11 @@ export default function ImmediateConsultationNurseProfile() {
 
                         {/* Bairro */}
                         <div style={{ marginBottom: "1.5rem" }}>
-                            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>
+                            <Label htmlFor="neighborhood">
                                 Bairro <span style={{ color: "#dc2626" }}>*</span>
-                            </label>
+                            </Label>
                             <Input
+                                id="neighborhood"
                                 placeholder="Nome do bairro"
                                 value={neighborhood}
                                 onChange={(e) => setNeighborhood(e.target.value)}
@@ -601,26 +661,25 @@ export default function ImmediateConsultationNurseProfile() {
                                     justifyContent: "center",
                                     gap: "0.5rem",
                                 }}
-                                // --- ALTERADO ---
                                 disabled={
                                     !description.trim() ||
                                     !reason.trim() ||
                                     !visitType.trim() ||
+                                    !visitTime.trim() || // <-- ADICIONADO
                                     !cep.trim() ||
                                     !street.trim() ||
                                     !number.trim() ||
                                     !neighborhood.trim() ||
                                     sending
                                 }
-                            // --- FIM DA ALTERAÇÃO ---
                             >
                                 {sending ? (
                                     <>
                                         <Loader2 className="h-4 w-4 animate-spin" />
-                                        Enviando...
+                                        Enviando Solicitação...
                                     </>
                                 ) : (
-                                    "Solicitar Consulta"
+                                    "Solicitar Consulta Agora"
                                 )}
                             </Button>
                         </div>
