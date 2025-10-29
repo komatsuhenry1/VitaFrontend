@@ -30,6 +30,12 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'http',
+        hostname: '192.168.18.146',
+        port: '8081',
+        pathname: '/**',
+      },
+      {
+        protocol: 'http',
         hostname: '192.168.18.131',
         port: '8081',
         pathname: '/api/v1/admin/file/**',

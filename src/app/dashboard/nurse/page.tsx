@@ -1,25 +1,26 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+// Removido useRef, BellRing, User dos imports diretos aqui
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/Header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-// import Link from "next/link" // Removido se não usado
-import { Wifi, WifiOff, Loader2, Calendar, Clock, MapPin, DollarSign, BellRing, User } // User IMPORTADO
-  from "lucide-react"
+import { Wifi, WifiOff, Loader2, Calendar, Clock, MapPin, DollarSign } from "lucide-react"
 import { toast } from "sonner"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+// Removidos Dialogs daqui
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import Image from "next/image" // Image importado
-import { Badge } from "@/components/ui/badge" // Badge importado
+import Image from "next/image"
+import { Badge } from "@/components/ui/badge"
 
-const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_BASE_URL || "ws://localhost:8081"
+// --- Importa o Hook do Contexto ---
+import { useWebSocket } from '@/context/WebSocketContext'; // Ajuste o caminho se necessário
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
 
-// --- Interfaces ---
+// --- Interfaces (mantidas) ---
 interface Schedule {
   id: string
   status: string
@@ -44,12 +45,12 @@ interface NurseData {
   specialization: string
   experience: number
   rating: number
-  online: boolean
+  online: boolean // Útil para status inicial ao carregar a página
   price: number
   shift: string
   department: string
   image: string
-  available: boolean
+  available: boolean // Disponibilidade geral
   location: string
   bio: string
   qualifications: string[]
@@ -69,18 +70,9 @@ interface NurseData {
   }>
 }
 
-// Interface da notificação ATUALIZADA
-interface VisitNotification {
-  type: string
-  visit_id: string
-  patient_name: string
-  patient_id: string // <-- CORRIGIDO: Adicionado aqui
-  reason: string
-  value: number
-  address: string
-}
+// --- Interface VisitNotification REMOVIDA daqui ---
 
-// Estilo Hero (mantido igual)
+// --- Estilo Hero (mantido) ---
 const heroStyle = {
   backgroundImage: `
     linear-gradient(rgba(21, 128, 61, 0.7), rgba(83, 83, 83, 0.8)),
@@ -92,30 +84,23 @@ const heroStyle = {
   padding: "5rem 0",
 }
 
-// Funções utilitárias (mantidas iguais)
+// --- Funções utilitárias (mantidas) ---
 const formatDateTime = (isoDate: string) => {
   const date = new Date(isoDate)
-  const dateStr = date.toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  })
-  const timeStr = date.toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+  const dateStr = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })
+  const timeStr = date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
   return { date: dateStr, time: timeStr }
 }
-
 const getStatusBadge = (status: string) => {
   const statusMap: Record<string, { color: string; bg: string; label: string }> = {
     PENDING: { color: "#f59e0b", bg: "#fef3c7", label: "Pendente" },
     CONFIRMED: { color: "#10b981", bg: "#d1fae5", label: "Confirmado" },
     COMPLETED: { color: "#3b82f6", bg: "#dbeafe", label: "Concluído" },
-    CANCELLED: { color: "#ef4444", bg: "#fee2e2", label: "Cancelado" },
+    CANCELLED: { color: "#ef4444", bg: "#fee2e2", label: "Cancelado" }, // Verifique se é CANCELED ou CANCELLED
   }
   return statusMap[status] || { color: "#6b7280", bg: "#f3f4f6", label: status }
 }
+
 
 export default function NurseDashboard() {
   const router = useRouter()
@@ -123,17 +108,14 @@ export default function NurseDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Estados do WebSocket
-  const [isOnline, setIsOnline] = useState(false)
-  const [isConnecting, setIsConnecting] = useState(false)
-  const webSocketRef = useRef<WebSocket | null>(null)
+  // --- Estados e Funções WebSocket locais REMOVIDOS ---
 
-  // Estados da notificação
-  const [showNotification, setShowNotification] = useState(false)
-  const [currentNotification, setCurrentNotification] = useState<VisitNotification | null>(null)
+  // --- Usa o Contexto WebSocket ---
+  const { isOnline, isConnecting, connectWebSocket, disconnectWebSocket } = useWebSocket();
 
-  // Estados de disponibilidade (mantidos)
-  const [availability, setAvailability] = useState(true)
+  // Estados de disponibilidade geral (mantidos)
+  // 'availability' refere-se à disponibilidade configurada (dias/horas), não ao status online imediato
+  const [availability, setAvailability] = useState(true);
   const [availabilityForm, setAvailabilityForm] = useState({
     start_time: "08:00",
     end_time: "18:00",
@@ -144,10 +126,11 @@ export default function NurseDashboard() {
   })
   const [isSavingAvailability, setIsSavingAvailability] = useState(false)
 
-  // useEffect para buscar dados (mantido igual)
+  // useEffect para buscar dados (sem cleanup de WS)
   useEffect(() => {
     const fetchNurseData = async () => {
       try {
+        setLoading(true);
         const token = localStorage.getItem("token")
         const user = JSON.parse(localStorage.getItem("user") || "{}")
         const nurseId = user._id || user.id
@@ -158,21 +141,21 @@ export default function NurseDashboard() {
         }
 
         const response = await fetch(`${API_BASE_URL}/nurse/dashboard_info`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         })
 
         if (!response.ok) {
-          throw new Error("Erro ao carregar dados do enfermeiro")
+          const errorData = await response.json().catch(() => ({ message: "Erro desconhecido ao buscar dados" }));
+          throw new Error(errorData.message || "Erro ao carregar dados do enfermeiro");
         }
 
         const result = await response.json()
 
         if (result.success && result.data) {
           setNurseData(result.data)
-          setAvailability(result.data.available)
-
+          // Define o estado inicial de 'availability' baseado nos dados carregados
+          setAvailability(result.data.available ?? true) // Usa ?? true como fallback se 'available' não vier
+          // O estado 'isOnline' do contexto será a fonte da verdade para o status real-time
           setAvailabilityForm({
             start_time: result.data.start_time || "08:00",
             end_time: result.data.end_time || "18:00",
@@ -191,146 +174,29 @@ export default function NurseDashboard() {
         setLoading(false)
       }
     }
-
     fetchNurseData()
-
-    return () => {
-      webSocketRef.current?.close()
-      console.log("WebSocket desconectado ao sair do componente.")
-    }
+    // O cleanup do WebSocket agora é feito pelo Provider no layout
   }, [router])
 
-  // Função para CONECTAR o WebSocket
-  const connectWebSocket = () => {
-    const token = localStorage.getItem("token")
-    if (!token) {
-      toast.error("Erro de autenticação. Faça login novamente.")
-      return
-    }
 
-    if (webSocketRef.current && webSocketRef.current.readyState === WebSocket.OPEN) {
-      console.warn("WebSocket já está conectado.")
-      return
-    }
-
-    console.log("Tentando conectar WebSocket...")
-    setIsConnecting(true)
-
-    console.log("WS_BASE_URL sendo usado:", WS_BASE_URL)
-    const wsUrl = `${WS_BASE_URL}/ws/chat?token=${token}`
-    console.log("URL final da conexão:", wsUrl)
-
-    try {
-      const ws = new WebSocket(wsUrl)
-      webSocketRef.current = ws
-
-      ws.onopen = () => {
-        console.log("WebSocket conectado com sucesso!")
-        setIsOnline(true)
-        setIsConnecting(false)
-        toast.success("Você está online!")
-      }
-
-      ws.onmessage = (event) => {
-        console.log("Mensagem recebida:", event.data)
-        try {
-          const messageData = JSON.parse(event.data)
-
-          if (messageData.type === "IMMEDIATE_VISIT_REQUEST") {
-            setCurrentNotification(messageData as VisitNotification)
-            setShowNotification(true)
-          } else {
-            console.log("Mensagem de outro tipo recebida:", messageData)
-          }
-        } catch (e) {
-          console.error("Erro ao processar mensagem WebSocket:", e)
-        }
-      }
-
-      ws.onclose = (event) => {
-        console.log("WebSocket desconectado:", event.code, event.reason)
-        setIsOnline(false)
-        setIsConnecting(false)
-        webSocketRef.current = null
-        if (!event.wasClean) {
-          toast.warning("Desconectado inesperadamente.")
-        } else {
-          toast.info("Você ficou offline.")
-        }
-      }
-
-      ws.onerror = (errorEvent) => {
-        console.error("Erro no WebSocket:", errorEvent)
-        setIsConnecting(false)
-        setIsOnline(false)
-        webSocketRef.current = null
-        toast.error("Erro na conexão WebSocket. Verifique o console.")
-      }
-    } catch (error) {
-      console.error("Falha ao criar instância do WebSocket:", error)
-      toast.error("Não foi possível iniciar a conexão WebSocket.")
-      setIsConnecting(false)
-      setIsOnline(false)
-    }
-  }
-
-  // Função para DESCONECTAR o WebSocket (mantida igual)
-  const disconnectWebSocket = () => {
-    if (webSocketRef.current) {
-      console.log("Desconectando WebSocket...")
-      setIsConnecting(true)
-      webSocketRef.current.close(1000, "Logout pelo usuário")
-    } else {
-      console.warn("Nenhuma conexão WebSocket para fechar.")
-      setIsOnline(false)
-    }
-  }
-
-  // Função do botão principal (mantida igual)
+  // --- Função do Botão Principal (Usa Contexto) ---
   const handleToggleOnline = () => {
-    if (isOnline) {
-      disconnectWebSocket()
+    if (isOnline) { // Lê isOnline do contexto
+      disconnectWebSocket(); // Chama a função do contexto
+      // toast.info("Ficando offline...");
     } else {
-      connectWebSocket()
+      connectWebSocket(); // Chama a função do contexto
+      // toast.info("Tentando ficar online...");
     }
   }
 
-  // Funções de aceitar/rejeitar visita (mantidas iguais - placeholders)
-  const handleAcceptVisit = (visitId: string | undefined) => {
-    if (!visitId) return
-    console.log("Aceitando visita:", visitId)
-    toast.info(`Aceitando visita ${visitId}... (Lógica a implementar)`)
-    setShowNotification(false)
-    setCurrentNotification(null)
-  }
-
-  const handleRejectVisit = (visitId: string | undefined) => {
-    if (!visitId) return
-    console.log("Rejeitando visita:", visitId)
-    toast.warning(`Rejeitando visita ${visitId}... (Lógica a implementar)`)
-    setShowNotification(false)
-    setCurrentNotification(null)
-  }
-
-  // ============================================
-  // CORRIGIDO: Definição da função adicionada
-  // ============================================
-  const handleViewPatientProfile = (patientId: string | undefined) => {
-    if (!patientId) {
-      toast.error("ID do paciente não encontrado na notificação.");
-      return;
-    }
-    setShowNotification(false);
-    setCurrentNotification(null);
-    router.push(`/patient-profile/${patientId}`);
-  }
-
-
-  // Funções de disponibilidade (mantidas iguais)
+  // Funções de disponibilidade geral (mantidas)
+  // Esta função salva as configurações GERAIS, não o status online imediato
   const handleSaveAvailability = async () => {
     setIsSavingAvailability(true)
     try {
       const token = localStorage.getItem("token")
+      // Endpoint /nurse/update parece ser para dados gerais, não status online
       const response = await fetch(`${API_BASE_URL}/nurse/update`, {
         method: "PATCH",
         headers: {
@@ -338,23 +204,27 @@ export default function NurseDashboard() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          // Enviando dados gerais de disponibilidade/configuração
           start_time: availabilityForm.start_time,
           end_time: availabilityForm.end_time,
           specialization: availabilityForm.specialization,
           price: availabilityForm.price_per_hour,
           max_patients_per_day: availabilityForm.max_patients_per_day,
           days_available: availabilityForm.days_available,
+          // 'available' aqui se refere à disponibilidade geral configurada
+          // Diferente do 'isOnline' do WebSocket para chamadas imediatas
           available: availability,
         }),
       })
 
       if (response.ok) {
-        toast.success("Disponibilidade atualizada com sucesso!")
+        toast.success("Configurações de disponibilidade atualizadas com sucesso!")
       } else {
-        toast.error("Erro ao atualizar disponibilidade")
+        const errorResult = await response.json().catch(() => ({ message: "Erro desconhecido ao atualizar" }));
+        toast.error(errorResult.message || "Erro ao atualizar disponibilidade")
       }
     } catch (error) {
-      console.error("Error updating availability:", error)
+      console.error("Error updating general availability:", error)
       toast.error("Erro ao atualizar disponibilidade")
     } finally {
       setIsSavingAvailability(false)
@@ -370,199 +240,118 @@ export default function NurseDashboard() {
     }))
   }
 
-  // JSX de Loading e Erro (mantidos iguais)
+  // --- JSX de Loading e Erro (mantidos) ---
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}>
         <Header />
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            minHeight: "60vh",
-            flexDirection: "column",
-            gap: "1rem",
-          }}
-        >
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh", flexDirection: "column", gap: "1rem" }}>
           <Loader2 className="animate-spin" size={48} style={{ color: "#15803d" }} />
           <p style={{ color: "#6b7280" }}>Carregando dados do enfermeiro...</p>
         </div>
       </div>
     )
   }
-
   if (error) {
     return (
       <div style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}>
         <Header />
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            minHeight: "60vh",
-            flexDirection: "column",
-            gap: "1rem",
-          }}
-        >
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh", flexDirection: "column", gap: "1rem" }}>
           <p style={{ color: "#dc2626", fontSize: "1.125rem", fontWeight: "600" }}>Erro ao carregar dados</p>
           <p style={{ color: "#6b7280" }}>{error}</p>
-          <Button onClick={() => window.location.reload()} style={{ backgroundColor: "#15803d", color: "white" }}>
-            Tentar Novamente
-          </Button>
+          <Button onClick={() => window.location.reload()} style={{ backgroundColor: "#15803d", color: "white" }}>Tentar Novamente</Button>
         </div>
       </div>
     )
   }
+  if (!nurseData) { return null } // Retorna nulo se nurseData ainda não carregou após loading ser false
 
-  if (!nurseData) {
-    return null
-  }
-
-  // Lógica de filtragem e pacientes (mantida igual)
-  const upcomingSchedules =
-    nurseData.schedules?.filter((schedule) => schedule.status === "PENDING" || schedule.status === "CONFIRMED") || []
-  const completedSchedules = nurseData.schedules?.filter((schedule) => schedule.status === "COMPLETED") || []
+  // --- Lógica de filtragem e pacientes (mantida) ---
+  const upcomingSchedules = nurseData.schedules?.filter(s => s.status === "PENDING" || s.status === "CONFIRMED") || []
+  const completedSchedules = nurseData.schedules?.filter(s => s.status === "COMPLETED") || []
+  // Garante que uniquePatients seja inicializado como array vazio
   const uniquePatients = completedSchedules.reduce(
     (acc, schedule) => {
       if (!acc.find((p) => p.patient_id === schedule.patient_id)) {
         acc.push({
-          patient_id: schedule.patient_id,
-          patient_name: schedule.patient_name,
-          patient_email: schedule.patient_email,
+          patient_id: schedule.patient_id, patient_name: schedule.patient_name, patient_email: schedule.patient_email,
           total_visits: completedSchedules.filter((s) => s.patient_id === schedule.patient_id).length,
           last_visit: schedule.visit_date,
-          total_spent: completedSchedules
-            .filter((s) => s.patient_id === schedule.patient_id)
-            .reduce((sum, s) => sum + s.value, 0),
+          total_spent: completedSchedules.filter((s) => s.patient_id === schedule.patient_id).reduce((sum, s) => sum + s.value, 0),
         })
       }
       return acc
     },
-    [] as Array<{
-      patient_id: string
-      patient_name: string
-      patient_email: string
-      total_visits: number
-      last_visit: string
-      total_spent: number
-    }>,
+    [] as Array<{ patient_id: string; patient_name: string; patient_email: string; total_visits: number; last_visit: string; total_spent: number }>,
   )
+
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}>
       <Header />
 
-      {/* Hero Section (mantida igual) */}
+      {/* Hero Section (Botão usa estado do Contexto) */}
       <section style={heroStyle}>
         <div style={{ maxWidth: "1200px", margin: "0 auto", textAlign: "center" }}>
           <h1 style={{ fontSize: "2.5rem", fontWeight: "bold", marginBottom: "1rem" }}>Dashboard do Enfermeiro</h1>
           <p style={{ fontSize: "1.25rem", opacity: 0.9, marginBottom: "2rem" }}>
             Gerencie seus atendimentos e acompanhe sua carreira profissional
           </p>
-
           <div style={{ display: "flex", justifyContent: "center", marginBottom: "2rem" }}>
+            {/* O Botão agora usa isOnline e isConnecting do CONTEXTO */}
             <button
-              onClick={handleToggleOnline}
-              disabled={isConnecting}
+              onClick={handleToggleOnline} // Chama a função que usa o contexto
+              disabled={isConnecting} // Usa isConnecting do contexto
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.75rem",
-                padding: "1rem 2rem",
-                fontSize: "1.125rem",
-                fontWeight: "600",
-                borderRadius: "9999px",
-                border: "3px solid",
-                borderColor: isOnline ? "#10b981" : "#6b7280",
-                backgroundColor: isOnline ? "#10b981" : "#374151",
-                color: "white",
-                cursor: isConnecting ? "wait" : "pointer",
-                transition: "all 0.3s ease",
-                boxShadow: isOnline
-                  ? "0 0 20px rgba(16, 185, 129, 0.5), 0 0 40px rgba(16, 185, 129, 0.3)"
-                  : "0 4px 6px rgba(0, 0, 0, 0.1)",
-                transform: isConnecting ? "scale(0.95)" : "scale(1)",
-                opacity: isConnecting ? 0.7 : 1,
+                display: "flex", alignItems: "center", gap: "0.75rem", padding: "1rem 2rem",
+                fontSize: "1.125rem", fontWeight: "600", borderRadius: "9999px", border: "3px solid",
+                borderColor: isOnline ? "#10b981" : "#6b7280", // Usa isOnline do contexto
+                backgroundColor: isOnline ? "#10b981" : "#374151", // Usa isOnline do contexto
+                color: "white", cursor: isConnecting ? "wait" : "pointer", transition: "all 0.3s ease",
+                boxShadow: isOnline ? "0 0 20px rgba(16, 185, 129, 0.5), 0 0 40px rgba(16, 185, 129, 0.3)" : "0 4px 6px rgba(0, 0, 0, 0.1)",
+                transform: isConnecting ? "scale(0.95)" : "scale(1)", opacity: isConnecting ? 0.7 : 1,
               }}
-              onMouseEnter={(e) => {
-                if (!isConnecting) {
-                  e.currentTarget.style.transform = "scale(1.05)"
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isConnecting) {
-                  e.currentTarget.style.transform = "scale(1)"
-                }
-              }}
+              onMouseEnter={(e) => { if (!isConnecting) e.currentTarget.style.transform = "scale(1.05)" }}
+              onMouseLeave={(e) => { if (!isConnecting) e.currentTarget.style.transform = "scale(1)" }}
             >
-              {isConnecting ? (
+              {isConnecting ? ( // Usa isConnecting do contexto
                 <Loader2 className="animate-spin" size={24} />
-              ) : isOnline ? (
+              ) : isOnline ? ( // Usa isOnline do contexto
                 <Wifi size={24} />
               ) : (
                 <WifiOff size={24} />
               )}
-              <span>
-                {isConnecting
-                  ? isOnline
-                    ? "Desconectando..."
-                    : "Conectando..."
-                  : isOnline
-                    ? "ONLINE - Clique para ficar Offline"
+              <span> {/* Texto dinâmico usando isOnline e isConnecting do contexto */}
+                {isConnecting ? (isOnline ? "Desconectando..." : "Conectando...")
+                  : isOnline ? "ONLINE - Clique para ficar Offline"
                     : "OFFLINE - Clique para ficar Online"}
               </span>
-              <div
-                style={{
-                  width: "12px",
-                  height: "12px",
-                  borderRadius: "50%",
-                  backgroundColor: isOnline ? "#ffffff" : "#9ca3af",
-                  animation: isOnline ? "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite" : "none",
-                }}
-              />
+              <div style={{ width: "12px", height: "12px", borderRadius: "50%", backgroundColor: isOnline ? "#ffffff" : "#9ca3af", animation: isOnline ? "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite" : "none", }} />
             </button>
           </div>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-              gap: "1.5rem",
-              marginTop: "2rem",
-            }}
-          >
+          {/* Stats Cards */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1.5rem", marginTop: "2rem" }}>
             <Card style={{ backgroundColor: "rgba(255, 255, 255, 0.1)", border: "none" }}>
               <CardContent style={{ padding: "1.5rem", textAlign: "center" }}>
-                <div style={{ fontSize: "2rem", fontWeight: "bold", color: "white" }}>
-                  {nurseData.total_patients || 0}
-                </div>
+                <div style={{ fontSize: "2rem", fontWeight: "bold", color: "white" }}>{nurseData.total_patients || 0}</div>
                 <div style={{ fontSize: "0.875rem", color: "rgba(255, 255, 255, 0.8)" }}>Pacientes Atendidos</div>
               </CardContent>
             </Card>
-
             <Card style={{ backgroundColor: "rgba(255, 255, 255, 0.1)", border: "none" }}>
               <CardContent style={{ padding: "1.5rem", textAlign: "center" }}>
                 <div style={{ fontSize: "2rem", fontWeight: "bold", color: "white" }}>{upcomingSchedules.length}</div>
                 <div style={{ fontSize: "0.875rem", color: "rgba(255, 255, 255, 0.8)" }}>Consultas</div>
               </CardContent>
             </Card>
-
             <Card style={{ backgroundColor: "rgba(255, 255, 255, 0.1)", border: "none" }}>
               <CardContent style={{ padding: "1.5rem", textAlign: "center" }}>
-                <div style={{ fontSize: "2rem", fontWeight: "bold", color: "white" }}>
-                  {nurseData.rating > 0 ? nurseData.rating.toFixed(1) : "N/A"}
-                </div>
+                <div style={{ fontSize: "2rem", fontWeight: "bold", color: "white" }}>{nurseData.rating > 0 ? nurseData.rating.toFixed(1) : "N/A"}</div>
                 <div style={{ fontSize: "0.875rem", color: "rgba(255, 255, 255, 0.8)" }}>Avaliação Média</div>
               </CardContent>
             </Card>
-
             <Card style={{ backgroundColor: "rgba(255, 255, 255, 0.1)", border: "none" }}>
               <CardContent style={{ padding: "1.5rem", textAlign: "center" }}>
-                <div style={{ fontSize: "2rem", fontWeight: "bold", color: "white" }}>
-                  R$ {nurseData.earnings?.toFixed(2) || "0.00"}
-                </div>
+                <div style={{ fontSize: "2rem", fontWeight: "bold", color: "white" }}>R$ {nurseData.earnings?.toFixed(2) || "0.00"}</div>
                 <div style={{ fontSize: "0.875rem", color: "rgba(255, 255, 255, 0.8)" }}>Ganhos Totais</div>
               </CardContent>
             </Card>
@@ -570,7 +359,7 @@ export default function NurseDashboard() {
         </div>
       </section>
 
-      {/* Dashboard Content (Tabs - mantidos) */}
+      {/* Dashboard Content (Tabs) */}
       <section style={{ padding: "3rem 1rem", maxWidth: "1200px", margin: "0 auto" }}>
         <Tabs defaultValue="schedule" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
@@ -579,7 +368,7 @@ export default function NurseDashboard() {
             <TabsTrigger value="history">Histórico</TabsTrigger>
           </TabsList>
           {/* Schedule Tab */}
-          <TabsContent value="schedule" className="space-y-4">
+          <TabsContent value="schedule" className="space-y-4 mt-4"> {/* Adicionado mt-4 */}
             <Card>
               <CardHeader>
                 <CardTitle>Agenda de Atendimentos</CardTitle>
@@ -591,106 +380,36 @@ export default function NurseDashboard() {
                     {upcomingSchedules.map((schedule) => {
                       const { date, time } = formatDateTime(schedule.visit_date)
                       const statusBadge = getStatusBadge(schedule.status)
-
                       return (
-                        <Card
-                          key={schedule.id}
-                          style={{
-                            border: "1px solid #e5e7eb",
-                            transition: "all 0.2s",
-                          }}
-                        >
+                        <Card key={schedule.id} style={{ border: "1px solid #e5e7eb", transition: "all 0.2s" }}>
                           <CardContent style={{ padding: "1.5rem" }}>
-                            <div
-                              style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "flex-start",
-                                marginBottom: "1rem",
-                              }}
-                            >
+                            {/* Conteúdo do Card de Agendamento */}
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
                               <div>
-                                <h3 style={{ fontSize: "1.125rem", fontWeight: "600", color: "#1f2937" }}>
-                                  {schedule.patient_name}
-                                </h3>
+                                <h3 style={{ fontSize: "1.125rem", fontWeight: "600", color: "#1f2937" }}>{schedule.patient_name}</h3>
                                 <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>{schedule.patient_email}</p>
                               </div>
-                              <span
-                                style={{
-                                  padding: "0.25rem 0.75rem",
-                                  borderRadius: "9999px",
-                                  fontSize: "0.75rem",
-                                  fontWeight: "600",
-                                  color: statusBadge.color,
-                                  backgroundColor: statusBadge.bg,
-                                }}
-                              >
-                                {statusBadge.label}
-                              </span>
+                              <Badge variant="outline" style={{ color: statusBadge.color, backgroundColor: statusBadge.bg, borderColor: statusBadge.color + '40' }}>{statusBadge.label}</Badge> {/* Usando Badge */}
                             </div>
-
-                            <div
-                              style={{
-                                display: "grid",
-                                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                                gap: "1rem",
-                                marginBottom: "1rem",
-                              }}
-                            >
-                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                <Calendar size={16} style={{ color: "#15803d" }} />
-                                <span style={{ fontSize: "0.875rem", color: "#4b5563" }}>{date}</span>
-                              </div>
-
-                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                <Clock size={16} style={{ color: "#15803d" }} />
-                                <span style={{ fontSize: "0.875rem", color: "#4b5563" }}>{time}</span>
-                              </div>
-
-                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                <MapPin size={16} style={{ color: "#15803d" }} />
-                                <span style={{ fontSize: "0.875rem", color: "#4b5563" }}>
-                                  {schedule.visit_type === "domiciliar" ? "Domiciliar" : schedule.visit_type}
-                                </span>
-                              </div>
-
-                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                <DollarSign size={16} style={{ color: "#15803d" }} />
-                                <span style={{ fontSize: "0.875rem", color: "#4b5563" }}>
-                                  R$ {schedule.value.toFixed(2)}
-                                </span>
-                              </div>
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem", marginBottom: "1rem", fontSize: '0.875rem', color: '#4b5563' }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><Calendar size={16} style={{ color: "#15803d" }} /><span>{date}</span></div>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><Clock size={16} style={{ color: "#15803d" }} /><span>{time}</span></div>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><MapPin size={16} style={{ color: "#15803d" }} /><span>{schedule.visit_type === "domiciliar" ? "Domiciliar" : schedule.visit_type}</span></div>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><DollarSign size={16} style={{ color: "#15803d" }} /><span>R$ {schedule.value.toFixed(2)}</span></div>
                             </div>
-
-                            {schedule.reason && (
-                              <div style={{ marginBottom: "0.75rem" }}>
-                                <p style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151" }}>Motivo:</p>
-                                <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>{schedule.reason}</p>
-                              </div>
-                            )}
-
-                            {schedule.description && (
-                              <div style={{ marginBottom: "0.75rem" }}>
-                                <p style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151" }}>Descrição:</p>
-                                <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>{schedule.description}</p>
-                              </div>
-                            )}
+                            {schedule.reason && (<div style={{ marginBottom: "0.75rem" }}><p style={{ fontWeight: "600", color: "#374151" }}>Motivo:</p><p style={{ color: "#6b7280" }}>{schedule.reason}</p></div>)}
+                            {schedule.description && (<div style={{ marginBottom: "0.75rem" }}><p style={{ fontWeight: "600", color: "#374151" }}>Descrição:</p><p style={{ color: "#6b7280" }}>{schedule.description}</p></div>)}
                           </CardContent>
                         </Card>
                       )
                     })}
                   </div>
-                ) : (
-                  <p style={{ textAlign: "center", color: "#6b7280", padding: "2rem" }}>
-                    Nenhuma visita agendada no momento
-                  </p>
-                )}
+                ) : (<p style={{ textAlign: "center", color: "#6b7280", padding: "2rem" }}>Nenhuma visita agendada</p>)}
               </CardContent>
             </Card>
           </TabsContent>
-
           {/* Patients Tab */}
-          <TabsContent value="patients" className="space-y-4">
+          <TabsContent value="patients" className="space-y-4 mt-4"> {/* Adicionado mt-4 */}
             <Card>
               <CardHeader>
                 <CardTitle>Meus Pacientes</CardTitle>
@@ -698,77 +417,33 @@ export default function NurseDashboard() {
               </CardHeader>
               <CardContent>
                 {uniquePatients.length > 0 ? (
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-                      gap: "1rem",
-                    }}
-                  >
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "1rem" }}>
                     {uniquePatients.map((patient) => {
                       const { date } = formatDateTime(patient.last_visit)
-
                       return (
-                        <Card
-                          key={patient.patient_id}
-                          style={{
-                            border: "1px solid #e5e7eb",
-                            transition: "all 0.2s",
-                          }}
-                        >
+                        <Card key={patient.patient_id} style={{ border: "1px solid #e5e7eb", transition: "all 0.2s" }}>
                           <CardContent style={{ padding: "1.5rem" }}>
+                            {/* Conteúdo do Card Paciente */}
                             <div style={{ marginBottom: "1rem" }}>
-                              <h3
-                                style={{
-                                  fontSize: "1.125rem",
-                                  fontWeight: "600",
-                                  color: "#1f2937",
-                                  marginBottom: "0.25rem",
-                                }}
-                              >
-                                {patient.patient_name}
-                              </h3>
+                              <h3 style={{ fontSize: "1.125rem", fontWeight: "600", color: "#1f2937", marginBottom: "0.25rem" }}>{patient.patient_name}</h3>
                               <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>{patient.patient_email}</p>
                             </div>
-
-                            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                <span style={{ fontSize: "0.875rem", color: "#6b7280" }}>Total de Visitas:</span>
-                                <span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#15803d" }}>
-                                  {patient.total_visits}
-                                </span>
-                              </div>
-
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                <span style={{ fontSize: "0.875rem", color: "#6b7280" }}>Última Visita:</span>
-                                <span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#4b5563" }}>
-                                  {date}
-                                </span>
-                              </div>
-
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                <span style={{ fontSize: "0.875rem", color: "#6b7280" }}>Total Gasto:</span>
-                                <span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#15803d" }}>
-                                  R$ {patient.total_spent.toFixed(2)}
-                                </span>
-                              </div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", fontSize: '0.875rem' }}>
+                              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#6b7280" }}>Total de Visitas:</span><span style={{ fontWeight: "600", color: "#15803d" }}>{patient.total_visits}</span></div>
+                              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#6b7280" }}>Última Visita:</span><span style={{ fontWeight: "600", color: "#4b5563" }}>{date}</span></div>
+                              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#6b7280" }}>Total Gasto:</span><span style={{ fontWeight: "600", color: "#15803d" }}>R$ {patient.total_spent.toFixed(2)}</span></div>
                             </div>
                           </CardContent>
                         </Card>
                       )
                     })}
                   </div>
-                ) : (
-                  <p style={{ textAlign: "center", color: "#6b7280", padding: "2rem" }}>
-                    Nenhum paciente com atendimentos concluídos
-                  </p>
-                )}
+                ) : (<p style={{ textAlign: "center", color: "#6b7280", padding: "2rem" }}>Nenhum paciente</p>)}
               </CardContent>
             </Card>
           </TabsContent>
-
           {/* History Tab */}
-          <TabsContent value="history" className="space-y-4">
+          <TabsContent value="history" className="space-y-4 mt-4"> {/* Adicionado mt-4 */}
             <Card>
               <CardHeader>
                 <CardTitle>Histórico de Atendimentos</CardTitle>
@@ -780,156 +455,36 @@ export default function NurseDashboard() {
                     {completedSchedules.map((schedule) => {
                       const { date, time } = formatDateTime(schedule.visit_date)
                       const statusBadge = getStatusBadge(schedule.status)
-
                       return (
-                        <Card
-                          key={schedule.id}
-                          style={{
-                            border: "1px solid #e5e7eb",
-                            transition: "all 0.2s",
-                          }}
-                        >
+                        <Card key={schedule.id} style={{ border: "1px solid #e5e7eb", transition: "all 0.2s" }}>
                           <CardContent style={{ padding: "1.5rem" }}>
-                            <div
-                              style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "flex-start",
-                                marginBottom: "1rem",
-                              }}
-                            >
+                            {/* Conteúdo Card Histórico (similar ao da Agenda) */}
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
                               <div>
-                                <h3 style={{ fontSize: "1.125rem", fontWeight: "600", color: "#1f2937" }}>
-                                  {schedule.patient_name}
-                                </h3>
+                                <h3 style={{ fontSize: "1.125rem", fontWeight: "600", color: "#1f2937" }}>{schedule.patient_name}</h3>
                                 <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>{schedule.patient_email}</p>
                               </div>
-                              <span
-                                style={{
-                                  padding: "0.25rem 0.75rem",
-                                  borderRadius: "9999px",
-                                  fontSize: "0.75rem",
-                                  fontWeight: "600",
-                                  color: statusBadge.color,
-                                  backgroundColor: statusBadge.bg,
-                                }}
-                              >
-                                {statusBadge.label}
-                              </span>
+                              <Badge variant="outline" style={{ color: statusBadge.color, backgroundColor: statusBadge.bg, borderColor: statusBadge.color + '40' }}>{statusBadge.label}</Badge>
                             </div>
-
-                            <div
-                              style={{
-                                display: "grid",
-                                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                                gap: "1rem",
-                                marginBottom: "1rem",
-                              }}
-                            >
-                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                <Calendar size={16} style={{ color: "#15803d" }} />
-                                <span style={{ fontSize: "0.875rem", color: "#4b5563" }}>{date}</span>
-                              </div>
-
-                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                <Clock size={16} style={{ color: "#15803d" }} />
-                                <span style={{ fontSize: "0.875rem", color: "#4b5563" }}>{time}</span>
-                              </div>
-
-                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                <MapPin size={16} style={{ color: "#15803d" }} />
-                                <span style={{ fontSize: "0.875rem", color: "#4b5563" }}>
-                                  {schedule.visit_type === "domiciliar" ? "Domiciliar" : schedule.visit_type}
-                                </span>
-                              </div>
-
-                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                <DollarSign size={16} style={{ color: "#15803d" }} />
-                                <span style={{ fontSize: "0.875rem", color: "#4b5563" }}>
-                                  R$ {schedule.value.toFixed(2)}
-                                </span>
-                              </div>
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem", marginBottom: "1rem", fontSize: '0.875rem', color: '#4b5563' }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><Calendar size={16} style={{ color: "#15803d" }} /><span>{date}</span></div>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><Clock size={16} style={{ color: "#15803d" }} /><span>{time}</span></div>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><MapPin size={16} style={{ color: "#15803d" }} /><span>{schedule.visit_type === "domiciliar" ? "Domiciliar" : schedule.visit_type}</span></div>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><DollarSign size={16} style={{ color: "#15803d" }} /><span>R$ {schedule.value.toFixed(2)}</span></div>
                             </div>
-
-                            {schedule.reason && (
-                              <div style={{ marginBottom: "0.75rem" }}>
-                                <p style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151" }}>Motivo:</p>
-                                <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>{schedule.reason}</p>
-                              </div>
-                            )}
-
-                            {schedule.description && (
-                              <div>
-                                <p style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151" }}>Descrição:</p>
-                                <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>{schedule.description}</p>
-                              </div>
-                            )}
+                            {schedule.reason && (<div style={{ marginBottom: "0.75rem" }}><p style={{ fontWeight: "600", color: "#374151" }}>Motivo:</p><p style={{ color: "#6b7280" }}>{schedule.reason}</p></div>)}
+                            {schedule.description && (<div style={{ marginBottom: "0.75rem" }}><p style={{ fontWeight: "600", color: "#374151" }}>Descrição:</p><p style={{ color: "#6b7280" }}>{schedule.description}</p></div>)}
                           </CardContent>
                         </Card>
                       )
                     })}
                   </div>
-                ) : (
-                  <p style={{ textAlign: "center", color: "#6b7280", padding: "2rem" }}>Nenhum atendimento concluído</p>
-                )}
+                ) : (<p style={{ textAlign: "center", color: "#6b7280", padding: "2rem" }}>Nenhum atendimento concluído</p>)}
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
       </section>
-
-      {/* DIALOG PARA NOTIFICAÇÃO DE VISITA (BOTÃO CORRIGIDO) */}
-      <Dialog open={showNotification} onOpenChange={setShowNotification}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <BellRing className="text-yellow-500" />
-              Nova Solicitação de Visita Imediata!
-            </DialogTitle>
-            <DialogDescription>
-              Você recebeu um novo pedido de atendimento. Por favor, revise os detalhes abaixo e responda rapidamente.
-            </DialogDescription>
-          </DialogHeader>
-          {currentNotification && (
-            <div className="space-y-3 py-4">
-              <p>
-                <span className="font-semibold">Paciente:</span> {currentNotification.patient_name}
-              </p>
-              <p>
-                <span className="font-semibold">Motivo:</span> {currentNotification.reason}
-              </p>
-              <p>
-                <span className="font-semibold">Endereço:</span> {currentNotification.address}
-              </p>
-              <p>
-                <span className="font-semibold">Valor Estimado:</span> R$ {currentNotification.value.toFixed(2)}
-              </p>
-            </div>
-          )}
-          <DialogFooter className="sm:justify-between">
-            <Button
-              variant="secondary"
-              // CORRIGIDO: onClick chama a função definida
-              onClick={() => handleViewPatientProfile(currentNotification?.patient_id)}
-              disabled={!currentNotification?.patient_id}
-              className="flex items-center gap-2"
-            >
-              <User size={16} /> Ver Perfil do Paciente
-            </Button>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => handleRejectVisit(currentNotification?.visit_id)}>
-                Rejeitar
-              </Button>
-              <Button
-                className="bg-green-700 hover:bg-green-800"
-                onClick={() => handleAcceptVisit(currentNotification?.visit_id)}
-              >
-                Aceitar Visita
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

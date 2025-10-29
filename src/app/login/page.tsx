@@ -133,7 +133,7 @@ export default function LoginPage() {
         <div style={{ maxWidth: "500px", margin: "0 auto" }}>
           <Card>
             <CardHeader style={{ textAlign: "center" }}>
-              <CardTitle style={{ fontSize: "1.5rem", color: "#15803d" }}>Fazer Login</CardTitle>
+              <CardTitle style={{ fontSize: "1.5rem", color: "#15803d" }}>Login</CardTitle>
               <CardDescription>Digite suas credenciais para acessar sua conta</CardDescription>
             </CardHeader>
             <CardContent>
