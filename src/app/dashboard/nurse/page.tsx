@@ -179,14 +179,61 @@ export default function NurseDashboard() {
   }, [router])
 
 
-  // --- Função do Botão Principal (Usa Contexto) ---
-  const handleToggleOnline = () => {
-    if (isOnline) { // Lê isOnline do contexto
-      disconnectWebSocket(); // Chama a função do contexto
-      // toast.info("Ficando offline...");
+  // ===================================
+  // FUNÇÃO 'handleToggleOnline' ATUALIZADA
+  // ===================================
+  const handleToggleOnline = async () => {
+    // 1. Pega o token para a chamada de API
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast.error("Token não encontrado. Faça login novamente.");
+      router.push("/login");
+      return;
+    }
+
+    // 2. Cria uma função auxiliar para chamar a API de toggle
+    const callApiToggle = async (): Promise<boolean> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/nurse/online`, {
+          method: "PATCH", // Assumindo PATCH para a atualização de status
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          toast.error(errorData.message || "Erro ao atualizar status no servidor.");
+          return false; // Falha
+        }
+        return true; // Sucesso
+      } catch (error) {
+        console.error("Erro ao tentar mudar status online:", error);
+        toast.error("Erro de rede ao tentar mudar status.");
+        return false; // Falha
+      }
+    };
+
+    // 3. Lógica principal: decide a ordem das chamadas
+    if (isOnline) {
+      // INTENÇÃO: Ficar OFFLINE
+      // 1. Desconecta o WS imediatamente
+      disconnectWebSocket();
+      // 2. Tenta atualizar o status no DB (mostra erro se falhar, mas o WS já está off)
+      await callApiToggle();
     } else {
-      connectWebSocket(); // Chama a função do contexto
-      // toast.info("Tentando ficar online...");
+      // INTENÇÃO: Ficar ONLINE
+      // 1. Primeiro, tenta atualizar o status no DB
+      const apiSuccess = await callApiToggle();
+
+      // 2. Só tenta conectar o WS se a API registrar o "online" com sucesso
+      if (apiSuccess) {
+        connectWebSocket();
+      } else {
+        // A falha já foi notificada pelo toast dentro de callApiToggle
+        console.log("Não foi possível conectar o WebSocket pois a API de status falhou.");
+      }
     }
   }
 

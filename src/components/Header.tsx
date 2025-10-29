@@ -47,7 +47,7 @@ interface UserData {
 }
 
 // Configuração dos links (mantida)
-const navLinksConfig = { /* ... */
+const navLinksConfig = {
   base: [
     { href: "/sobre", label: "Sobre" },
     { href: "/", label: "Início" },
@@ -110,19 +110,55 @@ export function Header() {
     }
   }, [])
 
-  // --- 3. Atualiza handleLogout ---
-  const handleLogout = () => {
+  // ===================================
+  // FUNÇÃO 'handleLogout' ATUALIZADA
+  // ===================================
+  const handleLogout = async () => {
     console.log("Executando logout...");
+
+    // Pega o token ANTES de removê-lo, para usar na API
+    const token = localStorage.getItem("token");
 
     // Verifica se é um enfermeiro antes de desconectar
     if (userData?.role === "NURSE") {
-      console.log("Usuário é enfermeiro, desconectando WebSocket...");
-      disconnectWebSocket(); // Chama a desconexão do contexto
+      console.log("Usuário é enfermeiro, desconectando WebSocket e atualizando status DB...");
+
+      // 1. Desconecta o WebSocket (ação do cliente)
+      disconnectWebSocket();
+
+      // 2. Tenta atualizar o status no banco de dados (ação do servidor)
+      if (token) {
+        try {
+          const response = await fetch(`${API_BASE_URL}/nurse/offline`, {
+            method: "PATCH", // Usando PATCH para atualizar o status para offline
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (!response.ok) {
+            // Se falhar, avisa no console, mas o logout local continua
+            console.error("Falha ao atualizar status para offline no servidor.");
+            toast.warning("Não foi possível atualizar seu status no servidor, mas você foi desconectado.");
+          } else {
+            console.log("Status atualizado para offline no servidor com sucesso.");
+          }
+
+        } catch (error) {
+          // Se der erro de rede, avisa no console, mas o logout local continua
+          console.error("Erro de rede ao tentar ficar offline:", error);
+          toast.warning("Erro de rede ao atualizar status, mas você foi desconectado.");
+        }
+      } else {
+        console.warn("Logout de enfermeiro sem token. Não foi possível chamar /nurse/offline.");
+      }
+
     } else {
-      console.log("Usuário não é enfermeiro, pulando desconexão WebSocket.");
+      console.log("Usuário não é enfermeiro, pulando desconexão WebSocket e API.");
     }
 
-    // Continua com o processo normal de logout
+    // 3. Continua com o processo normal de logout local (agora remove o token)
     localStorage.removeItem("token")
     localStorage.removeItem("user")
     setIsAuthenticated(false)
@@ -133,7 +169,7 @@ export function Header() {
   }
 
   // Função getInitials (mantida)
-  const getInitials = (name: string) => { /* ... */
+  const getInitials = (name: string) => {
     if (!name) return ""
     return name
       .split(" ")
@@ -144,7 +180,7 @@ export function Header() {
   }
 
   // Lógica de links e avatar (mantida)
-  const currentNavLinks = /* ... */
+  const currentNavLinks =
     isAuthenticated && userData?.role
       ? navLinksConfig[userData.role] ?? navLinksConfig.base
       : navLinksConfig.base
@@ -378,7 +414,7 @@ export function Header() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            {/* handleLogout agora chama disconnectWebSocket */}
+            {/* handleLogout (agora async) chama a API e disconnectWebSocket */}
             <AlertDialogAction onClick={handleLogout} className="bg-red-600 hover:bg-red-700">Confirmar Saída</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

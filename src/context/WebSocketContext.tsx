@@ -4,7 +4,7 @@
 import React, { createContext, useState, useContext, useRef, useEffect, useCallback, ReactNode } from 'react';
 import { toast } from 'sonner';
 
-// Interface da notificação (mantida)
+// Interface da notificação
 interface VisitNotification {
     type: string;
     visit_id: string;
@@ -15,13 +15,13 @@ interface VisitNotification {
     address: string;
 }
 
-// Tipagem do Contexto (mantida)
+// Tipagem do Contexto
 interface WebSocketContextType {
     isOnline: boolean;
     isConnecting: boolean;
     currentNotification: VisitNotification | null;
     showNotification: boolean;
-    connectWebSocket: () => void; // Tipo já definido aqui
+    connectWebSocket: () => void;
     disconnectWebSocket: () => void;
     setShowNotification: React.Dispatch<React.SetStateAction<boolean>>;
 }
@@ -40,29 +40,26 @@ export const WebSocketProvider: React.FC<{ children: ReactNode }> = ({ children 
     const intentionalDisconnect = useRef(false);
 
     // ===================================
-    // CORREÇÃO: Declarar a função ANTES do useCallback para ajudar o TS
+    // CORREÇÃO: Usar useRef para a chamada recursiva no setTimeout
     // ===================================
-    let connectWebSocketFn: () => void; // Declara a variável com o tipo
+    const connectFnRef = useRef<(() => void) | undefined>(undefined); // Ref para guardar a função connectWebSocket
 
-    // Função de Conexão
-    // Atribui a função criada pelo useCallback à variável declarada
-    connectWebSocketFn = useCallback(() => {
-        // Copia a referência localmente para usar dentro dos callbacks
-        const localConnectWebSocket = connectWebSocketFn;
-
+    // Define a função connectWebSocket usando useCallback
+    const connectWebSocket = useCallback(() => {
         const token = localStorage.getItem("token");
         if (!token) {
             console.log("WebSocket: Token não encontrado, não conectando.");
             return;
         }
+        // Previne múltiplas tentativas se já estiver conectando ou conectado
         if (webSocketRef.current || isConnecting) {
-            console.warn("WebSocket: Conexão já existe ou está em andamento.");
+            console.warn(`WebSocket: Tentativa de conexão ignorada. Status atual: ${webSocketRef.current ? 'Conectado' : 'Conectando'}`);
             return;
         }
 
         console.log("Tentando conectar WebSocket (Manual)...");
         setIsConnecting(true);
-        intentionalDisconnect.current = false;
+        intentionalDisconnect.current = false; // Resetar flag sempre que tentar conectar
 
         const wsUrl = `${WS_BASE_URL}/ws/chat?token=${token}`;
         console.log("URL final da conexão (Global):", wsUrl);
@@ -75,7 +72,7 @@ export const WebSocketProvider: React.FC<{ children: ReactNode }> = ({ children 
                 console.log("WebSocket conectado com sucesso (Global)!");
                 setIsOnline(true);
                 setIsConnecting(false);
-                reconnectAttempts.current = 0;
+                reconnectAttempts.current = 0; // Reseta tentativas SÓ SUCESSO
                 toast.success("Você está online!");
             };
 
@@ -96,8 +93,9 @@ export const WebSocketProvider: React.FC<{ children: ReactNode }> = ({ children 
 
             ws.onclose = (event) => {
                 console.log("WebSocket desconectado (Global):", event.code, event.reason);
-                webSocketRef.current = null;
+                webSocketRef.current = null; // Sempre limpa a ref
 
+                // Causa 1: Desconexão intencional
                 if (intentionalDisconnect.current || event.code === 1000) {
                     console.log("Fechamento intencional ou normal do WebSocket.");
                     setIsOnline(false);
@@ -106,15 +104,23 @@ export const WebSocketProvider: React.FC<{ children: ReactNode }> = ({ children 
                     if (intentionalDisconnect.current && event.reason !== "Provider Unmounted") {
                         toast.info("Você ficou offline.");
                     }
-                } else if (reconnectAttempts.current < 5) {
+                }
+                // Causa 2: Desconexão inesperada
+                else if (reconnectAttempts.current < 5) {
                     reconnectAttempts.current++;
                     const delay = Math.pow(2, reconnectAttempts.current) * 1000;
                     console.log(`WebSocket: Conexão perdida (tentativa ${reconnectAttempts.current}). Tentando reconectar em ${delay / 1000}s...`);
-                    setIsConnecting(true);
+                    setIsConnecting(true); // Indica tentativa de reconexão
                     setIsOnline(false);
-                    // Usa a referência local aqui
-                    setTimeout(localConnectWebSocket, delay); // Tenta reconectar
-                } else {
+
+                    // ===================================
+                    // CORREÇÃO: Chama a função via ref.current
+                    // ===================================
+                    setTimeout(() => connectFnRef.current?.(), delay); // Tenta reconectar usando a ref
+
+                }
+                // Causa 3: Atingiu o limite
+                else {
                     console.error("Máximo de tentativas de reconexão atingido.");
                     toast.error("Não foi possível reconectar ao servidor de notificações.");
                     setIsOnline(false);
@@ -126,10 +132,13 @@ export const WebSocketProvider: React.FC<{ children: ReactNode }> = ({ children 
                 console.error("Erro na conexão WebSocket (Global):", errorEvent);
                 setIsConnecting(false);
                 setIsOnline(false);
-                if (!isOnline) { // Usamos isOnline do estado aqui
-                    reconnectAttempts.current = 5;
-                    toast.error("Falha ao conectar o WebSocket.");
+                // Se o erro foi antes de abrir, impede reconexão pelo onclose
+                if (!isOnline && webSocketRef.current?.readyState !== WebSocket.OPEN) {
+                   reconnectAttempts.current = 5;
+                   // Considerar não mostrar toast aqui se onclose já mostrar um
+                   // toast.error("Falha ao conectar o WebSocket.");
                 }
+                 // Deixa o onclose lidar com a limpeza da ref e toast final, se necessário
             };
 
         } catch (error) {
@@ -137,20 +146,27 @@ export const WebSocketProvider: React.FC<{ children: ReactNode }> = ({ children 
             toast.error("Não foi possível iniciar a conexão WebSocket.");
             setIsConnecting(false);
             setIsOnline(false);
-            reconnectAttempts.current = 5;
+            reconnectAttempts.current = 5; // Impede reconexão
         }
-        // Removido 'connectWebSocket' da lista de dependências para quebrar a referência circular
+    // A dependência 'isConnecting' ajuda a prevenir chamadas múltiplas enquanto conecta
     }, [isConnecting]);
 
-    // Reatribui a função final (garantido pelo useCallback) à variável exportada pelo contexto
-    const connectWebSocket = connectWebSocketFn;
+    // ===================================
+    // CORREÇÃO: Efeito para atualizar a ref da função
+    // ===================================
+    useEffect(() => {
+        // Atualiza a ref com a versão mais recente (memoizada) da função
+        // sempre que ela (ou suas dependências) mudarem.
+        connectFnRef.current = connectWebSocket;
+    }, [connectWebSocket]);
 
-    // Função de Desconexão (mantida igual)
+
+    // Função de Desconexão (mantida igual à última versão)
     const disconnectWebSocket = useCallback(() => {
         if (webSocketRef.current) {
             console.log("Desconectando WebSocket intencionalmente (Global)...");
-            intentionalDisconnect.current = true;
-            webSocketRef.current.close(1000, "Logout pelo usuário");
+            intentionalDisconnect.current = true; // Seta a flag ANTES de fechar
+            webSocketRef.current.close(1000, "Logout pelo usuário"); // Código 1000 para fechamento normal
         } else {
             console.warn("Nenhuma conexão WebSocket para fechar (Global).");
             setIsOnline(false);
@@ -163,20 +179,20 @@ export const WebSocketProvider: React.FC<{ children: ReactNode }> = ({ children 
         return () => {
             if (webSocketRef.current) {
                 console.log("Limpando WebSocket Provider: Fechando conexão.");
-                intentionalDisconnect.current = true;
+                intentionalDisconnect.current = true; // Marca como intencional
                 webSocketRef.current.close(1000, "Provider Unmounted");
             }
         };
     }, []);
 
 
-    // O valor do contexto (mantido)
+    // O valor do contexto
     const value: WebSocketContextType = {
         isOnline,
         isConnecting,
         currentNotification,
         showNotification,
-        connectWebSocket, // Passa a função finalizada
+        connectWebSocket, // Passa a função memoizada
         disconnectWebSocket,
         setShowNotification,
     };
@@ -184,6 +200,7 @@ export const WebSocketProvider: React.FC<{ children: ReactNode }> = ({ children 
     return (
         <WebSocketContext.Provider value={value}>
             {children}
+            {/* O Dialog Global já está no layout.tsx */}
         </WebSocketContext.Provider>
     );
 };
@@ -195,4 +212,4 @@ export const useWebSocket = (): WebSocketContextType => {
         throw new Error('useWebSocket must be used within a WebSocketProvider');
     }
     return context;
-};  
+};
