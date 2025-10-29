@@ -5,15 +5,9 @@ import "./globals.css"
 import { Toaster } from "@/components/ui/sonner"
 // --- Imports mantidos ---
 import { WebSocketProvider } from '@/context/WebSocketContext';
-// --- CORRIGIDO: Agora só importamos ---
 import { GlobalNotificationDialog } from '@/components/GlobalNotificationDialog';
-// Removidos imports específicos do dialog que estavam aqui antes, pois estão no componente separado
-// import { useRouter } from "next/navigation";
-// import { User, BellRing } from "lucide-react";
-// import { Button } from "@/components/ui/button";
-// import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-// import { useWebSocket } from "@/context/WebSocketContext";
-// import { toast } from "sonner";
+// Removidos imports desnecessários que estavam na versão antiga do seu prompt
+// (router, icons, dialog components, etc.)
 
 
 const geistSans = Geist({
@@ -42,8 +36,13 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <WebSocketProvider>
           {children}
-          <Toaster position="top-right" richColors />
-          {/* --- Uso do Componente Importado --- */}
+
+          {/* --- MUDANÇA REALIZADA ---
+            Removemos as props 'position' e 'richColors' 
+            para voltar ao estilo padrão (o da sua "versão antiga").
+          */}
+          <Toaster />
+
           <GlobalNotificationDialog />
         </WebSocketProvider>
       </body>
