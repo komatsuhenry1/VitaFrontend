@@ -90,6 +90,7 @@ export default function NurseVisitsPage() {
     const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null)
     const [showConfirmDialog, setShowConfirmDialog] = useState(false)
     const [showCancelDialog, setShowCancelDialog] = useState(false)
+    const [showRejectDialog, setShowRejectDialog] = useState(false)
     const [showConfirmServiceDialog, setShowConfirmServiceDialog] = useState(false)
     const [confirmationCodeInput, setConfirmationCodeInput] = useState("")
     const [confirmingService, setConfirmingService] = useState(false)
@@ -231,6 +232,30 @@ export default function NurseVisitsPage() {
             toast.success("Visita cancelada!")
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Erro")
+        } finally {
+            setActionLoading(false)
+        }
+    }
+
+    const handleRejectVisit = async () => {
+        if (!selectedVisit) return
+        try {
+            setActionLoading(true)
+            const token = localStorage.getItem("token")
+            const response = await fetch(`${API_BASE_URL}/nurse/reject-visit/${selectedVisit.id}`, {
+                method: "PATCH",
+                headers: { Authorization: `Bearer ${token}` },
+            })
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}))
+                throw new Error(errorData.message || "Erro ao rejeitar visita")
+            }
+            await fetchVisits()
+            setShowRejectDialog(false)
+            setSelectedVisit(null)
+            toast.success("Visita rejeitada!")
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Erro ao rejeitar visita")
         } finally {
             setActionLoading(false)
         }
@@ -392,16 +417,29 @@ export default function NurseVisitsPage() {
                             </Button>
 
                             {status === "PENDING" && (
-                                <Button
-                                    onClick={() => {
-                                        setSelectedVisit(visit)
-                                        setShowConfirmDialog(true)
-                                    }}
-                                    style={{ backgroundColor: "#15803d", color: "white" }}
-                                >
-                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                    Confirmar
-                                </Button>
+                                <>
+                                    <Button
+                                        onClick={() => {
+                                            setSelectedVisit(visit)
+                                            setShowConfirmDialog(true)
+                                        }}
+                                        style={{ backgroundColor: "#15803d", color: "white" }}
+                                    >
+                                        <CheckCircle className="h-4 w-4 mr-2" />
+                                        Confirmar
+                                    </Button>
+                                    <Button
+                                        onClick={() => {
+                                            setSelectedVisit(visit)
+                                            setShowRejectDialog(true)
+                                        }}
+                                        variant="outline"
+                                        style={{ borderColor: "#dc2626", color: "#dc2626" }}
+                                    >
+                                        <XCircle className="h-4 w-4 mr-2" />
+                                        Rejeitar
+                                    </Button>
+                                </>
                             )}
 
                             {status === "CONFIRMED" && (
@@ -804,6 +842,40 @@ export default function NurseVisitsPage() {
                             style={{ backgroundColor: "#15803d" }}
                         >
                             {actionLoading ? "Confirmando..." : "Confirmar Visita"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Rejeitar Visita</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Tem certeza que deseja rejeitar esta visita? Esta ação não pode ser desfeita.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    {selectedVisit && (
+                        <div style={{ display: "grid", gap: "0.5rem", padding: "1rem 0", fontSize: "0.9rem" }}>
+                            <p>
+                                <strong>Paciente:</strong> {selectedVisit.patient_name}
+                            </p>
+                            <p>
+                                <strong>Data:</strong> {selectedVisit.date}
+                            </p>
+                            <p>
+                                <strong>Valor:</strong> {formatCurrency(selectedVisit.visit_value)}
+                            </p>
+                        </div>
+                    )}
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={actionLoading}>Voltar</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleRejectVisit}
+                            disabled={actionLoading}
+                            style={{ backgroundColor: "#dc2626" }}
+                        >
+                            {actionLoading ? "Rejeitando..." : "Rejeitar Visita"}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
