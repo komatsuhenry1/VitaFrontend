@@ -412,7 +412,7 @@ export function Header() {
               Sua sessão será encerrada e você precisará fazer o login novamente para acessar sua conta.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter> 
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             {/* handleLogout (agora async) chama a API e disconnectWebSocket */}
             <AlertDialogAction onClick={handleLogout} className="bg-red-600 hover:bg-red-700">Confirmar Saída</AlertDialogAction>
