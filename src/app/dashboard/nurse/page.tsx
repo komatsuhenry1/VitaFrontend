@@ -370,8 +370,8 @@ export default function NurseDashboard() {
               )}
               <span> {/* Texto dinâmico usando isOnline e isConnecting do contexto */}
                 {isConnecting ? (isOnline ? "Desconectando..." : "Conectando...")
-                  : isOnline ? "ONLINE - Clique para ficar Offline"
-                    : "OFFLINE - Clique para ficar Online"}
+                  : isOnline ? "ONLINE"
+                    : "OFFLINE"}
               </span>
               <div style={{ width: "12px", height: "12px", borderRadius: "50%", backgroundColor: isOnline ? "#ffffff" : "#9ca3af", animation: isOnline ? "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite" : "none", }} />
             </button>

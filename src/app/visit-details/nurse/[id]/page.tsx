@@ -107,7 +107,7 @@ export default function VisitDetailsPage() {
     // ... (useMemo AddressMapWithNoSSR) ...
     const AddressMapWithNoSSR = useMemo( /* ... definição do mapa ... */
         () =>
-            dynamic(() => import("@/components/AddressMap"), {
+            dynamic(() => import("@/components/NursesMap"), {
                 loading: () => (<div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "250px", backgroundColor: "#f3f4f6", borderRadius: "0.5rem" }}> <Loader2 className="h-6 w-6 animate-spin text-gray-500" /> <p className="ml-2 text-gray-600">Carregando mapa...</p> </div>),
                 ssr: false,
             }),

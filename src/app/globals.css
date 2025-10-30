@@ -79,6 +79,21 @@
   --sidebar-ring: #84cc16;
 }
 
+.approx-location-tooltip {
+  background-color: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  font-weight: 600;
+  color: #333;
+  padding: 4px 8px;
+}
+
+/* O Leaflet adiciona uma "seta" que não queremos, então escondemos */
+.approx-location-tooltip.leaflet-tooltip-bottom::before {
+  border-bottom-color: transparent !important;
+}
+
 .dark {
   --background: #0f172a;
   --foreground: #f1f5f9;
