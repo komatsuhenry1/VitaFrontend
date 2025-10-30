@@ -397,7 +397,7 @@ export default function RegisterPage() {
     if (formData.profile_image) formDataToSend.append("profile_image", formData.profile_image)
 
     try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
       const registerUrl = `${API_BASE_URL}/auth/nurse`
       const response = await fetch(registerUrl, {
         method: "POST",

@@ -469,7 +469,7 @@ export default function NurseVisitsPage() {
 
                             <Button
                                 variant="outline"
-                                onClick={() => router.push(`/chat?selected=${visit.patient_id}`)}
+                                onClick={() => router.push(`/chat/${visit.patient_id}`)}
                                 style={{ borderColor: "#0891b2", color: "#0891b2" }}
                             >
                                 <MessageCircle className="h-4 w-4 mr-2" />

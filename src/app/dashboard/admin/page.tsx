@@ -97,7 +97,7 @@ const AdminDashboard = () => {
     try {
       const token = localStorage.getItem("token")
 
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
       const response = await fetch(`${API_BASE_URL}/admin/dashboard`, {
         method: "GET",
@@ -125,7 +125,7 @@ const AdminDashboard = () => {
     setCurrentNurseName(nurse.name)
     try {
       const token = localStorage.getItem("token")
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
       const response = await fetch(`${API_BASE_URL}/admin/documents/${nurse.id}`, {
         method: "GET",
         headers: {
@@ -152,7 +152,7 @@ const AdminDashboard = () => {
     try {
       const token = localStorage.getItem("token")
       const fullDescription = details ? `${description} - ${details}` : description
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
 
       const response = await fetch(`${API_BASE_URL}/admin/reject/${nurseId}`, {
@@ -245,7 +245,7 @@ const AdminDashboard = () => {
     { id: 4, action: "Documento enviado", user: "Maria Santos", time: "2h atrás" },
   ])
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
   if (loading) {
     return (

@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Clock, DollarSign, Calendar, Loader2, Plus, X, Award, MapPin } from "lucide-react"
 import { toast } from "sonner"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
 interface AvailabilityForm {
     start_time: string

@@ -124,7 +124,7 @@ export default function NursesMapPage() {
     fetchNurses()
   }, [])
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50">

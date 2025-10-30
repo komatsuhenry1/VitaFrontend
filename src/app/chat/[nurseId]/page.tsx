@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Send, Loader2 } from "lucide-react"
 
 // Definimos as URLs base para a API HTTP e para o WebSocket
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
+
 const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_BASE_URL
 
 // Interface para a estrutura de uma mensagem

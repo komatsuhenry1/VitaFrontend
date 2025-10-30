@@ -59,7 +59,7 @@ export default function Contato() {
         setIsSubmitting(true)
         setFormStatus({ message: "", type: "" })
 
-        const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+        const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
         try {
             const contactUsUrl = `${API_BASE_URL}/user/contact`

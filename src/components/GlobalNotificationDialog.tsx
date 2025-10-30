@@ -11,7 +11,7 @@ import { useWebSocket } from "@/context/WebSocketContext";
 import { toast } from "sonner";
 
 // Assume que API_BASE_URL está acessível (se não, importe/defina)
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
 export const GlobalNotificationDialog = () => {
     const { showNotification, setShowNotification, currentNotification } = useWebSocket();

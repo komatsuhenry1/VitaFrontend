@@ -42,7 +42,7 @@ interface Conversation {
     last_message_timestamp: string
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_BASE_URL
 
 export default function ChatsPage() {

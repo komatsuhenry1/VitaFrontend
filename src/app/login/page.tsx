@@ -38,7 +38,7 @@ export default function LoginPage() {
     setIsSubmitting(true)
 
     try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
       const loginUrl = `${API_BASE_URL}/auth/login`
 
