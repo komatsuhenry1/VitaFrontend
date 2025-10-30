@@ -74,7 +74,6 @@ export default function PatientProfile() {
                 const result: ApiResponse = await response.json()
 
                 if (result.success && result.data) {
-                    toast.success("Perfil do paciente carregado com sucesso!")
                     setPatient(result.data)
                 } else {
                     throw new Error(result.message || "Erro ao carregar dados do paciente")
