@@ -82,7 +82,7 @@ export default function NurseMyProfile() {
                 const user = JSON.parse(storedUser)
                 const nurseId = user._id
 
-                const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/user/nurse/${nurseId}`, {
+                const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/nurse/my-profile`, {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",
