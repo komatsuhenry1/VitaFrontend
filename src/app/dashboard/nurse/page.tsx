@@ -287,18 +287,29 @@ export default function NurseDashboard() {
     }))
   }
 
-  // --- JSX de Loading e Erro (mantidos) ---
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}>
-        <Header />
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh", flexDirection: "column", gap: "1rem" }}>
-          <Loader2 className="animate-spin" size={48} style={{ color: "#15803d" }} />
-          <p style={{ color: "#6b7280" }}>Carregando dados do enfermeiro...</p>
+        <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
+            <Header />
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
+                <div style={{ textAlign: "center" }}>
+                    <div
+                        style={{
+                            width: "40px",
+                            height: "40px",
+                            border: "4px solid #e5e7eb",
+                            borderTop: "4px solid #15803d",
+                            borderRadius: "50%",
+                            animation: "spin 1s linear infinite",
+                            margin: "0 auto 1rem",
+                        }}
+                    ></div>
+                    <p style={{ color: "#6b7280" }}>Carregando dashboard...</p>
+                </div>
+            </div>
         </div>
-      </div>
     )
-  }
+}
   if (error) {
     return (
       <div style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}>

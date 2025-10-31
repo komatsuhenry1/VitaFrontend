@@ -236,14 +236,23 @@ export default function ImmediateConsultationNurseProfile() {
         }
     }
 
-    // JSX de Loading e Erro (mantidos iguais)
     if (loading) {
         return (
             <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
                 <Header />
                 <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
                     <div style={{ textAlign: "center" }}>
-                        <Loader2 className="h-10 w-10 animate-spin mx-auto mb-4" style={{ color: "#15803d" }} />
+                        <div
+                            style={{
+                                width: "40px",
+                                height: "40px",
+                                border: "4px solid #e5e7eb",
+                                borderTop: "4px solid #15803d",
+                                borderRadius: "50%",
+                                animation: "spin 1s linear infinite",
+                                margin: "0 auto 1rem",
+                            }}
+                        ></div>
                         <p style={{ color: "#6b7280" }}>Carregando perfil do enfermeiro...</p>
                     </div>
                 </div>

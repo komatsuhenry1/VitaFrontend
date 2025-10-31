@@ -197,7 +197,6 @@ export default function NurseAvailabilityPage() {
     }
 
     if (loading) {
-        // ... (JSX de loading mantido igual) ...
         return (
             <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
                 <Header />

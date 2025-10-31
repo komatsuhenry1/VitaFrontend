@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Send, Loader2 } from "lucide-react"
+import { Header } from "@/components/Header"
 
 // Definimos as URLs base para a API HTTP e para o WebSocket
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
@@ -243,8 +244,24 @@ export default function ChatPage() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
+                <Header />
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
+                    <div style={{ textAlign: "center" }}>
+                        <div
+                            style={{
+                                width: "40px",
+                                height: "40px",
+                                border: "4px solid #e5e7eb",
+                                borderTop: "4px solid #15803d",
+                                borderRadius: "50%",
+                                animation: "spin 1s linear infinite",
+                                margin: "0 auto 1rem",
+                            }}
+                        ></div>
+                        <p style={{ color: "#6b7280" }}>Carregando chat...</p>
+                    </div>
+                </div>
             </div>
         )
     }

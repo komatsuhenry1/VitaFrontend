@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 // --- MUDANÇA: Ícone de seta importado ---
 import { ArrowLeft, Loader2, MessageSquareText, Search, Send } from "lucide-react"
+import { Header } from "@/components/Header"
 
 interface Message {
     id: string
@@ -280,15 +281,29 @@ export default function ChatsPage() {
     )
 
     const avatarUrl = chatPartner?.image ? `${API_BASE_URL}/user/file/${chatPartner.image}` : undefined
-
     if (loading) {
         return (
-            <div className="flex justify-center items-center h-screen" style={{ backgroundColor: "#f0f2f5" }}>
-                <Loader2 className="h-8 w-8 animate-spin" style={{ color: "#15803d" }} />
+            <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
+                <Header />
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
+                    <div style={{ textAlign: "center" }}>
+                        <div
+                            style={{
+                                width: "40px",
+                                height: "40px",
+                                border: "4px solid #e5e7eb",
+                                borderTop: "4px solid #15803d",
+                                borderRadius: "50%",
+                                animation: "spin 1s linear infinite",
+                                margin: "0 auto 1rem",
+                            }}
+                        ></div>
+                        <p style={{ color: "#6b7280" }}>Carregando configurações...</p>
+                    </div>
+                </div>
             </div>
         )
     }
-
     return (
         <div className="flex h-screen" style={{ backgroundColor: "#f0f2f5" }}>
             <div
