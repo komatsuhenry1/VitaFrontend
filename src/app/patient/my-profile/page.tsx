@@ -24,27 +24,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-
-interface PatientData {
-    id: string
-    name: string
-    email: string
-    phone: string
-    address: string
-    cpf: string
-    role: string
-    first_access: boolean
-    created_at: string
-    updated_at: string
-    hidden: boolean
-    profile_image_id?: string
-}
-
-interface ApiResponse {
-    data: PatientData
-    message: string
-    success: boolean
-}
+import type { PatientData, ApiResponse } from "@/types/patient-profile"
 
 export default function MyProfile() {
     const router = useRouter()
@@ -52,6 +32,8 @@ export default function MyProfile() {
     const [loading, setLoading] = useState(true)
     const [isSaving, setIsSaving] = useState(false)
     const [activeTab, setActiveTab] = useState("profile")
+    const [deletePassword, setDeletePassword] = useState("")
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
     const [editForm, setEditForm] = useState({
         name: "",
@@ -91,12 +73,8 @@ export default function MyProfile() {
                     return
                 }
 
-                console.log("entrou aqui")
-
                 const user = JSON.parse(storedUser)
                 const patientId = user._id
-
-                console.log(" dsadsadasda")
 
                 const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/nurse/patient/${patientId}`, {
                     method: "GET",
@@ -205,11 +183,8 @@ export default function MyProfile() {
                 }),
             })
 
-            console.log(response)
-            
             const result = await response.json()
-            console.log(result)
-            
+
             if (response.ok && result.success) {
                 toast.success("Configurações de segurança atualizadas! Faça login novamente.")
                 localStorage.removeItem("token")
@@ -286,6 +261,11 @@ export default function MyProfile() {
     }
 
     const handleDeleteAccount = async () => {
+        if (!deletePassword) {
+            toast.error("Por favor, digite sua senha para confirmar")
+            return
+        }
+
         try {
             setIsSaving(true)
 
@@ -295,6 +275,9 @@ export default function MyProfile() {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${localStorage.getItem("token")}`,
                 },
+                body: JSON.stringify({
+                    password: deletePassword,
+                }),
             })
 
             const result = await response.json()
@@ -303,6 +286,8 @@ export default function MyProfile() {
                 toast.success(result.message || "Conta desativada com sucesso!")
                 localStorage.removeItem("user")
                 localStorage.removeItem("token")
+                setIsDeleteDialogOpen(false)
+                setDeletePassword("")
                 router.push("/login")
             } else {
                 throw new Error(result.message || "Erro ao desativar conta")
@@ -786,7 +771,7 @@ export default function MyProfile() {
                                             <p className="text-sm text-red-700 mb-4">
                                                 Ações irreversíveis que afetam permanentemente sua conta
                                             </p>
-                                            <AlertDialog>
+                                            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                                                 <AlertDialogTrigger asChild>
                                                     <Button variant="destructive" className="w-full" disabled={isSaving}>
                                                         <Trash2 className="h-4 w-4 mr-2" />
@@ -801,12 +786,32 @@ export default function MyProfile() {
                                                             dados serão removidos do sistema.
                                                         </AlertDialogDescription>
                                                     </AlertDialogHeader>
+                                                    <div className="py-4">
+                                                        <Label htmlFor="deletePassword" className="text-sm font-medium">
+                                                            Digite sua senha para confirmar
+                                                        </Label>
+                                                        <Input
+                                                            id="deletePassword"
+                                                            type="password"
+                                                            placeholder="Sua senha"
+                                                            value={deletePassword}
+                                                            onChange={(e) => setDeletePassword(e.target.value)}
+                                                            className="mt-2"
+                                                            disabled={isSaving}
+                                                        />
+                                                    </div>
                                                     <AlertDialogFooter>
-                                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                        <AlertDialogCancel
+                                                            onClick={() => {
+                                                                setDeletePassword("")
+                                                            }}
+                                                        >
+                                                            Cancelar
+                                                        </AlertDialogCancel>
                                                         <AlertDialogAction
                                                             onClick={handleDeleteAccount}
                                                             className="bg-red-600 hover:bg-red-700"
-                                                            disabled={isSaving}
+                                                            disabled={isSaving || !deletePassword}
                                                         >
                                                             {isSaving ? "Desativando..." : "Sim, desativar conta"}
                                                         </AlertDialogAction>

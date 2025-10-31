@@ -8,12 +8,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
-import { User, Bell, Lock, Loader2, Eye, History, Save, KeyRound, Trash2, Shield, Calendar } from "lucide-react"
-import { toast } from "sonner"
-import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
+import { Textarea } from "@/components/ui/textarea"
+import { History, Trash2, User, Lock, Bell, Eye, Calendar, Shield, Save, KeyRound } from "lucide-react"
+import { toast } from "sonner"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -25,25 +25,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-
-interface NurseProfile {
-    id: string
-    name: string
-    email: string
-    phone: string
-    address: string
-    coren: string
-    years_experience: number
-    department: string
-    bio: string
-    specialization: string
-    created_at?: string
-    updated_at?: string
-    hidden?: boolean
-    profile_image_id?: string
-    experience?: number
-    location?: string
-}
+import type { NurseProfile } from "@/types/nurse-profile"
 
 export default function NurseMyProfile() {
     const router = useRouter()
@@ -52,20 +34,20 @@ export default function NurseMyProfile() {
     const [nurseData, setNurseData] = useState<NurseProfile | null>(null)
     const [activeTab, setActiveTab] = useState("profile")
 
-    // Profile form state
-    const [profileForm, setProfileForm] = useState({
+    const [deletePassword, setDeletePassword] = useState("")
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+
+    const [editForm, setEditForm] = useState({
         name: "",
         email: "",
         phone: "",
         address: "",
-        coren: "",
-        years_experience: 0,
         department: "",
-        bio: "",
         specialization: "",
+        bio: "",
+        years_experience: 0,
     })
 
-    // Security form state
     const [securityForm, setSecurityForm] = useState({
         currentPassword: "",
         newPassword: "",
@@ -73,130 +55,107 @@ export default function NurseMyProfile() {
         twoFactorEnabled: false,
     })
 
-    // Notifications form state
-    const [notificationsForm, setNotificationsForm] = useState({
+    const [notificationPrefs, setNotificationPrefs] = useState({
         emailNotifications: true,
         smsNotifications: false,
         appointmentReminders: true,
-        marketingEmails: false,
+        promotionalEmails: false,
     })
 
-    // Privacy form state
-    const [privacyForm, setPrivacyForm] = useState({
-        profileVisibility: true,
+    const [privacySettings, setPrivacySettings] = useState({
+        profileVisible: true,
         showEmail: false,
-        showPhone: true,
+        showPhone: false,
     })
 
     useEffect(() => {
-        const fetchNurseProfile = async () => {
+        const fetchNurseData = async () => {
             try {
-                const token = localStorage.getItem("token")
-                const user = JSON.parse(localStorage.getItem("user") || "{}")
-
-                console.log(user)
-
-                const nurseId = user._id
-
-                if (!user._id || !token) {
-                    toast.error("Sessão inválida. Por favor, faça login novamente. NURSE ERROR")
-                    localStorage.removeItem("token")
-                    localStorage.removeItem("user")
+                setIsLoading(true)
+                const storedUser = localStorage.getItem("user")
+                if (!storedUser) {
+                    toast.error("Usuário não encontrado. Faça login novamente.")
                     router.push("/login")
                     return
                 }
 
+                const user = JSON.parse(storedUser)
+                const nurseId = user._id
+
                 const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/user/nurse/${nurseId}`, {
+                    method: "GET",
                     headers: {
-                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${localStorage.getItem("token")}`,
                     },
-                    cache: "no-store", 
                 })
 
-                if (response.ok) {
-                    const result = await response.json()
-                    const data: NurseProfile = result.data
-
-                    console.log("[v0] Fetched nurse data:", data) 
-
-                    setNurseData(data)
-
-                    setProfileForm({
-                        name: data.name || "",
-                        email: user.email || "", // Email from localStorage since API doesn't return it
-                        phone: data.phone || "", // Will be empty if API doesn't return it
-                        address: data.location || "", // Map 'location' from API to 'address' in form
-                        coren: data.coren || "", // Will be empty if API doesn't return it
-                        years_experience: data.experience || 0, // Map 'experience' from API to 'years_experience'
-                        department: data.department || "",
-                        bio: data.bio || "",
-                        specialization: data.specialization || "",
-                    })
-
-                    console.log("[v0] Updated profile form:", profileForm) // Debug log
-                } else {
-                    toast.error("Erro ao carregar perfil")
+                if (!response.ok) {
+                    throw new Error("Erro ao carregar perfil")
                 }
-            } catch (error) {
-                console.error("Error fetching nurse profile:", error)
-                toast.error("Erro ao carregar perfil")
+
+                const result = await response.json()
+
+                if (result.success && result.data) {
+                    setNurseData(result.data)
+                    setEditForm({
+                        name: result.data.name || "",
+                        email: result.data.email || "",
+                        phone: result.data.phone || "",
+                        address: result.data.address || "",
+                        department: result.data.department || "",
+                        specialization: result.data.specialization || "",
+                        bio: result.data.bio || "",
+                        years_experience: result.data.years_experience || 0,
+                    })
+                } else {
+                    throw new Error(result.message || "Erro ao carregar dados")
+                }
+            } catch (err) {
+                toast.error(err instanceof Error ? err.message : "Erro ao carregar perfil")
             } finally {
                 setIsLoading(false)
             }
         }
 
-        fetchNurseProfile()
-    }, [router]) // Only depend on router to fetch once on mount
+        fetchNurseData()
+    }, [router])
 
     const handleSaveProfile = async () => {
-        setIsSaving(true)
         try {
-            const token = localStorage.getItem("token")
+            setIsSaving(true)
+
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/nurse/update`, {
                 method: "PATCH",
                 headers: {
-                    Authorization: `Bearer ${token}`,
                     "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
                 },
-                body: JSON.stringify({
-                    name: profileForm.name,
-                    email: profileForm.email,
-                    phone: profileForm.phone,
-                    address: profileForm.address,
-                    coren: profileForm.coren,
-                    years_experience: profileForm.years_experience,
-                    department: profileForm.department,
-                    bio: profileForm.bio,
-                    specialization: profileForm.specialization,
-                }),
+                body: JSON.stringify(editForm),
             })
 
-            if (response.ok) {
-                const result = await response.json()
+            const result = await response.json()
+
+            if (response.ok && result.success) {
                 toast.success(result.message || "Perfil atualizado com sucesso!")
 
-                const user = JSON.parse(localStorage.getItem("user") || "{}")
-                user.name = profileForm.name
-                user.email = profileForm.email
-                localStorage.setItem("user", JSON.stringify(user))
+                if (nurseData) {
+                    setNurseData({
+                        ...nurseData,
+                        ...editForm,
+                    })
+                }
 
-                const updatedResponse = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/user/nurse/${user.id}`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                    cache: "no-store",
-                })
-
-                if (updatedResponse.ok) {
-                    const updatedResult = await updatedResponse.json()
-                    setNurseData(updatedResult.data)
+                const storedUser = localStorage.getItem("user")
+                if (storedUser) {
+                    const user = JSON.parse(storedUser)
+                    localStorage.setItem("user", JSON.stringify({ ...user, ...editForm }))
                 }
             } else {
-                toast.error("Erro ao atualizar perfil")
+                throw new Error(result.message || "Erro ao atualizar perfil")
             }
-        } catch (error) {
-            console.error("Error updating profile:", error)
-            toast.error("Erro ao atualizar perfil")
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Erro ao atualizar perfil")
         } finally {
             setIsSaving(false)
         }
@@ -209,7 +168,7 @@ export default function NurseMyProfile() {
         }
 
         if (securityForm.newPassword && securityForm.newPassword.length < 6) {
-            toast.error("A nova senha deve ter pelo menos 6 caracteres")
+            toast.error("A senha deve ter pelo menos 6 caracteres")
             return
         }
 
@@ -218,14 +177,14 @@ export default function NurseMyProfile() {
             return
         }
 
-        setIsSaving(true)
         try {
-            const token = localStorage.getItem("token")
+            setIsSaving(true)
+
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/logged/password`, {
                 method: "PATCH",
                 headers: {
-                    Authorization: `Bearer ${token}`,
                     "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
                 },
                 body: JSON.stringify({
                     password: securityForm.currentPassword,
@@ -234,97 +193,111 @@ export default function NurseMyProfile() {
                 }),
             })
 
-            if (response.ok) {
+            const result = await response.json()
+
+            if (response.ok && result.success) {
                 toast.success("Configurações de segurança atualizadas! Faça login novamente.")
                 localStorage.removeItem("token")
                 localStorage.removeItem("user")
                 router.push("/login")
             } else {
-                const error = await response.json()
-                toast.error(error.message || "Erro ao atualizar configurações de segurança")
+                throw new Error(result.message || "Erro ao atualizar segurança")
             }
-        } catch (error) {
-            console.error("Error updating security:", error)
-            toast.error("Erro ao atualizar configurações de segurança")
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Erro ao atualizar configurações de segurança")
         } finally {
             setIsSaving(false)
         }
     }
 
     const handleSaveNotifications = async () => {
-        setIsSaving(true)
         try {
-            const token = localStorage.getItem("token")
+            setIsSaving(true)
+
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/nurse/update`, {
                 method: "PATCH",
                 headers: {
-                    Authorization: `Bearer ${token}`,
                     "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
                 },
-                body: JSON.stringify(notificationsForm),
+                body: JSON.stringify(notificationPrefs),
             })
 
-            if (response.ok) {
-                toast.success("Preferências de notificação atualizadas!")
+            const result = await response.json()
+
+            if (response.ok && result.success) {
+                toast.success(result.message || "Preferências de notificação atualizadas!")
             } else {
-                toast.error("Erro ao atualizar preferências")
+                throw new Error(result.message || "Erro ao atualizar notificações")
             }
-        } catch (error) {
-            console.error("Error updating notifications:", error)
-            toast.error("Erro ao atualizar preferências")
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Erro ao atualizar preferências")
         } finally {
             setIsSaving(false)
         }
     }
 
     const handleSavePrivacy = async () => {
-        setIsSaving(true)
         try {
-            const token = localStorage.getItem("token")
+            setIsSaving(true)
+
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/nurse/update`, {
                 method: "PATCH",
                 headers: {
-                    Authorization: `Bearer ${token}`,
                     "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
                 },
-                body: JSON.stringify(privacyForm),
+                body: JSON.stringify(privacySettings),
             })
 
-            if (response.ok) {
-                toast.success("Configurações de privacidade atualizadas!")
+            const result = await response.json()
+
+            if (response.ok && result.success) {
+                toast.success(result.message || "Configurações de privacidade atualizadas!")
             } else {
-                toast.error("Erro ao atualizar configurações")
+                throw new Error(result.message || "Erro ao atualizar privacidade")
             }
-        } catch (error) {
-            console.error("Error updating privacy:", error)
-            toast.error("Erro ao atualizar configurações")
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Erro ao atualizar configurações")
         } finally {
             setIsSaving(false)
         }
     }
 
     const handleDeleteAccount = async () => {
-        setIsSaving(true)
+        if (!deletePassword) {
+            toast.error("Por favor, digite sua senha para confirmar")
+            return
+        }
+
         try {
-            const token = localStorage.getItem("token")
+            setIsSaving(true)
+
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/nurse/delete`, {
                 method: "DELETE",
                 headers: {
-                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
                 },
+                body: JSON.stringify({
+                    password: deletePassword,
+                }),
             })
 
-            if (response.ok) {
-                toast.success("Conta desativada com sucesso")
-                localStorage.removeItem("token")
+            const result = await response.json()
+
+            if (response.ok && result.success) {
+                toast.success(result.message || "Conta desativada com sucesso!")
                 localStorage.removeItem("user")
-                router.push("/")
+                localStorage.removeItem("token")
+                setIsDeleteDialogOpen(false)
+                setDeletePassword("")
+                router.push("/login")
             } else {
-                toast.error("Erro ao desativar conta")
+                throw new Error("Erro ao desativar conta, tente novamente.")
             }
-        } catch (error) {
-            console.error("Error deleting account:", error)
-            toast.error("Erro ao desativar conta")
+        } catch (err) {
+            toast.error("Credenciais inválidas, tente novamente.")
         } finally {
             setIsSaving(false)
         }
@@ -340,12 +313,20 @@ export default function NurseMyProfile() {
         })
     }
 
+    const formatPhone = (phone: string) => {
+        if (!phone) return "N/A"
+        return phone.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3")
+    }
+
     if (isLoading) {
         return (
             <div className="min-h-screen bg-gray-50">
                 <Header />
-                <div className="flex items-center justify-center min-h-[calc(100vh-80px)]">
-                    <Loader2 className="h-8 w-8 animate-spin text-[#15803d]" />
+                <div className="flex justify-center items-center min-h-[60vh]">
+                    <div className="text-center">
+                        <div className="w-10 h-10 border-4 border-gray-200 border-t-[#15803d] rounded-full animate-spin mx-auto mb-4"></div>
+                        <p className="text-gray-600">Carregando seu perfil...</p>
+                    </div>
                 </div>
             </div>
         )
@@ -357,7 +338,7 @@ export default function NurseMyProfile() {
                 <Header />
                 <div className="container mx-auto px-4 py-8 text-center">
                     <h1 className="text-red-600 mb-4">Erro ao carregar perfil</h1>
-                    <Button onClick={() => router.push("/nurse-dashboard")}>Voltar para Dashboard</Button>
+                    <Button onClick={() => router.push("/")}>Voltar para Início</Button>
                 </div>
             </div>
         )
@@ -376,7 +357,6 @@ export default function NurseMyProfile() {
 
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
                     <div className="grid md:grid-cols-4 gap-6">
-                        {/* Sidebar */}
                         <div className="md:col-span-1">
                             <Card>
                                 <CardContent className="p-4">
@@ -444,7 +424,6 @@ export default function NurseMyProfile() {
                             </Card>
                         </div>
 
-                        {/* Content */}
                         <div className="md:col-span-3">
                             {/* Profile Tab */}
                             <TabsContent value="profile" className="mt-0 space-y-6">
@@ -454,94 +433,107 @@ export default function NurseMyProfile() {
                                             <User size={20} />
                                             Informações Pessoais
                                         </CardTitle>
-                                        <CardDescription>Atualize suas informações profissionais</CardDescription>
+                                        <CardDescription>Atualize suas informações de contato e profissionais</CardDescription>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="name">Nome Completo</Label>
-                                                <Input
-                                                    id="name"
-                                                    value={profileForm.name}
-                                                    onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="email">Email</Label>
-                                                <Input
-                                                    id="email"
-                                                    type="email"
-                                                    value={profileForm.email}
-                                                    onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="phone">Telefone</Label>
-                                                <Input
-                                                    id="phone"
-                                                    value={profileForm.phone}
-                                                    onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                                                    placeholder="Digite seu telefone"
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="license">COREN</Label>
-                                                <Input
-                                                    id="license"
-                                                    value={profileForm.coren}
-                                                    onChange={(e) => setProfileForm({ ...profileForm, coren: e.target.value })}
-                                                    placeholder="Digite seu COREN"
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="experience">Anos de Experiência</Label>
-                                                <Input
-                                                    id="experience"
-                                                    type="number"
-                                                    value={profileForm.years_experience}
-                                                    onChange={(e) =>
-                                                        setProfileForm({
-                                                            ...profileForm,
-                                                            years_experience: Number.parseInt(e.target.value) || 0,
-                                                        })
-                                                    }
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="department">Departamento</Label>
-                                                <Input
-                                                    id="department"
-                                                    value={profileForm.department}
-                                                    onChange={(e) => setProfileForm({ ...profileForm, department: e.target.value })}
-                                                />
-                                            </div>
-                                            <div className="space-y-2 md:col-span-2">
-                                                <Label htmlFor="specialization">Especialização</Label>
-                                                <Input
-                                                    id="specialization"
-                                                    value={profileForm.specialization}
-                                                    onChange={(e) => setProfileForm({ ...profileForm, specialization: e.target.value })}
-                                                />
-                                            </div>
+                                        <div>
+                                            <Label htmlFor="name">Nome Completo</Label>
+                                            <Input
+                                                id="name"
+                                                value={editForm.name}
+                                                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                                                className="mt-1"
+                                            />
                                         </div>
-                                        <div className="space-y-2">
+                                        <div>
+                                            <Label htmlFor="email">Email</Label>
+                                            <Input
+                                                id="email"
+                                                type="email"
+                                                value={editForm.email}
+                                                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                                                className="mt-1"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="phone">Telefone</Label>
+                                            <Input
+                                                id="phone"
+                                                value={editForm.phone}
+                                                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                                                className="mt-1"
+                                            />
+                                        </div>
+                                        <div>
                                             <Label htmlFor="address">Endereço</Label>
                                             <Input
                                                 id="address"
-                                                value={profileForm.address}
-                                                onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
+                                                value={editForm.address}
+                                                onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                                                className="mt-1"
                                             />
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="bio">Biografia Profissional</Label>
+
+                                        <Separator />
+
+                                        <div>
+                                            <Label htmlFor="department">Departamento</Label>
+                                            <Input
+                                                id="department"
+                                                value={editForm.department}
+                                                onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+                                                className="mt-1"
+                                                placeholder="Ex: UTI, Emergência, Pediatria"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="specialization">Especialização</Label>
+                                            <Input
+                                                id="specialization"
+                                                value={editForm.specialization}
+                                                onChange={(e) => setEditForm({ ...editForm, specialization: e.target.value })}
+                                                className="mt-1"
+                                                placeholder="Ex: Enfermagem Intensiva, Cardiologia"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="years_experience">Anos de Experiência</Label>
+                                            <Input
+                                                id="years_experience"
+                                                type="number"
+                                                value={editForm.years_experience}
+                                                onChange={(e) =>
+                                                    setEditForm({ ...editForm, years_experience: Number.parseInt(e.target.value) || 0 })
+                                                }
+                                                className="mt-1"
+                                                min="0"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="bio">Biografia</Label>
                                             <Textarea
                                                 id="bio"
+                                                value={editForm.bio}
+                                                onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
+                                                className="mt-1"
                                                 rows={4}
-                                                value={profileForm.bio}
-                                                onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
                                                 placeholder="Conte um pouco sobre sua experiência profissional..."
                                             />
                                         </div>
+
+                                        <Separator />
+
+                                        <div className="grid md:grid-cols-2 gap-4">
+                                            <div className="p-4 bg-gray-50 rounded-lg">
+                                                <div className="text-sm text-gray-600 mb-1">COREN</div>
+                                                <div className="font-semibold text-gray-900">{nurseData.coren || "N/A"}</div>
+                                            </div>
+                                            <div className="p-4 bg-gray-50 rounded-lg">
+                                                <div className="text-sm text-gray-600 mb-1">Função</div>
+                                                <div className="font-semibold text-gray-900">Enfermeiro(a)</div>
+                                            </div>
+                                        </div>
+
                                         <Button
                                             onClick={handleSaveProfile}
                                             disabled={isSaving}
@@ -650,9 +642,9 @@ export default function NurseMyProfile() {
                                                 <div className="text-sm text-gray-600">Receba atualizações importantes por email</div>
                                             </div>
                                             <Switch
-                                                checked={notificationsForm.emailNotifications}
+                                                checked={notificationPrefs.emailNotifications}
                                                 onCheckedChange={(checked) =>
-                                                    setNotificationsForm({ ...notificationsForm, emailNotifications: checked })
+                                                    setNotificationPrefs({ ...notificationPrefs, emailNotifications: checked })
                                                 }
                                             />
                                         </div>
@@ -663,22 +655,22 @@ export default function NurseMyProfile() {
                                                 <div className="text-sm text-gray-600">Receba lembretes por mensagem de texto</div>
                                             </div>
                                             <Switch
-                                                checked={notificationsForm.smsNotifications}
+                                                checked={notificationPrefs.smsNotifications}
                                                 onCheckedChange={(checked) =>
-                                                    setNotificationsForm({ ...notificationsForm, smsNotifications: checked })
+                                                    setNotificationPrefs({ ...notificationPrefs, smsNotifications: checked })
                                                 }
                                             />
                                         </div>
 
                                         <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                                             <div className="flex-1">
-                                                <div className="font-semibold text-gray-900 mb-1">Lembretes de Visitas</div>
-                                                <div className="text-sm text-gray-600">Receba lembretes antes das suas visitas</div>
+                                                <div className="font-semibold text-gray-900 mb-1">Lembretes de Consultas</div>
+                                                <div className="text-sm text-gray-600">Receba lembretes antes das suas consultas</div>
                                             </div>
                                             <Switch
-                                                checked={notificationsForm.appointmentReminders}
+                                                checked={notificationPrefs.appointmentReminders}
                                                 onCheckedChange={(checked) =>
-                                                    setNotificationsForm({ ...notificationsForm, appointmentReminders: checked })
+                                                    setNotificationPrefs({ ...notificationPrefs, appointmentReminders: checked })
                                                 }
                                             />
                                         </div>
@@ -689,9 +681,9 @@ export default function NurseMyProfile() {
                                                 <div className="text-sm text-gray-600">Receba ofertas e novidades</div>
                                             </div>
                                             <Switch
-                                                checked={notificationsForm.marketingEmails}
+                                                checked={notificationPrefs.promotionalEmails}
                                                 onCheckedChange={(checked) =>
-                                                    setNotificationsForm({ ...notificationsForm, marketingEmails: checked })
+                                                    setNotificationPrefs({ ...notificationPrefs, promotionalEmails: checked })
                                                 }
                                             />
                                         </div>
@@ -725,8 +717,10 @@ export default function NurseMyProfile() {
                                                 <div className="text-sm text-gray-600">Permitir que pacientes vejam seu perfil</div>
                                             </div>
                                             <Switch
-                                                checked={privacyForm.profileVisibility}
-                                                onCheckedChange={(checked) => setPrivacyForm({ ...privacyForm, profileVisibility: checked })}
+                                                checked={privacySettings.profileVisible}
+                                                onCheckedChange={(checked) =>
+                                                    setPrivacySettings({ ...privacySettings, profileVisible: checked })
+                                                }
                                             />
                                         </div>
 
@@ -736,8 +730,8 @@ export default function NurseMyProfile() {
                                                 <div className="text-sm text-gray-600">Exibir seu email no perfil público</div>
                                             </div>
                                             <Switch
-                                                checked={privacyForm.showEmail}
-                                                onCheckedChange={(checked) => setPrivacyForm({ ...privacyForm, showEmail: checked })}
+                                                checked={privacySettings.showEmail}
+                                                onCheckedChange={(checked) => setPrivacySettings({ ...privacySettings, showEmail: checked })}
                                             />
                                         </div>
 
@@ -747,8 +741,8 @@ export default function NurseMyProfile() {
                                                 <div className="text-sm text-gray-600">Exibir seu telefone no perfil público</div>
                                             </div>
                                             <Switch
-                                                checked={privacyForm.showPhone}
-                                                onCheckedChange={(checked) => setPrivacyForm({ ...privacyForm, showPhone: checked })}
+                                                checked={privacySettings.showPhone}
+                                                onCheckedChange={(checked) => setPrivacySettings({ ...privacySettings, showPhone: checked })}
                                             />
                                         </div>
 
@@ -813,7 +807,7 @@ export default function NurseMyProfile() {
                                             <p className="text-sm text-red-700 mb-4">
                                                 Ações irreversíveis que afetam permanentemente sua conta
                                             </p>
-                                            <AlertDialog>
+                                            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                                                 <AlertDialogTrigger asChild>
                                                     <Button variant="destructive" className="w-full" disabled={isSaving}>
                                                         <Trash2 className="h-4 w-4 mr-2" />
@@ -828,12 +822,32 @@ export default function NurseMyProfile() {
                                                             dados serão removidos do sistema.
                                                         </AlertDialogDescription>
                                                     </AlertDialogHeader>
+                                                    <div className="py-4">
+                                                        <Label htmlFor="delete-password" className="text-sm font-medium">
+                                                            Digite sua senha para confirmar
+                                                        </Label>
+                                                        <Input
+                                                            id="delete-password"
+                                                            type="password"
+                                                            placeholder="Sua senha"
+                                                            value={deletePassword}
+                                                            onChange={(e) => setDeletePassword(e.target.value)}
+                                                            className="mt-2"
+                                                            disabled={isSaving}
+                                                        />
+                                                    </div>
                                                     <AlertDialogFooter>
-                                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                        <AlertDialogCancel
+                                                            onClick={() => {
+                                                                setDeletePassword("")
+                                                            }}
+                                                        >
+                                                            Cancelar
+                                                        </AlertDialogCancel>
                                                         <AlertDialogAction
                                                             onClick={handleDeleteAccount}
                                                             className="bg-red-600 hover:bg-red-700"
-                                                            disabled={isSaving}
+                                                            disabled={isSaving || !deletePassword}
                                                         >
                                                             {isSaving ? "Desativando..." : "Sim, desativar conta"}
                                                         </AlertDialogAction>
