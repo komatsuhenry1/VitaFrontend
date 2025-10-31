@@ -502,9 +502,8 @@ export default function NurseVisitsPage() {
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                             <Button
-                                variant="outline"
                                 onClick={() => router.push(`/patient-profile/${visit.patient_id}`)}
-                                style={{ borderColor: "#15803d", color: "#15803d" }}
+                                style={{ backgroundColor: "#B8B8B8", color: "white" }}
                             >
                                 <User className="h-4 w-4 mr-2" />
                                 Ver Paciente
@@ -527,8 +526,7 @@ export default function NurseVisitsPage() {
                                             setSelectedVisit(visit)
                                             setShowRejectDialog(true)
                                         }}
-                                        variant="outline"
-                                        style={{ borderColor: "#dc2626", color: "#dc2626" }}
+                                        style={{ backgroundColor: "#dc2626", color: "white" }}
                                     >
                                         <XCircle className="h-4 w-4 mr-2" />
                                         Rejeitar
@@ -539,12 +537,11 @@ export default function NurseVisitsPage() {
                             {status === "CONFIRMED" && (
                                 <>
                                     <Button
-                                        variant="outline"
                                         onClick={() => {
                                             setSelectedVisit(visit)
                                             setShowCancelDialog(true)
                                         }}
-                                        style={{ borderColor: "#dc2626", color: "#dc2626" }}
+                                        style={{ backgroundColor: "#dc2626", color: "white" }}
                                     >
                                         <XCircle className="h-4 w-4 mr-2" />
                                         Cancelar
@@ -598,17 +595,15 @@ export default function NurseVisitsPage() {
                             )}
 
                             <Button
-                                variant="outline"
                                 onClick={() => router.push(`/chat/${visit.patient_id}`)}
-                                style={{ borderColor: "#0891b2", color: "#0891b2" }}
+                                style={{ backgroundColor: "#0891b2", color: "white" }}
                             >
                                 <MessageCircle className="h-4 w-4 mr-2" />
                                 Chat
                             </Button>
                             <Button
-                                variant="outline"
                                 onClick={() => router.push(`/visit-details/nurse/${visit.id}`)}
-                                style={{ borderColor: "#6b7280", color: "#6b7280" }}
+                                style={{ backgroundColor: "#6b7280", color: "white" }}
                             >
                                 <Info className="h-4 w-4 mr-2" />
                                 Detalhes
@@ -687,9 +682,8 @@ export default function NurseVisitsPage() {
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                             <Button
-                                variant="outline"
                                 onClick={() => router.push(`/visit-details/nurse/${visit.id}`)}
-                                style={{ borderColor: "#6b7280", color: "#6b7280" }}
+                                style={{ backgroundColor: "#6b7280", color: "white" }}
                             >
                                 <Info className="h-4 w-4 mr-2" />
                                 Ver Detalhes
@@ -837,8 +831,7 @@ export default function NurseVisitsPage() {
                                         <div style={{ display: "flex", gap: "0.5rem" }}>
                                             <Button
                                                 onClick={() => router.push(`/visit-details/nurse/${visit.id}`)}
-                                                variant="outline"
-                                                style={{ flex: 1, borderColor: "#15803d", color: "#15803d" }}
+                                                style={{ flex: 1, backgroundColor: "#6b7280", color: "white" }}
                                             >
                                                 <Info className="h-4 w-4 mr-2" /> Detalhes
                                             </Button>
@@ -976,7 +969,9 @@ export default function NurseVisitsPage() {
                         </div>
                     )}
                     <AlertDialogFooter>
-                        <AlertDialogCancel disabled={actionLoading}>Voltar</AlertDialogCancel>
+                        <AlertDialogCancel disabled={actionLoading} style={{ backgroundColor: "#6b7280", color: "white" }}>
+                            Voltar
+                        </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleConfirmVisitAction}
                             disabled={actionLoading}
@@ -1010,7 +1005,9 @@ export default function NurseVisitsPage() {
                         </div>
                     )}
                     <AlertDialogFooter>
-                        <AlertDialogCancel disabled={actionLoading}>Voltar</AlertDialogCancel>
+                        <AlertDialogCancel disabled={actionLoading} style={{ backgroundColor: "#6b7280", color: "white" }}>
+                            Voltar
+                        </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleRejectVisit}
                             disabled={actionLoading}
@@ -1056,7 +1053,11 @@ export default function NurseVisitsPage() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setShowCancelDialog(false)} disabled={actionLoading}>
+                        <Button
+                            onClick={() => setShowCancelDialog(false)}
+                            disabled={actionLoading}
+                            style={{ backgroundColor: "#6b7280", color: "white" }}
+                        >
                             Voltar
                         </Button>
                         <Button variant="destructive" onClick={handleCancelVisitAction} disabled={actionLoading || !cancelReason}>
@@ -1100,7 +1101,11 @@ export default function NurseVisitsPage() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setShowConfirmServiceDialog(false)} disabled={confirmingService}>
+                        <Button
+                            onClick={() => setShowConfirmServiceDialog(false)}
+                            disabled={confirmingService}
+                            style={{ backgroundColor: "#6b7280", color: "white" }}
+                        >
                             Cancelar
                         </Button>
                         <Button
@@ -1192,7 +1197,6 @@ export default function NurseVisitsPage() {
 
                     <DialogFooter>
                         <Button
-                            variant="outline"
                             onClick={() => {
                                 setShowReviewDialog(false)
                                 setReviewVisit(null)
@@ -1200,6 +1204,7 @@ export default function NurseVisitsPage() {
                                 setComment("")
                             }}
                             disabled={submittingReview}
+                            style={{ backgroundColor: "#6b7280", color: "white" }}
                         >
                             Cancelar
                         </Button>

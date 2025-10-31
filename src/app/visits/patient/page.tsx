@@ -236,11 +236,10 @@ export default function VisitsPage() {
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                         {(status === "PENDING" || status === "COMPLETED") && (
                             <Button
-                                variant="outline"
                                 onClick={() => router.push(`/visit-details/patient/${visit.id}`)}
                                 style={{
-                                    borderColor: status === "PENDING" ? "#f59e0b" : "#0891b2",
-                                    color: status === "PENDING" ? "#f59e0b" : "#0891b2",
+                                    backgroundColor: status === "PENDING" ? "#f59e0b" : "#0891b2",
+                                    color: "white",
                                 }}
                             >
                                 <Info className="h-4 w-4 mr-2" />
@@ -251,24 +250,21 @@ export default function VisitsPage() {
                         {status === "CONFIRMED" && (
                             <>
                                 <Button
-                                    variant="outline"
                                     onClick={() => router.push(`/nurse-profile/${visit.nurse?.id}`)}
-                                    style={{ borderColor: "#15803d", color: "#15803d" }}
+                                    style={{ backgroundColor: "#15803d", color: "white" }}
                                 >
                                     Ver Perfil
                                 </Button>
                                 <Button
-                                    variant="outline"
                                     onClick={() => handleOpenChat(visit.nurse?.id)}
-                                    style={{ borderColor: "#0891b2", color: "#0891b2" }}
+                                    style={{ backgroundColor: "#0891b2", color: "white" }}
                                 >
                                     <MessageCircle className="h-4 w-4 mr-2" />
                                     Chat
                                 </Button>
                                 <Button
-                                    variant="outline"
                                     onClick={() => router.push(`/visit-details/patient/${visit.id}`)}
-                                    style={{ borderColor: "#6b7280", color: "#6b7280" }}
+                                    style={{ backgroundColor: "#6b7280", color: "white" }}
                                 >
                                     <Info className="h-4 w-4 mr-2" />
                                     Ver Detalhes
@@ -445,7 +441,10 @@ export default function VisitsPage() {
                 <Header />
                 <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem", textAlign: "center" }}>
                     <h1 style={{ color: "#dc2626", marginBottom: "1rem" }}>{error}</h1>
-                    <Button onClick={() => window.location.reload()} style={{ marginTop: "1rem" }}>
+                    <Button
+                        onClick={() => window.location.reload()}
+                        style={{ marginTop: "1rem", backgroundColor: "#15803d", color: "white" }}
+                    >
                         Tentar Novamente
                     </Button>
                 </div>
@@ -715,7 +714,7 @@ export default function VisitsPage() {
                     )}
 
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>
+                        <Button onClick={() => setShowDetailsDialog(false)} style={{ backgroundColor: "#6b7280", color: "white" }}>
                             Fechar
                         </Button>
                         {selectedVisit && (
@@ -743,7 +742,9 @@ export default function VisitsPage() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel disabled={completingVisit}>Cancelar</AlertDialogCancel>
+                        <AlertDialogCancel disabled={completingVisit} style={{ backgroundColor: "#6b7280", color: "white" }}>
+                            Cancelar
+                        </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleCompleteVisit}
                             disabled={completingVisit}
@@ -827,7 +828,6 @@ export default function VisitsPage() {
 
                     <DialogFooter>
                         <Button
-                            variant="outline"
                             onClick={() => {
                                 setShowReviewDialog(false)
                                 setReviewVisit(null)
@@ -835,6 +835,7 @@ export default function VisitsPage() {
                                 setComment("")
                             }}
                             disabled={submittingReview}
+                            style={{ backgroundColor: "#6b7280", color: "white" }}
                         >
                             Cancelar
                         </Button>
@@ -864,7 +865,7 @@ const reviewCommentOptions = [
     "Ótima experiência, voltarei a solicitar",
     "Serviço de qualidade, muito satisfeito",
     "Cuidado excepcional com o paciente",
-  
+
     // Médias
     "O atendimento foi bom, mas poderia ter sido mais ágil",
     "Cumpriu o básico, nada de especial",
@@ -873,7 +874,7 @@ const reviewCommentOptions = [
     "Boa comunicação, mas atrasou um pouco para chegar",
     "Atendimento razoável, esperava um pouco mais de cuidado",
     "Profissional competente, mas o serviço poderia ser mais detalhado",
-  
+
     // Ruins
     "O atendimento deixou a desejar, pouco atencioso",
     "Houve atraso e falta de comunicação",
@@ -885,5 +886,4 @@ const reviewCommentOptions = [
     "Profissional pouco preparado para a situação",
     "Serviço demorado e pouco eficiente",
     "Atendimento ruim, não recomendo",
-  ]
-  
+]
