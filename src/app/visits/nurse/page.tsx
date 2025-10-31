@@ -503,7 +503,7 @@ export default function NurseVisitsPage() {
                         <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                             <Button
                                 onClick={() => router.push(`/patient-profile/${visit.patient_id}`)}
-                                style={{ backgroundColor: "#B8B8B8", color: "white" }}
+                                style={{ backgroundColor: "#15803d", color: "white" }}
                             >
                                 <User className="h-4 w-4 mr-2" />
                                 Ver Paciente

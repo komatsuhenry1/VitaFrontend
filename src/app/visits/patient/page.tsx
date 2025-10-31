@@ -399,6 +399,20 @@ export default function VisitsPage() {
                 throw new Error("Erro ao enviar avaliação")
             }
 
+            const visitsResponse = await fetch(`${API_BASE_URL}/user/visits`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+            })
+
+            const result: VisitsResponse = await visitsResponse.json()
+            if (result.success && result.data) {
+                setVisits(result.data.all_visits || [])
+                setVisitsToday(result.data.visits_today || [])
+            }
+
             toast.success("Avaliação enviada com sucesso!")
             setShowReviewDialog(false)
             setReviewVisit(null)

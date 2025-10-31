@@ -215,7 +215,7 @@ export default function NurseProfile() {
             const result = await response.json()
 
             if (response.ok && result.success) {
-                toast.success("Visita agendada com sucesso!")
+                toast.success("Visita solicitada com sucesso!")
                 setBookingSuccess(true)
                 setBookingError(null)
 
@@ -448,7 +448,7 @@ export default function NurseProfile() {
                                     fontWeight: "600",
                                 }}
                             >
-                                ✓ Visita agendada com sucesso!
+                                ✓ Visita solicitada com sucesso!
                             </div>
                         )}
 
