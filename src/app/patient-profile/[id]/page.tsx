@@ -38,6 +38,11 @@ interface PatientData {
     rating: number
     comments: string[]
     profile_image_id: string
+    reviews: {
+        nurse_name: string
+        rating: number
+        comment: string
+    }[]
 }
 
 interface ApiResponse {
@@ -76,7 +81,16 @@ export default function PatientProfile() {
                 const result: ApiResponse = await response.json()
 
                 if (result.success && result.data) {
-                    setPatient(result.data)
+                    toast.success("Perfil do paciente carregado com sucesso!")
+
+                    // Normaliza os dados para garantir que arrays nunca sejam nulos
+                    const normalizedData: PatientData = {
+                        ...result.data,
+                        comments: result.data.comments || [], // Garante que 'comments' seja sempre um array
+                        reviews: result.data.reviews || [],   // Boa prática para 'reviews' também
+                    }
+
+                    setPatient(normalizedData) // Salva os dados limpos
                 } else {
                     throw new Error(result.message || "Erro ao carregar dados do paciente")
                 }
@@ -134,20 +148,9 @@ export default function PatientProfile() {
         return (
             <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
                 <Header />
-                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
-                    <div style={{ textAlign: "center" }}>
-                        <div
-                            style={{
-                                width: "40px",
-                                height: "40px",
-                                border: "4px solid #e5e7eb",
-                                borderTop: "4px solid #15803d",
-                                borderRadius: "50%",
-                                animation: "spin 1s linear infinite",
-                                margin: "0 auto 1rem",
-                            }}
-                        ></div>
-                        <p style={{ color: "#6b7280" }}>Carregando perfil do paciente...</p>
+                <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem", textAlign: "center" }}>
+                    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "200px" }}>
+                        <div style={{ color: "#15803d", fontSize: "1.125rem" }}>Carregando perfil do paciente...</div>
                     </div>
                 </div>
             </div>
@@ -177,7 +180,6 @@ export default function PatientProfile() {
             <Header />
 
             <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem" }}>
-
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "2rem" }}>
                     {/* Left Column - Patient Info Card */}
                     <div>
@@ -266,10 +268,10 @@ export default function PatientProfile() {
 
                                 <Button
                                     style={{ backgroundColor: "#15803d", color: "white", width: "100%", marginTop: "1rem" }}
-                                    onClick={() => router.push(`/chat/${patient.id}`)}                                >
+                                    onClick={() => toast.info("Funcionalidade em desenvolvimento")}
+                                >
                                     Enviar Mensagem
                                 </Button>
-                                
                             </CardContent>
                         </Card>
 
@@ -493,44 +495,60 @@ export default function PatientProfile() {
                             </CardContent>
                         </Card>
 
-                        {/* Comments Card */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle style={{ color: "#15803d", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                    <MessageSquare size={20} />
-                                    Comentários ({patient.comments.length})
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                {patient.comments.length > 0 ? (
-                                    <div style={{ display: "grid", gap: "0.75rem" }}>
-                                        {patient.comments.map((comment, index) => (
+                        {/* Reviews Card */}
+                        {patient.reviews && patient.reviews.length > 0 && (
+                            <Card style={{ marginBottom: "1.5rem" }}>
+                                <CardHeader>
+                                    <CardTitle style={{ color: "#15803d", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                        <Star size={20} />
+                                        Avaliações dos Enfermeiros ({patient.reviews.length})
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div style={{ display: "grid", gap: "1rem" }}>
+                                        {patient.reviews.map((review, index) => (
                                             <div
                                                 key={index}
                                                 style={{
                                                     padding: "1rem",
                                                     backgroundColor: "#f9fafb",
                                                     borderRadius: "0.5rem",
-                                                    borderLeft: "4px solid #15803d",
+                                                    border: "1px solid #e5e7eb",
                                                 }}
                                             >
-                                                <div style={{ display: "flex", alignItems: "start", gap: "0.75rem" }}>
-                                                    <MessageSquare size={16} style={{ color: "#15803d", marginTop: "0.25rem" }} />
-                                                    <div style={{ flex: 1 }}>
-                                                        <p style={{ color: "#1f2937", fontSize: "0.9375rem" }}>{comment}</p>
+                                                <div
+                                                    style={{
+                                                        display: "flex",
+                                                        justifyContent: "space-between",
+                                                        alignItems: "start",
+                                                        marginBottom: "0.75rem",
+                                                    }}
+                                                >
+                                                    <div>
+                                                        <div style={{ fontWeight: "600", color: "#1f2937", marginBottom: "0.25rem" }}>
+                                                            {review.nurse_name}
+                                                        </div>
+                                                        {renderStars(review.rating)}
                                                     </div>
                                                 </div>
+                                                {review.comment && (
+                                                    <div style={{ display: "flex", alignItems: "start", gap: "0.5rem" }}>
+                                                        <MessageSquare
+                                                            size={16}
+                                                            style={{ color: "#15803d", marginTop: "0.25rem", flexShrink: 0 }}
+                                                        />
+                                                        <p style={{ color: "#6b7280", fontSize: "0.875rem", lineHeight: "1.5" }}>
+                                                            {review.comment}
+                                                        </p>
+                                                    </div>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
-                                ) : (
-                                    <div style={{ textAlign: "center", padding: "2rem", color: "#6b7280" }}>
-                                        <MessageSquare size={48} style={{ margin: "0 auto 1rem", opacity: 0.3 }} />
-                                        <p>Nenhum comentário disponível</p>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
+                        )}
+
                     </div>
                 </div>
             </div>
