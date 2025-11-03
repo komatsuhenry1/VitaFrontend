@@ -46,6 +46,8 @@ interface ApiResponse {
     success: boolean
 }
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
+
 export default function PatientProfile() {
     const params = useParams()
     const router = useRouter()
@@ -59,7 +61,7 @@ export default function PatientProfile() {
         const fetchPatientData = async () => {
             try {
                 setLoading(true)
-                const response = await fetch(`http://localhost:8081/api/v1/nurse/patient/${patientId}`, {
+                const response = await fetch(`${API_BASE_URL}/nurse/patient/${patientId}`, {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",

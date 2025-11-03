@@ -400,7 +400,7 @@ export default function ChatsPage() {
                         {/* ... (tela inicial sem alterações) */}
                         <div className="text-center p-8">
                             <MessageSquareText className="h-24 w-24 mx-auto mb-4" style={{ color: "#15803d", opacity: 0.3 }} />
-                            <h2 className="text-2xl font-semibold text-gray-700 mb-2">MedAssist Chat</h2>
+                            <h2 className="text-2xl font-semibold text-gray-700 mb-2">Vita Chat</h2>
                             <p className="text-gray-500">Selecione uma conversa para começar a conversar</p>
                         </div>
                     </div>

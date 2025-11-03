@@ -24,7 +24,7 @@ interface NurseData {
     shift: string
     department: string
     image: string
-    available: boolean // <--- É ESTE CAMPO
+    available: boolean
     neighborhood: string
     bio: string
     qualifications: string[]
@@ -32,6 +32,11 @@ interface NurseData {
     days_available: string[]
     start_time: string
     end_time: string
+    reviews: Array<{
+        patient_name: string
+        rating: number
+        comment: string
+    }>
 }
 
 interface ApiResponse {
@@ -43,7 +48,6 @@ interface ApiResponse {
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
 const renderStars = (rating: number) => {
-    // ... (Sua função renderStars, mantida igual)
     const stars = []
     const fullStars = Math.floor(rating)
     const hasHalfStar = rating % 1 >= 0.5
@@ -160,7 +164,6 @@ export default function NurseProfile() {
     }
 
     if (error || !nurse) {
-        // ... (JSX de erro, mantido igual)
         return (
             <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
                 <Header />
@@ -175,13 +178,12 @@ export default function NurseProfile() {
     }
 
     const handleBooking = async () => {
-        // ... (lógica do handleBooking, mantida igual)
         if (!selectedDate || !selectedTime || !value) {
             setBookingError("Por favor, selecione data, horário e informe o valor.")
             return
         }
 
-        const numericValue = parseFloat(value.replace(",", "."))
+        const numericValue = Number.parseFloat(value.replace(",", "."))
         if (isNaN(numericValue) || numericValue <= 0) {
             setBookingError("O valor deve ser um número positivo válido.")
             return
@@ -246,7 +248,6 @@ export default function NurseProfile() {
             <Header />
 
             <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem" }}>
-
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "2rem" }}>
                     {/* Left Column - Nurse Info */}
                     <div>
@@ -272,21 +273,6 @@ export default function NurseProfile() {
                                 </p>
                                 <p style={{ color: "#6b7280", marginBottom: "1rem" }}>{nurse.department}</p>
 
-                                {/* ==================
-                                MUDANÇA FEITA AQUI
-                                ==================
-                                O bloco de código abaixo (que exibia Disponível/Indisponível) foi comentado.
-                                
-                                <div style={{ display: "flex", justifyContent: "center", gap: "1rem", marginBottom: "1rem" }}>
-                                    <Badge
-                                        variant={nurse.available ? "default" : "secondary"}
-                                        style={{ backgroundColor: nurse.available ? "#15803d" : "#6b7280" }}
-                                    >
-                                        {nurse.available ? "Disponível" : "Indisponível"}
-                                    </Badge>
-                                </div>
-                                */}
-
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }}>
                                     <div style={{ textAlign: "center" }}>
                                         <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#15803d" }}>{nurse.experience}</div>
@@ -309,7 +295,9 @@ export default function NurseProfile() {
                                 <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#15803d", marginBottom: "0.25rem" }}>
                                     {nurse.price > 0 ? `R$ ${nurse.price}/hora` : "Preço a combinar"}
                                 </div>
-                                <p style={{ color: "#6b7280", fontSize: "0.875rem", marginBottom: "1.5rem" }}>📍 {nurse.neighborhood}</p>
+                                <p style={{ color: "#6b7280", fontSize: "0.875rem", marginBottom: "1.5rem" }}>
+                                    📍 {nurse.neighborhood}
+                                </p>
 
                                 <Button
                                     onClick={() => setShowBookingForm(true)}
@@ -321,7 +309,6 @@ export default function NurseProfile() {
                         </Card>
 
                         <Card>
-                            {/* ... (JSX do Card de Disponibilidade, mantido igual) ... */}
                             <CardHeader>
                                 <CardTitle style={{ color: "#15803d" }}>Disponibilidade</CardTitle>
                             </CardHeader>
@@ -356,11 +343,48 @@ export default function NurseProfile() {
                                 )}
                             </CardContent>
                         </Card>
+
+                        <br/>
+
+                        <Card>
+                            <CardHeader >
+                                <CardTitle style={{ color: "#15803d" }}>Avaliações dos Pacientes</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                {nurse.reviews && nurse.reviews.length > 0 ? (
+                                    nurse.reviews.map((review, index) => (
+                                        <div
+                                            key={index}
+                                            style={{
+                                                padding: "1rem 0",
+                                                borderBottom: index < nurse.reviews.length - 1 ? "1px solid #e5e7eb" : "none",
+                                            }}
+                                        >
+                                            <div
+                                                style={{
+                                                    display: "flex",
+                                                    justifyContent: "space-between",
+                                                    alignItems: "center",
+                                                    marginBottom: "0.5rem",
+                                                }}
+                                            >
+                                                <span style={{ fontWeight: "600", color: "#1f2937" }}>{review.patient_name}</span>
+                                                <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                                                    {renderStars(review.rating)}
+                                                </div>
+                                            </div>
+                                            <p style={{ color: "#4b5563", lineHeight: "1.5", fontSize: "0.875rem" }}>{review.comment}</p>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p style={{ color: "#6b7280", textAlign: "center" }}>Nenhuma avaliação disponível</p>
+                                )}
+                            </CardContent>
+                        </Card>
                     </div>
 
                     {/* Right Column - Details */}
                     <div>
-                        {/* ... (JSX dos Cards Sobre, Qualificações, Serviços, mantidos iguais) ... */}
                         <Card style={{ marginBottom: "1.5rem" }}>
                             <CardHeader>
                                 <CardTitle style={{ color: "#15803d" }}>Sobre</CardTitle>
@@ -428,7 +452,6 @@ export default function NurseProfile() {
             </div>
 
             <Dialog open={showBookingForm} onOpenChange={setShowBookingForm}>
-                {/* ... (JSX do Dialog, mantido igual) ... */}
                 <DialogContent style={{ maxWidth: "600px" }}>
                     <DialogHeader>
                         <DialogTitle style={{ color: "#15803d", fontSize: "1.5rem" }}>Agendar Consulta</DialogTitle>
@@ -496,15 +519,10 @@ export default function NurseProfile() {
                             <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>
                                 Valor da Consulta (R$)
                             </label>
-                            <Input
-                                type="number"
-                                placeholder="Ex: 80.00"
-                                value={value}
-                                onChange={(e) => setValue(e.target.value)}
-                            />
+                            <Input type="number" placeholder="Ex: 80.00" value={value} onChange={(e) => setValue(e.target.value)} />
                         </div>
 
-                        <div style={{ marginBottom: "1sem" }}>
+                        <div style={{ marginBottom: "1rem" }}>
                             <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>Tipo de Visita</label>
                             <Select value={visitType} onValueChange={setVisitType}>
                                 <SelectTrigger>

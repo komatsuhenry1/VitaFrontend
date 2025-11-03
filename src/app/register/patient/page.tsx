@@ -252,7 +252,7 @@ export default function PatientRegisterPage() {
       <section style={heroStyle}>
         <div className="container mx-auto px-4 text-center">
           <Badge variant="secondary" className="mb-4 text-sm font-medium">
-            Bem-vindo ao MedAssist
+            Bem-vindo ao Vita
           </Badge>
           <h1 className="text-3xl md:text-5xl font-bold mb-4 text-balance">Cadastro de Paciente</h1>
           <p className="text-lg md:text-xl opacity-90 max-w-2xl mx-auto text-pretty">

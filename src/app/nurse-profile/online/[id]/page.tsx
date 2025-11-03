@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "sonner"
-import { ArrowLeft, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 
 // Interfaces (mantidas iguais)
 interface NurseData {
@@ -32,10 +32,9 @@ interface NurseData {
     qualifications: string[]
     services: string[]
     reviews: Array<{
-        patient: string
+        patient_name: string
         rating: number
         comment: string
-        date: string
     }>
     days_available: string[] | null
     start_time: string | null
@@ -49,7 +48,6 @@ interface ApiResponse {
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
-
 
 export default function ImmediateConsultationNurseProfile() {
     const params = useParams()
@@ -162,8 +160,8 @@ export default function ImmediateConsultationNurseProfile() {
         const [hours, minutes] = visitTime.split(":")
 
         // Definir o horário no objeto Date (no fuso horário local)
-        today.setHours(parseInt(hours, 10))
-        today.setMinutes(parseInt(minutes, 10))
+        today.setHours(Number.parseInt(hours, 10))
+        today.setMinutes(Number.parseInt(minutes, 10))
         today.setSeconds(0)
         today.setMilliseconds(0)
 
@@ -225,7 +223,9 @@ export default function ImmediateConsultationNurseProfile() {
                 const errorResult = await response.json()
                 console.error("Resposta de erro completa do backend:", errorResult)
                 // Tenta pegar 'error' ou 'message' do JSON de resposta
-                throw new Error(errorResult.message || errorResult.error || `Erro ${response.status}: Falha ao solicitar visita.`)
+                throw new Error(
+                    errorResult.message || errorResult.error || `Erro ${response.status}: Falha ao solicitar visita.`,
+                )
             }
         } catch (err) {
             // Mostra o erro para o usuário
@@ -282,7 +282,6 @@ export default function ImmediateConsultationNurseProfile() {
             <Header />
 
             <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem" }}>
-
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "2rem" }}>
                     {/* Left Column - Nurse Info (mantido igual) */}
                     <div>
@@ -319,9 +318,7 @@ export default function ImmediateConsultationNurseProfile() {
 
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }}>
                                     <div style={{ textAlign: "center" }}>
-                                        <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#15803d" }}>
-                                            {nurse.experience}
-                                        </div>
+                                        <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#15803d" }}>{nurse.experience}</div>
                                         <div style={{ fontSize: "0.875rem", color: "#6b7280" }}>Anos de experiência</div>
                                     </div>
                                     <div style={{ textAlign: "center" }}>
@@ -335,7 +332,9 @@ export default function ImmediateConsultationNurseProfile() {
                                 <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#15803d", marginBottom: "0.25rem" }}>
                                     {nurse.price > 0 ? `R$ ${nurse.price}/hora` : "Preço a combinar"}
                                 </div>
-                                <p style={{ color: "#6b7280", fontSize: "0.875rem", marginBottom: "1.5rem" }}>📍 {nurse.neighborhood}</p>
+                                <p style={{ color: "#6b7280", fontSize: "0.875rem", marginBottom: "1.5rem" }}>
+                                    📍 {nurse.neighborhood}
+                                </p>
 
                                 <Button
                                     onClick={() => setShowConsultationDialog(true)}
@@ -361,9 +360,7 @@ export default function ImmediateConsultationNurseProfile() {
                                 {nurse.days_available && nurse.days_available.length > 0 && nurse.start_time && nurse.end_time ? (
                                     <>
                                         <div style={{ marginBottom: "1rem" }}>
-                                            <span style={{ fontWeight: "600", display: "block", marginBottom: "0.25rem" }}>
-                                                Horário:
-                                            </span>
+                                            <span style={{ fontWeight: "600", display: "block", marginBottom: "0.25rem" }}>Horário:</span>
                                             <span style={{ color: "#6b7280" }}>{`${nurse.start_time} - ${nurse.end_time}`}</span>
                                         </div>
                                         <div>
@@ -372,11 +369,7 @@ export default function ImmediateConsultationNurseProfile() {
                                             </span>
                                             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
                                                 {nurse.days_available.map((day) => (
-                                                    <Badge
-                                                        key={day}
-                                                        variant="outline"
-                                                        style={{ borderColor: "#15803d", color: "#15803d" }}
-                                                    >
+                                                    <Badge key={day} variant="outline" style={{ borderColor: "#15803d", color: "#15803d" }}>
                                                         {day}
                                                     </Badge>
                                                 ))}
@@ -392,7 +385,7 @@ export default function ImmediateConsultationNurseProfile() {
 
                     {/* Right Column - Details (mantido igual) */}
                     <div>
-                        {/* ... (Cards de Bio, Qualificações, Serviços e Avaliações mantidos iguais) ... */}
+                        {/* ... (Cards de Bio, Qualificações, Serviços mantidos iguais) ... */}
                         <Card style={{ marginBottom: "1.5rem" }}>
                             <CardHeader>
                                 <CardTitle style={{ color: "#15803d" }}>Sobre</CardTitle>
@@ -416,8 +409,7 @@ export default function ImmediateConsultationNurseProfile() {
                                                 key={index}
                                                 style={{
                                                     padding: "0.5rem 0",
-                                                    borderBottom:
-                                                        index < nurse.qualifications.length - 1 ? "1px solid #e5e7eb" : "none",
+                                                    borderBottom: index < nurse.qualifications.length - 1 ? "1px solid #e5e7eb" : "none",
                                                 }}
                                             >
                                                 <span style={{ color: "#15803d", marginRight: "0.5rem" }}>✓</span>
@@ -471,7 +463,6 @@ export default function ImmediateConsultationNurseProfile() {
                                                 borderBottom: index < nurse.reviews.length - 1 ? "1px solid #e5e7eb" : "none",
                                             }}
                                         >
-                                            {/* ... Conteúdo da Avaliação ... */}
                                             <div
                                                 style={{
                                                     display: "flex",
@@ -480,10 +471,9 @@ export default function ImmediateConsultationNurseProfile() {
                                                     marginBottom: "0.5rem",
                                                 }}
                                             >
-                                                <span style={{ fontWeight: "600" }}>{review.patient}</span>
+                                                <span style={{ fontWeight: "600" }}>{review.patient_name}</span>
                                                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                                                     <span style={{ color: "#15803d" }}>{`⭐`.repeat(Math.floor(review.rating))}</span>
-                                                    <span style={{ color: "#6b7280", fontSize: "0.875rem" }}>{review.date}</span>
                                                 </div>
                                             </div>
                                             <p style={{ color: "#4b5563", lineHeight: "1.5" }}>{review.comment}</p>
@@ -525,7 +515,7 @@ export default function ImmediateConsultationNurseProfile() {
                         </div>
 
                         {/* Descrição */}
-                        <div style={{ marginBottom: "1sem" }}>
+                        <div style={{ marginBottom: "1rem" }}>
                             <Label htmlFor="description">
                                 Descrição <span style={{ color: "#dc2626" }}>*</span>
                             </Label>
