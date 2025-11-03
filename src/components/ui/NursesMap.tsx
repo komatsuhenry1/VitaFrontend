@@ -33,8 +33,6 @@ interface NursesMapProps {
   onSelectNurse: (nurse: Nurse | null) => void;
 }
 
-// (Interface duplicada removida)
-
 const shadowUrl = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png";
 
 const userIcon = L.icon({
@@ -46,16 +44,15 @@ const userIcon = L.icon({
   shadowSize: [41, 41],
 });
 
-// --- O QUE EU MUDEI ---
+// Ícone verde que você definiu
 const nurseIcon = L.icon({
-  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png", // URL do marcador VERMELHO
-  shadowUrl: shadowUrl, // Adicionado de volta para consistência
-  iconSize: [25, 41], // Restaurado para o tamanho padrão
-  iconAnchor: [12, 41], // Restaurado para o padrão
-  popupAnchor: [1, -34], // Restaurado para o padrão
-  shadowSize: [41, 41], // Restaurado para o padrão
+  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
+  shadowUrl: shadowUrl,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
 });
-// --- FIM DA MUDANÇA ---
 
 function ChangeView({ center, zoom }: { center: [number, number]; zoom: number }) {
   const map = useMap();
@@ -98,7 +95,7 @@ const NursesMap = ({ userLocation, nurses, selectedNurse, onSelectNurse }: Nurse
           <Marker
             key={nurse.id}
             position={[nurse.latitude, nurse.longitude] as L.LatLngExpression}
-            icon={nurseIcon} // Agora usa o ícone vermelho
+            icon={nurseIcon}
             eventHandlers={{
               click: () => {
                 onSelectNurse(nurse);
