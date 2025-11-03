@@ -141,8 +141,11 @@ export default function NursesMapPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_420px]" style={{ height: "calc(100vh - 250px)" }}>
-          <Card className="overflow-hidden shadow-lg border-2 border-green-100">
+        <div className="grid grid-cols-1 gap-1 lg:grid-cols-[1fr_420px]" style={{ height: "calc(100vh - 250px)" }}>
+
+          {/* --- ALTERAÇÃO AQUI --- */}
+          {/* Adicionamos 'h-full' e 'p-0' ao className */}
+          <Card className="overflow-hidden shadow-lg h-full p-0">
             <NursesMapWithNoSSR
               userLocation={userLocation}
               nurses={nurses}
@@ -150,7 +153,6 @@ export default function NursesMapPage() {
               onSelectNurse={setSelectedNurse}
             />
           </Card>
-
           <div
             ref={rightPanelRef}
             className="overflow-y-auto pr-2 pt-2"
