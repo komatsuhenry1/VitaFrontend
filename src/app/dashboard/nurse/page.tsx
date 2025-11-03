@@ -84,6 +84,8 @@ const renderStars = (rating: number) => {
   )
 }
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
+
 const formatDate = (isoDate: string) => {
   const date = new Date(isoDate)
   const day = date.getDate().toString().padStart(2, "0")
@@ -115,7 +117,7 @@ export default function NurseDashboard() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const response = await fetch("http://localhost:8081/api/v1/nurse/dashboard_info", {
+        const response = await fetch(`${API_BASE_URL}/nurse/dashboard_info`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
@@ -209,7 +211,7 @@ export default function NurseDashboard() {
   const toggleOnlineStatus = async () => {
     setIsToggling(true)
     try {
-      const response = await fetch("http://localhost:8081/api/v1/nurse/online", {
+      const response = await fetch(`${API_BASE_URL}/nurse/online`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
