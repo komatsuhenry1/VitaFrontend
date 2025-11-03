@@ -1,102 +1,78 @@
 "use client"
 
+// Removido useRef, BellRing, User dos imports diretos aqui
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Header } from "@/components/Header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Wifi, WifiOff, Loader2, Star, Calendar, Clock, DollarSign, User } from "lucide-react"
+import { Wifi, WifiOff, Loader2, Calendar, Clock, MapPin, DollarSign } from "lucide-react"
+import { toast } from "sonner"
+// Removidos Dialogs daqui
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import Image from "next/image"
+import { Badge } from "@/components/ui/badge"
 
-interface DashboardStats {
-  patients_attended: number
-  appointments_today: number
-  average_rating: number
-  monthly_earnings: number
-}
-
-interface Visit {
-  id: string
-  description: string
-  reason: string
-  visit_type: string
-  visit_value: number
-  created_at: string
-  date: string
-  status: "PENDING" | "CONFIRMED" | "COMPLETED"
-  patient_name: string
-  patient_id: string
-  nurse_name: string
-}
-
-interface Profile {
-  name: string
-  email: string
-  phone: string
-  coren: string
-  experience_years: number
-  department: string
-  bio: string
-}
-
-interface Availability {
-  is_available: boolean
-  start_time: string
-  end_time: string
-  specialization: string
-}
-
-interface Review {
-  patient_name: string
-  rating: number
-  comment: string
-}
-
-interface DashboardData {
-  online: boolean
-  stats: DashboardStats
-  visits: Visit[]
-  profile: Profile
-  availability: Availability
-  reviews: Review[] // Added reviews field
-}
-
-interface ApiResponse {
-  data: DashboardData
-  message: string
-  success: boolean
-}
-
-const renderStars = (rating: number) => {
-  return (
-    <div style={{ display: "flex", gap: "0.25rem" }}>
-      {[1, 2, 3, 4, 5].map((star) => (
-        <Star
-          key={star}
-          size={16}
-          style={{
-            fill: star <= rating ? "#fbbf24" : "none",
-            stroke: star <= rating ? "#fbbf24" : "#d1d5db",
-          }}
-        />
-      ))}
-    </div>
-  )
-}
-
-const formatDate = (isoDate: string) => {
-  const date = new Date(isoDate)
-  const day = date.getDate().toString().padStart(2, "0")
-  const month = (date.getMonth() + 1).toString().padStart(2, "0")
-  const year = date.getFullYear()
-  const hours = date.getHours().toString().padStart(2, "0")
-  const minutes = date.getMinutes().toString().padStart(2, "0")
-
-  return `${day}/${month}/${year} às ${hours}:${minutes}`
-}
+// --- Importa o Hook do Contexto ---
+import { useWebSocket } from '@/context/WebSocketContext'; // Ajuste o caminho se necessário
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
+// --- Interfaces (mantidas) ---
+interface Schedule {
+  id: string
+  status: string
+  patient_id: string
+  patient_name: string
+  patient_email: string
+  description: string
+  reason: string
+  cancel_reason: string
+  nurse_id: string
+  nurse_name: string
+  value: number
+  visit_type: string
+  visit_date: string
+  created_at: string
+  updated_at: string
+}
+
+interface NurseData {
+  id: string
+  name: string
+  specialization: string
+  experience: number
+  rating: number
+  online: boolean // Útil para status inicial ao carregar a página
+  price: number
+  shift: string
+  department: string
+  image: string
+  available: boolean // Disponibilidade geral
+  location: string
+  bio: string
+  qualifications: string[]
+  services: string[]
+  schedules: Schedule[]
+  total_patients: number
+  earnings: number
+  reviews: Array<{
+    patient: string
+    rating: number
+    comment: string
+    date: string
+  }>
+  availability: Array<{
+    day: string
+    hours: string
+  }>
+}
+
+// --- Interface VisitNotification REMOVIDA daqui ---
+
+// --- Estilo Hero (mantido) ---
 const heroStyle = {
   backgroundImage: `
     linear-gradient(rgba(21, 128, 61, 0.7), rgba(83, 83, 83, 0.8)),
@@ -108,829 +84,465 @@ const heroStyle = {
   padding: "5rem 0",
 }
 
-export default function NurseDashboard() {
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isOnline, setIsOnline] = useState(false)
-  const [isToggling, setIsToggling] = useState(false)
+// --- Funções utilitárias (mantidas) ---
+const formatDateTime = (isoDate: string) => {
+  const date = new Date(isoDate)
+  const dateStr = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })
+  const timeStr = date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+  return { date: dateStr, time: timeStr }
+}
+const getStatusBadge = (status: string) => {
+  const statusMap: Record<string, { color: string; bg: string; label: string }> = {
+    PENDING: { color: "#f59e0b", bg: "#fef3c7", label: "Pendente" },
+    CONFIRMED: { color: "#10b981", bg: "#d1fae5", label: "Confirmado" },
+    COMPLETED: { color: "#3b82f6", bg: "#dbeafe", label: "Concluído" },
+    CANCELLED: { color: "#ef4444", bg: "#fee2e2", label: "Cancelado" }, // Verifique se é CANCELED ou CANCELLED
+  }
+  return statusMap[status] || { color: "#6b7280", bg: "#f3f4f6", label: status }
+}
 
+
+export default function NurseDashboard() {
+  const router = useRouter()
+  const [nurseData, setNurseData] = useState<NurseData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // --- Estados e Funções WebSocket locais REMOVIDOS ---
+
+  // --- Usa o Contexto WebSocket ---
+  const { isOnline, isConnecting, connectWebSocket, disconnectWebSocket } = useWebSocket();
+
+  // Estados de disponibilidade geral (mantidos)
+  // 'availability' refere-se à disponibilidade configurada (dias/horas), não ao status online imediato
+  const [availability, setAvailability] = useState(true);
+  const [availabilityForm, setAvailabilityForm] = useState({
+    start_time: "08:00",
+    end_time: "18:00",
+    specialization: "",
+    price_per_hour: 0,
+    max_patients_per_day: 10,
+    days_available: [] as string[],
+  })
+  const [isSavingAvailability, setIsSavingAvailability] = useState(false)
+
+  // useEffect para buscar dados (sem cleanup de WS)
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchNurseData = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/nurse}/nurse/dashboard_info`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
+        setLoading(true);
+        const token = localStorage.getItem("token")
+        const user = JSON.parse(localStorage.getItem("user") || "{}")
+        const nurseId = user._id || user.id
+
+        if (!token || !nurseId) {
+          router.push("/login")
+          return
+        }
+
+        const response = await fetch(`${API_BASE_URL}/nurse/dashboard_info`, {
+          headers: { Authorization: `Bearer ${token}` },
         })
 
-        if (response.ok) {
-          const apiResponse: ApiResponse = await response.json()
-          const data = apiResponse.data
-          setDashboardData(data)
-          setIsOnline(data.online)
-        } else {
-          console.error("Failed to fetch dashboard data")
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: "Erro desconhecido ao buscar dados" }));
+          throw new Error(errorData.message || "Erro ao carregar dados do enfermeiro");
         }
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error)
+
+        const result = await response.json()
+
+        if (result.success && result.data) {
+          setNurseData(result.data)
+          // Define o estado inicial de 'availability' baseado nos dados carregados
+          setAvailability(result.data.available ?? true) // Usa ?? true como fallback se 'available' não vier
+          // O estado 'isOnline' do contexto será a fonte da verdade para o status real-time
+          setAvailabilityForm({
+            start_time: result.data.start_time || "08:00",
+            end_time: result.data.end_time || "18:00",
+            specialization: result.data.specialization || "",
+            price_per_hour: result.data.price || 0,
+            max_patients_per_day: result.data.max_patients_per_day || 10,
+            days_available: result.data.days_available || [],
+          })
+        } else {
+          throw new Error(result.message || "Erro ao carregar dados")
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Erro desconhecido")
+        console.error("Error fetching nurse data:", err)
       } finally {
-        setIsLoading(false)
+        setLoading(false)
       }
     }
+    fetchNurseData()
+    // O cleanup do WebSocket agora é feito pelo Provider no layout
+  }, [router])
 
-    fetchDashboardData()
-  }, [])
 
-  const toggleOnlineStatus = async () => {
-    setIsToggling(true)
+  // ===================================
+  // FUNÇÃO 'handleToggleOnline' ATUALIZADA
+  // ===================================
+  const handleToggleOnline = async () => {
+    // 1. Pega o token para a chamada de API
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast.error("Token não encontrado. Faça login novamente.");
+      router.push("/login");
+      return;
+    }
+
+    // 2. Cria uma função auxiliar para chamar a API de toggle
+    const callApiToggle = async (): Promise<boolean> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/nurse/online`, {
+          method: "PATCH", // Assumindo PATCH para a atualização de status
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          toast.error(errorData.message || "Erro ao atualizar status no servidor.");
+          return false; // Falha
+        }
+        return true; // Sucesso
+      } catch (error) {
+        console.error("Erro ao tentar mudar status online:", error);
+        toast.error("Erro de rede ao tentar mudar status.");
+        return false; // Falha
+      }
+    };
+
+    // 3. Lógica principal: decide a ordem das chamadas
+    if (isOnline) {
+      // INTENÇÃO: Ficar OFFLINE
+      // 1. Desconecta o WS imediatamente
+      disconnectWebSocket();
+      // 2. Tenta atualizar o status no DB (mostra erro se falhar, mas o WS já está off)
+      await callApiToggle();
+    } else {
+      // INTENÇÃO: Ficar ONLINE
+      // 1. Primeiro, tenta atualizar o status no DB
+      const apiSuccess = await callApiToggle();
+
+      // 2. Só tenta conectar o WS se a API registrar o "online" com sucesso
+      if (apiSuccess) {
+        connectWebSocket();
+      } else {
+        // A falha já foi notificada pelo toast dentro de callApiToggle
+        console.log("Não foi possível conectar o WebSocket pois a API de status falhou.");
+      }
+    }
+  }
+
+  // Funções de disponibilidade geral (mantidas)
+  // Esta função salva as configurações GERAIS, não o status online imediato
+  const handleSaveAvailability = async () => {
+    setIsSavingAvailability(true)
     try {
-      const response = await fetch(`${API_BASE_URL}/nurse/online`, {
+      const token = localStorage.getItem("token")
+      // Endpoint /nurse/update parece ser para dados gerais, não status online
+      const response = await fetch(`${API_BASE_URL}/nurse/update`, {
         method: "PATCH",
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          // Enviando dados gerais de disponibilidade/configuração
+          start_time: availabilityForm.start_time,
+          end_time: availabilityForm.end_time,
+          specialization: availabilityForm.specialization,
+          price: availabilityForm.price_per_hour,
+          max_patients_per_day: availabilityForm.max_patients_per_day,
+          days_available: availabilityForm.days_available,
+          // 'available' aqui se refere à disponibilidade geral configurada
+          // Diferente do 'isOnline' do WebSocket para chamadas imediatas
+          available: availability,
+        }),
       })
 
       if (response.ok) {
-        setIsOnline(!isOnline)
+        toast.success("Configurações de disponibilidade atualizadas com sucesso!")
       } else {
-        console.error("Failed to toggle online status")
+        const errorResult = await response.json().catch(() => ({ message: "Erro desconhecido ao atualizar" }));
+        toast.error(errorResult.message || "Erro ao atualizar disponibilidade")
       }
     } catch (error) {
-      console.error("Error toggling online status:", error)
+      console.error("Error updating general availability:", error)
+      toast.error("Erro ao atualizar disponibilidade")
     } finally {
-      setIsToggling(false)
+      setIsSavingAvailability(false)
     }
   }
 
-  const getScheduleVisits = () => {
-    if (!dashboardData) return []
-    return dashboardData.visits.filter((visit) => visit.status === "PENDING" || visit.status === "CONFIRMED")
+  const toggleDayAvailability = (day: string) => {
+    setAvailabilityForm((prev) => ({
+      ...prev,
+      days_available: prev.days_available.includes(day)
+        ? prev.days_available.filter((d) => d !== day)
+        : [...prev.days_available, day],
+    }))
   }
 
-  const getCompletedVisits = () => {
-    if (!dashboardData) return []
-    return dashboardData.visits.filter((visit) => visit.status === "COMPLETED")
-  }
-
-  const getUniquePatients = () => {
-    if (!dashboardData) return []
-    const patientMap = new Map()
-    dashboardData.visits.forEach((visit) => {
-      if (!patientMap.has(visit.patient_id)) {
-        patientMap.set(visit.patient_id, {
-          id: visit.patient_id,
-          name: visit.patient_name,
-          last_visit: visit.date,
-        })
-      }
-    })
-    return Array.from(patientMap.values())
-  }
-
-  const formatVisitType = (type: string) => {
-    const types: { [key: string]: string } = {
-      clinica: "Consulta Clínica",
-      domiciliar: "Consulta Domiciliar",
-    }
-    return types[type] || type
-  }
-
-  const formatStatus = (status: string) => {
-    const statuses: { [key: string]: string } = {
-      PENDING: "Pendente",
-      CONFIRMED: "Confirmado",
-      COMPLETED: "Concluído",
-    }
-    return statuses[status] || status
-  }
-
-  if (isLoading) {
+  if (loading) {
     return (
-      <div style={{ minHeight: "100vh", backgroundColor: "#f9fafb" }}>
+      <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
         <Header />
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            minHeight: "calc(100vh - 80px)",
-          }}
-        >
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
           <div style={{ textAlign: "center" }}>
-            <Loader2 className="animate-spin" size={48} style={{ color: "#15803d", margin: "0 auto" }} />
-            <p style={{ marginTop: "1rem", color: "#6b7280" }}>Carregando dashboard...</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (!dashboardData) {
-    return (
-      <div style={{ minHeight: "100vh", backgroundColor: "#f9fafb" }}>
-        <Header />
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            minHeight: "calc(100vh - 80px)",
-            flexDirection: "column",
-            gap: "1rem",
-          }}
-        >
-          <p style={{ fontSize: "1.25rem", color: "#6b7280" }}>Erro ao carregar dados do dashboard</p>
-          <Button onClick={() => window.location.reload()} style={{ backgroundColor: "#15803d", color: "white" }}>
-            Tentar Novamente
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#f9fafb" }}>
-      <Header />
-
-      <section
-        style={heroStyle}
-      >
-        {/* Decorative background elements */}
-        <div
-          style={{
-            position: "absolute",
-            top: "-50%",
-            right: "-10%",
-            width: "500px",
-            height: "500px",
-            background: "radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)",
-            borderRadius: "50%",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            bottom: "-30%",
-            left: "-5%",
-            width: "400px",
-            height: "400px",
-            background: "radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%)",
-            borderRadius: "50%",
-          }}
-        />
-
-        <div style={{ maxWidth: "1200px", margin: "0 auto", textAlign: "center", position: "relative", zIndex: 1 }}>
-          <h1 style={{ fontSize: "3rem", fontWeight: "bold", marginBottom: "0.5rem", letterSpacing: "-0.02em" }}>
-            Dashboard do Enfermeiro
-          </h1>
-          <p style={{ fontSize: "1.25rem", opacity: 0.9, marginBottom: "2.5rem", fontWeight: "300" }}>
-            Gerencie seus atendimentos e acompanhe sua carreira profissional
-          </p>
-
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: "3rem" }}>
             <div
               style={{
-                position: "relative",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "1rem",
-                padding: "0.5rem",
-                background: "rgba(255, 255, 255, 0.15)",
-                backdropFilter: "blur(10px)",
-                borderRadius: "9999px",
-                border: "2px solid rgba(255, 255, 255, 0.3)",
-                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+                width: "40px",
+                height: "40px",
+                border: "4px solid #e5e7eb",
+                borderTop: "4px solid #15803d",
+                borderRadius: "50%",
+                animation: "spin 1s linear infinite",
+                margin: "0 auto 1rem",
               }}
-            >
-              <button
-                onClick={toggleOnlineStatus}
-                disabled={isToggling}
-                style={{
-                  position: "relative",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "1rem",
-                  padding: "0.875rem 2rem",
-                  fontSize: "1rem",
-                  fontWeight: "700",
-                  borderRadius: "9999px",
-                  border: "none",
-                  background: isOnline
-                    ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
-                    : "linear-gradient(135deg, #6b7280 0%, #4b5563 100%)",
-                  color: "white",
-                  cursor: isToggling ? "not-allowed" : "pointer",
-                  transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-                  boxShadow: isOnline
-                    ? "0 0 0 0 rgba(16, 185, 129, 0.7), 0 4px 20px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)"
-                    : "0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
-                  transform: isToggling ? "scale(0.95)" : "scale(1)",
-                  opacity: isToggling ? 0.8 : 1,
-                  overflow: "hidden",
-                }}
-                onMouseEnter={(e) => {
-                  if (!isToggling) {
-                    e.currentTarget.style.transform = "scale(1.05)"
-                    e.currentTarget.style.boxShadow = isOnline
-                      ? "0 0 0 8px rgba(16, 185, 129, 0.2), 0 8px 30px rgba(16, 185, 129, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)"
-                      : "0 6px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15)"
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isToggling) {
-                    e.currentTarget.style.transform = "scale(1)"
-                    e.currentTarget.style.boxShadow = isOnline
-                      ? "0 0 0 0 rgba(16, 185, 129, 0.7), 0 4px 20px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)"
-                      : "0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)"
-                  }
-                }}
-              >
-                {/* Animated background shimmer effect */}
-                {isOnline && !isToggling && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: "-100%",
-                      width: "100%",
-                      height: "100%",
-                      background: "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent)",
-                      animation: "shimmer 3s infinite",
-                    }}
-                  />
-                )}
-
-                {/* Icon */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: "28px",
-                    height: "28px",
-                    borderRadius: "50%",
-                    background: "rgba(255, 255, 255, 0.2)",
-                    transition: "all 0.3s ease",
-                  }}
-                >
-                  {isToggling ? (
-                    <Loader2 className="animate-spin" size={18} />
-                  ) : isOnline ? (
-                    <Wifi size={18} />
-                  ) : (
-                    <WifiOff size={18} />
-                  )}
-                </div>
-
-                {/* Status text */}
-                <span style={{ letterSpacing: "0.05em" }}>
-                  {isToggling ? "ALTERANDO..." : isOnline ? "ONLINE" : "OFFLINE"}
-                </span>
-
-                {/* Pulse indicator */}
-                <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <div
-                    style={{
-                      width: "10px",
-                      height: "10px",
-                      borderRadius: "50%",
-                      backgroundColor: isOnline ? "#ffffff" : "#d1d5db",
-                      boxShadow: isOnline ? "0 0 8px rgba(255, 255, 255, 0.8)" : "none",
-                      transition: "all 0.3s ease",
-                    }}
-                  />
-                  {isOnline && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        width: "10px",
-                        height: "10px",
-                        borderRadius: "50%",
-                        backgroundColor: "#ffffff",
-                        animation: "ping 2s cubic-bezier(0, 0, 0.2, 1) infinite",
-                      }}
-                    />
-                  )}
-                </div>
-              </button>
-
-              {/* Status badge */}
-              <div
-                style={{
-                  padding: "0.5rem 1.25rem",
-                  borderRadius: "9999px",
-                  background: isOnline ? "rgba(16, 185, 129, 0.2)" : "rgba(107, 114, 128, 0.2)",
-                  border: `1px solid ${isOnline ? "rgba(16, 185, 129, 0.4)" : "rgba(107, 114, 128, 0.4)"}`,
-                  fontSize: "0.875rem",
-                  fontWeight: "600",
-                  color: "white",
-                  transition: "all 0.3s ease",
-                }}
-              >
-                {isOnline ? "Aceitando Consultas" : "Indisponível"}
-              </div>
-            </div>
+            ></div>
+            <p style={{ color: "#6b7280" }}>Carregando dashboard...</p>
           </div>
+        </div>
+      </div>
+    )
+  }
+  if (error) {
+    return (
+      <div style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}>
+        <Header />
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh", flexDirection: "column", gap: "1rem" }}>
+          <p style={{ color: "#dc2626", fontSize: "1.125rem", fontWeight: "600" }}>Erro ao carregar dados</p>
+          <p style={{ color: "#6b7280" }}>{error}</p>
+          <Button onClick={() => window.location.reload()} style={{ backgroundColor: "#15803d", color: "white" }}>Tentar Novamente</Button>
+        </div>
+      </div>
+    )
+  }
+  if (!nurseData) { return null } // Retorna nulo se nurseData ainda não carregou após loading ser false
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-              gap: "1.5rem",
-              marginTop: "2rem",
-            }}
-          >
-            <Card
+  // --- Lógica de filtragem e pacientes (mantida) ---
+  const upcomingSchedules = nurseData.schedules?.filter(s => s.status === "PENDING" || s.status === "CONFIRMED") || []
+  const completedSchedules = nurseData.schedules?.filter(s => s.status === "COMPLETED") || []
+  // Garante que uniquePatients seja inicializado como array vazio
+  const uniquePatients = completedSchedules.reduce(
+    (acc, schedule) => {
+      if (!acc.find((p) => p.patient_id === schedule.patient_id)) {
+        acc.push({
+          patient_id: schedule.patient_id, patient_name: schedule.patient_name, patient_email: schedule.patient_email,
+          total_visits: completedSchedules.filter((s) => s.patient_id === schedule.patient_id).length,
+          last_visit: schedule.visit_date,
+          total_spent: completedSchedules.filter((s) => s.patient_id === schedule.patient_id).reduce((sum, s) => sum + s.value, 0),
+        })
+      }
+      return acc
+    },
+    [] as Array<{ patient_id: string; patient_name: string; patient_email: string; total_visits: number; last_visit: string; total_spent: number }>,
+  )
+
+
+  return (
+    <div style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}>
+      <Header />
+
+      {/* Hero Section (Botão usa estado do Contexto) */}
+      <section style={heroStyle}>
+        <div style={{ maxWidth: "1200px", margin: "0 auto", textAlign: "center" }}>
+          <h1 style={{ fontSize: "2.5rem", fontWeight: "bold", marginBottom: "1rem" }}>Dashboard do Enfermeiro</h1>
+          <p style={{ fontSize: "1.25rem", opacity: 0.9, marginBottom: "2rem" }}>
+            Gerencie seus atendimentos e acompanhe sua carreira profissional
+          </p>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: "2rem" }}>
+            {/* O Botão agora usa isOnline e isConnecting do CONTEXTO */}
+            <button
+              onClick={handleToggleOnline} // Chama a função que usa o contexto
+              disabled={isConnecting} // Usa isConnecting do contexto
               style={{
-                backgroundColor: "rgba(255, 255, 255, 0.15)",
-                backdropFilter: "blur(10px)",
-                border: "1px solid rgba(255, 255, 255, 0.2)",
-                transition: "all 0.3s ease",
+                display: "flex", alignItems: "center", gap: "0.75rem", padding: "1rem 2rem",
+                fontSize: "1.125rem", fontWeight: "600", borderRadius: "9999px", border: "3px solid",
+                borderColor: isOnline ? "#10b981" : "#6b7280", // Usa isOnline do contexto
+                backgroundColor: isOnline ? "#10b981" : "#374151", // Usa isOnline do contexto
+                color: "white", cursor: isConnecting ? "wait" : "pointer", transition: "all 0.3s ease",
+                boxShadow: isOnline ? "0 0 20px rgba(16, 185, 129, 0.5), 0 0 40px rgba(16, 185, 129, 0.3)" : "0 4px 6px rgba(0, 0, 0, 0.1)",
+                transform: isConnecting ? "scale(0.95)" : "scale(1)", opacity: isConnecting ? 0.7 : 1,
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.2)"
-                e.currentTarget.style.transform = "translateY(-4px)"
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.15)"
-                e.currentTarget.style.transform = "translateY(0)"
-              }}
+              onMouseEnter={(e) => { if (!isConnecting) e.currentTarget.style.transform = "scale(1.05)" }}
+              onMouseLeave={(e) => { if (!isConnecting) e.currentTarget.style.transform = "scale(1)" }}
             >
+              {isConnecting ? ( // Usa isConnecting do contexto
+                <Loader2 className="animate-spin" size={24} />
+              ) : isOnline ? ( // Usa isOnline do contexto
+                <Wifi size={24} />
+              ) : (
+                <WifiOff size={24} />
+              )}
+              <span> {/* Texto dinâmico usando isOnline e isConnecting do contexto */}
+                {isConnecting ? (isOnline ? "Desconectando..." : "Conectando...")
+                  : isOnline ? "ONLINE"
+                    : "OFFLINE"}
+              </span>
+              <div style={{ width: "12px", height: "12px", borderRadius: "50%", backgroundColor: isOnline ? "#ffffff" : "#9ca3af", animation: isOnline ? "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite" : "none", }} />
+            </button>
+          </div>
+          {/* Stats Cards */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1.5rem", marginTop: "2rem" }}>
+            <Card style={{ backgroundColor: "rgba(255, 255, 255, 0.1)", border: "none" }}>
               <CardContent style={{ padding: "1.5rem", textAlign: "center" }}>
-                <User size={32} style={{ color: "white", margin: "0 auto 0.5rem" }} />
-                <div style={{ fontSize: "2.5rem", fontWeight: "bold", color: "white", marginBottom: "0.25rem" }}>
-                  {dashboardData.stats.patients_attended}
-                </div>
-                <div style={{ fontSize: "0.875rem", color: "rgba(255, 255, 255, 0.9)", fontWeight: "500" }}>
-                  Pacientes Atendidos
-                </div>
+                <div style={{ fontSize: "2rem", fontWeight: "bold", color: "white" }}>{nurseData.total_patients || 0}</div>
+                <div style={{ fontSize: "0.875rem", color: "rgba(255, 255, 255, 0.8)" }}>Pacientes Atendidos</div>
               </CardContent>
             </Card>
-
-            <Card
-              style={{
-                backgroundColor: "rgba(255, 255, 255, 0.15)",
-                backdropFilter: "blur(10px)",
-                border: "1px solid rgba(255, 255, 255, 0.2)",
-                transition: "all 0.3s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.2)"
-                e.currentTarget.style.transform = "translateY(-4px)"
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.15)"
-                e.currentTarget.style.transform = "translateY(0)"
-              }}
-            >
+            <Card style={{ backgroundColor: "rgba(255, 255, 255, 0.1)", border: "none" }}>
               <CardContent style={{ padding: "1.5rem", textAlign: "center" }}>
-                <Calendar size={32} style={{ color: "white", margin: "0 auto 0.5rem" }} />
-                <div style={{ fontSize: "2.5rem", fontWeight: "bold", color: "white", marginBottom: "0.25rem" }}>
-                  {dashboardData.stats.appointments_today}
-                </div>
-                <div style={{ fontSize: "0.875rem", color: "rgba(255, 255, 255, 0.9)", fontWeight: "500" }}>
-                  Consultas Hoje
-                </div>
+                <div style={{ fontSize: "2rem", fontWeight: "bold", color: "white" }}>{upcomingSchedules.length}</div>
+                <div style={{ fontSize: "0.875rem", color: "rgba(255, 255, 255, 0.8)" }}>Consultas</div>
               </CardContent>
             </Card>
-
-            <Card
-              style={{
-                backgroundColor: "rgba(255, 255, 255, 0.15)",
-                backdropFilter: "blur(10px)",
-                border: "1px solid rgba(255, 255, 255, 0.2)",
-                transition: "all 0.3s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.2)"
-                e.currentTarget.style.transform = "translateY(-4px)"
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.15)"
-                e.currentTarget.style.transform = "translateY(0)"
-              }}
-            >
+            <Card style={{ backgroundColor: "rgba(255, 255, 255, 0.1)", border: "none" }}>
               <CardContent style={{ padding: "1.5rem", textAlign: "center" }}>
-                <Star size={32} style={{ color: "#fbbf24", margin: "0 auto 0.5rem" }} />
-                <div style={{ fontSize: "2.5rem", fontWeight: "bold", color: "white", marginBottom: "0.25rem" }}>
-                  {dashboardData.stats.average_rating.toFixed(1)}
-                </div>
-                <div style={{ fontSize: "0.875rem", color: "rgba(255, 255, 255, 0.9)", fontWeight: "500" }}>
-                  Avaliação Média
-                </div>
+                <div style={{ fontSize: "2rem", fontWeight: "bold", color: "white" }}>{nurseData.rating > 0 ? nurseData.rating.toFixed(1) : "N/A"}</div>
+                <div style={{ fontSize: "0.875rem", color: "rgba(255, 255, 255, 0.8)" }}>Avaliação Média</div>
               </CardContent>
             </Card>
-
-            <Card
-              style={{
-                backgroundColor: "rgba(255, 255, 255, 0.15)",
-                backdropFilter: "blur(10px)",
-                border: "1px solid rgba(255, 255, 255, 0.2)",
-                transition: "all 0.3s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.2)"
-                e.currentTarget.style.transform = "translateY(-4px)"
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.15)"
-                e.currentTarget.style.transform = "translateY(0)"
-              }}
-            >
+            <Card style={{ backgroundColor: "rgba(255, 255, 255, 0.1)", border: "none" }}>
               <CardContent style={{ padding: "1.5rem", textAlign: "center" }}>
-                <DollarSign size={32} style={{ color: "white", margin: "0 auto 0.5rem" }} />
-                <div style={{ fontSize: "2.5rem", fontWeight: "bold", color: "white", marginBottom: "0.25rem" }}>
-                  R$ {dashboardData.stats.monthly_earnings.toFixed(2)}
-                </div>
-                <div style={{ fontSize: "0.875rem", color: "rgba(255, 255, 255, 0.9)", fontWeight: "500" }}>
-                  Ganhos do Mês
-                </div>
+                <div style={{ fontSize: "2rem", fontWeight: "bold", color: "white" }}>R$ {nurseData.earnings?.toFixed(2) || "0.00"}</div>
+                <div style={{ fontSize: "0.875rem", color: "rgba(255, 255, 255, 0.8)" }}>Ganhos Totais</div>
               </CardContent>
             </Card>
           </div>
         </div>
       </section>
 
+      {/* Dashboard Content (Tabs) */}
       <section style={{ padding: "3rem 1rem", maxWidth: "1200px", margin: "0 auto" }}>
         <Tabs defaultValue="schedule" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-8">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="schedule">Agenda</TabsTrigger>
             <TabsTrigger value="patients">Pacientes</TabsTrigger>
             <TabsTrigger value="history">Histórico</TabsTrigger>
-            <TabsTrigger value="reviews">Avaliações</TabsTrigger>
           </TabsList>
-
-          {/* Schedule Tab - Shows PENDING and CONFIRMED visits */}
-          <TabsContent value="schedule" className="space-y-4">
-            <Card style={{ border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)" }}>
-              <CardHeader style={{ background: "linear-gradient(to right, #f9fafb, #ffffff)" }}>
-                <CardTitle style={{ color: "#15803d" }}>Agenda de Hoje</CardTitle>
+          {/* Schedule Tab */}
+          <TabsContent value="schedule" className="space-y-4 mt-4"> {/* Adicionado mt-4 */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Agenda de Atendimentos</CardTitle>
                 <CardDescription>Seus próximos atendimentos agendados</CardDescription>
               </CardHeader>
-              <CardContent style={{ padding: "1.5rem" }}>
-                <div className="space-y-3">
-                  {getScheduleVisits().length === 0 ? (
-                    <div
-                      style={{
-                        textAlign: "center",
-                        padding: "3rem 1rem",
-                        color: "#9ca3af",
-                        backgroundColor: "#f9fafb",
-                        borderRadius: "0.5rem",
-                      }}
-                    >
-                      <Calendar size={48} style={{ margin: "0 auto 1rem", opacity: 0.5 }} />
-                      <p>Nenhuma visita agendada no momento</p>
-                    </div>
-                  ) : (
-                    getScheduleVisits().map((visit) => (
-                      <div
-                        key={visit.id}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          padding: "1.25rem",
-                          border: "1px solid #e5e7eb",
-                          borderRadius: "0.75rem",
-                          backgroundColor: "#ffffff",
-                          transition: "all 0.2s ease",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.1)"
-                          e.currentTarget.style.borderColor = "#15803d"
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.boxShadow = "none"
-                          e.currentTarget.style.borderColor = "#e5e7eb"
-                        }}
-                      >
-                        <div>
-                          <div
-                            style={{
-                              fontWeight: "600",
-                              fontSize: "1.125rem",
-                              color: "#1f2937",
-                              marginBottom: "0.25rem",
-                            }}
-                          >
-                            {visit.patient_name}
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginTop: "0.5rem" }}>
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "0.25rem",
-                                color: "#6b7280",
-                                fontSize: "0.875rem",
-                              }}
-                            >
-                              <Clock size={14} />
-                              {formatDate(visit.date)}
+              <CardContent>
+                {upcomingSchedules.length > 0 ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                    {upcomingSchedules.map((schedule) => {
+                      const { date, time } = formatDateTime(schedule.visit_date)
+                      const statusBadge = getStatusBadge(schedule.status)
+                      return (
+                        <Card key={schedule.id} style={{ border: "1px solid #e5e7eb", transition: "all 0.2s" }}>
+                          <CardContent style={{ padding: "1.5rem" }}>
+                            {/* Conteúdo do Card de Agendamento */}
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
+                              <div>
+                                <h3 style={{ fontSize: "1.125rem", fontWeight: "600", color: "#1f2937" }}>{schedule.patient_name}</h3>
+                                <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>{schedule.patient_email}</p>
+                              </div>
+                              <Badge variant="outline" style={{ color: statusBadge.color, backgroundColor: statusBadge.bg, borderColor: statusBadge.color + '40' }}>{statusBadge.label}</Badge> {/* Usando Badge */}
                             </div>
-                            <div style={{ color: "#9ca3af" }}>•</div>
-                            <div style={{ fontSize: "0.875rem", color: "#6b7280" }}>
-                              {formatVisitType(visit.visit_type)}
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem", marginBottom: "1rem", fontSize: '0.875rem', color: '#4b5563' }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><Calendar size={16} style={{ color: "#15803d" }} /><span>{date}</span></div>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><Clock size={16} style={{ color: "#15803d" }} /><span>{time}</span></div>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><MapPin size={16} style={{ color: "#15803d" }} /><span>{schedule.visit_type === "domiciliar" ? "Domiciliar" : schedule.visit_type}</span></div>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><DollarSign size={16} style={{ color: "#15803d" }} /><span>R$ {schedule.value.toFixed(2)}</span></div>
                             </div>
-                            <div style={{ color: "#9ca3af" }}>•</div>
-                            <div style={{ fontSize: "0.875rem", fontWeight: "600", color: "#15803d" }}>
-                              R$ {visit.visit_value.toFixed(2)}
-                            </div>
-                          </div>
-                        </div>
-                        <Badge
-                          variant={visit.status === "CONFIRMED" ? "default" : "secondary"}
-                          style={{
-                            backgroundColor: visit.status === "CONFIRMED" ? "#dcfce7" : "#f3f4f6",
-                            color: visit.status === "CONFIRMED" ? "#15803d" : "#6b7280",
-                            border: "none",
-                            padding: "0.5rem 1rem",
-                          }}
-                        >
-                          {formatStatus(visit.status)}
-                        </Badge>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Patients Tab - Shows unique patients from all visits */}
-          <TabsContent value="patients" className="space-y-4">
-            <Card style={{ border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)" }}>
-              <CardHeader style={{ background: "linear-gradient(to right, #f9fafb, #ffffff)" }}>
-                <CardTitle style={{ color: "#15803d" }}>Meus Pacientes</CardTitle>
-                <CardDescription>Lista de pacientes sob seus cuidados</CardDescription>
-              </CardHeader>
-              <CardContent style={{ padding: "1.5rem" }}>
-                <div className="space-y-3">
-                  {getUniquePatients().length === 0 ? (
-                    <div
-                      style={{
-                        textAlign: "center",
-                        padding: "3rem 1rem",
-                        color: "#9ca3af",
-                        backgroundColor: "#f9fafb",
-                        borderRadius: "0.5rem",
-                      }}
-                    >
-                      <User size={48} style={{ margin: "0 auto 1rem", opacity: 0.5 }} />
-                      <p>Nenhum paciente cadastrado</p>
-                    </div>
-                  ) : (
-                    getUniquePatients().map((patient) => (
-                      <div
-                        key={patient.id}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          padding: "1.25rem",
-                          border: "1px solid #e5e7eb",
-                          borderRadius: "0.75rem",
-                          backgroundColor: "#ffffff",
-                          transition: "all 0.2s ease",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.1)"
-                          e.currentTarget.style.borderColor = "#15803d"
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.boxShadow = "none"
-                          e.currentTarget.style.borderColor = "#e5e7eb"
-                        }}
-                      >
-                        <div>
-                          <div style={{ fontWeight: "600", fontSize: "1.125rem", color: "#1f2937" }}>
-                            {patient.name}
-                          </div>
-                          <div style={{ color: "#6b7280", fontSize: "0.875rem", marginTop: "0.25rem" }}>
-                            ID: {patient.id}
-                          </div>
-                        </div>
-                        <div style={{ textAlign: "right" }}>
-                          <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginBottom: "0.25rem" }}>
-                            Última visita
-                          </div>
-                          <div style={{ fontSize: "0.875rem", fontWeight: "600", color: "#15803d" }}>
-                            {formatDate(patient.last_visit)}
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* History Tab - Shows COMPLETED visits */}
-          <TabsContent value="history" className="space-y-4">
-            <Card style={{ border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)" }}>
-              <CardHeader style={{ background: "linear-gradient(to right, #f9fafb, #ffffff)" }}>
-                <CardTitle style={{ color: "#15803d" }}>Histórico de Atendimentos</CardTitle>
-                <CardDescription>Seus atendimentos realizados recentemente</CardDescription>
-              </CardHeader>
-              <CardContent style={{ padding: "1.5rem" }}>
-                <div className="space-y-3">
-                  {getCompletedVisits().length === 0 ? (
-                    <div
-                      style={{
-                        textAlign: "center",
-                        padding: "3rem 1rem",
-                        color: "#9ca3af",
-                        backgroundColor: "#f9fafb",
-                        borderRadius: "0.5rem",
-                      }}
-                    >
-                      <Clock size={48} style={{ margin: "0 auto 1rem", opacity: 0.5 }} />
-                      <p>Nenhum atendimento concluído</p>
-                    </div>
-                  ) : (
-                    getCompletedVisits().map((visit) => (
-                      <div
-                        key={visit.id}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          padding: "1.25rem",
-                          border: "1px solid #e5e7eb",
-                          borderRadius: "0.75rem",
-                          backgroundColor: "#ffffff",
-                          transition: "all 0.2s ease",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.1)"
-                          e.currentTarget.style.borderColor = "#15803d"
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.boxShadow = "none"
-                          e.currentTarget.style.borderColor = "#e5e7eb"
-                        }}
-                      >
-                        <div style={{ flex: 1 }}>
-                          <div
-                            style={{
-                              fontWeight: "600",
-                              fontSize: "1.125rem",
-                              color: "#1f2937",
-                              marginBottom: "0.25rem",
-                            }}
-                          >
-                            {visit.patient_name}
-                          </div>
-                          <div style={{ color: "#6b7280", fontSize: "0.875rem" }}>
-                            {formatVisitType(visit.visit_type)}
-                          </div>
-                          <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: "0.5rem" }}>
-                            {formatDate(visit.date)} • Criado em: {formatDate(visit.created_at)}
-                          </div>
-                        </div>
-                        <div
-                          style={{
-                            fontWeight: "700",
-                            fontSize: "1.25rem",
-                            color: "#15803d",
-                            padding: "0.5rem 1rem",
-                            backgroundColor: "#dcfce7",
-                            borderRadius: "0.5rem",
-                          }}
-                        >
-                          R$ {visit.visit_value.toFixed(2)}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="reviews" className="space-y-4">
-            <Card style={{ border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)" }}>
-              <CardHeader style={{ background: "linear-gradient(to right, #fef3c7, #fef9e7)" }}>
-                <CardTitle style={{ color: "#92400e", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <Star size={24} style={{ fill: "#fbbf24", stroke: "#fbbf24" }} />
-                  Avaliações dos Pacientes
-                </CardTitle>
-                <CardDescription>Veja o que seus pacientes estão dizendo sobre você</CardDescription>
-              </CardHeader>
-              <CardContent style={{ padding: "1.5rem" }}>
-                {!dashboardData.reviews || dashboardData.reviews.length === 0 ? (
-                  <div
-                    style={{
-                      textAlign: "center",
-                      padding: "3rem 1rem",
-                      color: "#9ca3af",
-                      backgroundColor: "#f9fafb",
-                      borderRadius: "0.5rem",
-                    }}
-                  >
-                    <Star size={48} style={{ margin: "0 auto 1rem", opacity: 0.5, stroke: "#d1d5db" }} />
-                    <p>Nenhuma avaliação recebida ainda</p>
+                            {schedule.reason && (<div style={{ marginBottom: "0.75rem" }}><p style={{ fontWeight: "600", color: "#374151" }}>Motivo:</p><p style={{ color: "#6b7280" }}>{schedule.reason}</p></div>)}
+                            {schedule.description && (<div style={{ marginBottom: "0.75rem" }}><p style={{ fontWeight: "600", color: "#374151" }}>Descrição:</p><p style={{ color: "#6b7280" }}>{schedule.description}</p></div>)}
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
                   </div>
-                ) : (
-                  <div style={{ display: "grid", gap: "1rem" }}>
-                    {dashboardData.reviews.map((review, index) => (
-                      <div
-                        key={index}
-                        style={{
-                          padding: "1.5rem",
-                          border: "1px solid #e5e7eb",
-                          borderRadius: "0.75rem",
-                          backgroundColor: "#ffffff",
-                          transition: "all 0.2s ease",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.boxShadow = "0 4px 12px rgba(251, 191, 36, 0.15)"
-                          e.currentTarget.style.borderColor = "#fbbf24"
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.boxShadow = "none"
-                          e.currentTarget.style.borderColor = "#e5e7eb"
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "flex-start",
-                            marginBottom: "1rem",
-                          }}
-                        >
-                          <div>
-                            <div
-                              style={{
-                                fontWeight: "600",
-                                fontSize: "1.125rem",
-                                color: "#1f2937",
-                                marginBottom: "0.5rem",
-                              }}
-                            >
-                              {review.patient_name}
+                ) : (<p style={{ textAlign: "center", color: "#6b7280", padding: "2rem" }}>Nenhuma visita agendada</p>)}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          {/* Patients Tab */}
+          <TabsContent value="patients" className="space-y-4 mt-4"> {/* Adicionado mt-4 */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Meus Pacientes</CardTitle>
+                <CardDescription>Pacientes com atendimentos concluídos</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {uniquePatients.length > 0 ? (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "1rem" }}>
+                    {uniquePatients.map((patient) => {
+                      const { date } = formatDateTime(patient.last_visit)
+                      return (
+                        <Card key={patient.patient_id} style={{ border: "1px solid #e5e7eb", transition: "all 0.2s" }}>
+                          <CardContent style={{ padding: "1.5rem" }}>
+                            {/* Conteúdo do Card Paciente */}
+                            <div style={{ marginBottom: "1rem" }}>
+                              <h3 style={{ fontSize: "1.125rem", fontWeight: "600", color: "#1f2937", marginBottom: "0.25rem" }}>{patient.patient_name}</h3>
+                              <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>{patient.patient_email}</p>
                             </div>
-                            {renderStars(review.rating)}
-                          </div>
-                          <Badge
-                            style={{
-                              backgroundColor: "#fef3c7",
-                              color: "#92400e",
-                              border: "1px solid #fbbf24",
-                              padding: "0.25rem 0.75rem",
-                              fontSize: "0.875rem",
-                              fontWeight: "600",
-                            }}
-                          >
-                            {review.rating.toFixed(1)} ★
-                          </Badge>
-                        </div>
-                        <p
-                          style={{
-                            color: "#4b5563",
-                            fontSize: "0.9375rem",
-                            lineHeight: "1.6",
-                            fontStyle: "italic",
-                            padding: "1rem",
-                            backgroundColor: "#f9fafb",
-                            borderRadius: "0.5rem",
-                            borderLeft: "3px solid #fbbf24",
-                          }}
-                        >
-                          "{review.comment}"
-                        </p>
-                      </div>
-                    ))}
+                            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", fontSize: '0.875rem' }}>
+                              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#6b7280" }}>Total de Visitas:</span><span style={{ fontWeight: "600", color: "#15803d" }}>{patient.total_visits}</span></div>
+                              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#6b7280" }}>Última Visita:</span><span style={{ fontWeight: "600", color: "#4b5563" }}>{date}</span></div>
+                              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#6b7280" }}>Total Gasto:</span><span style={{ fontWeight: "600", color: "#15803d" }}>R$ {patient.total_spent.toFixed(2)}</span></div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
                   </div>
-                )}
+                ) : (<p style={{ textAlign: "center", color: "#6b7280", padding: "2rem" }}>Nenhum paciente</p>)}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          {/* History Tab */}
+          <TabsContent value="history" className="space-y-4 mt-4"> {/* Adicionado mt-4 */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Histórico de Atendimentos</CardTitle>
+                <CardDescription>Atendimentos concluídos recentemente</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {completedSchedules.length > 0 ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                    {completedSchedules.map((schedule) => {
+                      const { date, time } = formatDateTime(schedule.visit_date)
+                      const statusBadge = getStatusBadge(schedule.status)
+                      return (
+                        <Card key={schedule.id} style={{ border: "1px solid #e5e7eb", transition: "all 0.2s" }}>
+                          <CardContent style={{ padding: "1.5rem" }}>
+                            {/* Conteúdo Card Histórico (similar ao da Agenda) */}
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
+                              <div>
+                                <h3 style={{ fontSize: "1.125rem", fontWeight: "600", color: "#1f2937" }}>{schedule.patient_name}</h3>
+                                <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>{schedule.patient_email}</p>
+                              </div>
+                              <Badge variant="outline" style={{ color: statusBadge.color, backgroundColor: statusBadge.bg, borderColor: statusBadge.color + '40' }}>{statusBadge.label}</Badge>
+                            </div>
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem", marginBottom: "1rem", fontSize: '0.875rem', color: '#4b5563' }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><Calendar size={16} style={{ color: "#15803d" }} /><span>{date}</span></div>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><Clock size={16} style={{ color: "#15803d" }} /><span>{time}</span></div>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><MapPin size={16} style={{ color: "#15803d" }} /><span>{schedule.visit_type === "domiciliar" ? "Domiciliar" : schedule.visit_type}</span></div>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><DollarSign size={16} style={{ color: "#15803d" }} /><span>R$ {schedule.value.toFixed(2)}</span></div>
+                            </div>
+                            {schedule.reason && (<div style={{ marginBottom: "0.75rem" }}><p style={{ fontWeight: "600", color: "#374151" }}>Motivo:</p><p style={{ color: "#6b7280" }}>{schedule.reason}</p></div>)}
+                            {schedule.description && (<div style={{ marginBottom: "0.75rem" }}><p style={{ fontWeight: "600", color: "#374151" }}>Descrição:</p><p style={{ color: "#6b7280" }}>{schedule.description}</p></div>)}
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
+                  </div>
+                ) : (<p style={{ textAlign: "center", color: "#6b7280", padding: "2rem" }}>Nenhum atendimento concluído</p>)}
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
       </section>
-
-      {/* Add keyframes for animations */}
-      <style jsx>{`
-        @keyframes shimmer {
-          0% {
-            left: -100%;
-          }
-          100% {
-            left: 100%;
-          }
-        }
-        @keyframes ping {
-          75%, 100% {
-            transform: scale(2);
-            opacity: 0;
-          }
-        }
-      `}</style>
     </div>
   )
 }
