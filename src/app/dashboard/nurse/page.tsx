@@ -84,8 +84,6 @@ const renderStars = (rating: number) => {
   )
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
-
 const formatDate = (isoDate: string) => {
   const date = new Date(isoDate)
   const day = date.getDate().toString().padStart(2, "0")
@@ -97,104 +95,39 @@ const formatDate = (isoDate: string) => {
   return `${day}/${month}/${year} às ${hours}:${minutes}`
 }
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
+
+const heroStyle = {
+  backgroundImage: `
+    linear-gradient(rgba(21, 128, 61, 0.7), rgba(83, 83, 83, 0.8)),
+    url('/dashboard_imagem.png')
+  `,
+  backgroundSize: "cover",
+  backgroundPosition: "center",
+  color: "white",
+  padding: "5rem 0",
+}
+
 export default function NurseDashboard() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isOnline, setIsOnline] = useState(false)
   const [isToggling, setIsToggling] = useState(false)
 
-  const heroStyle = {
-    backgroundImage: `
-      linear-gradient(rgba(21, 128, 61, 0.7), rgba(83, 83, 83, 0.8)),
-      url('/dashboard_imagem.png')
-    `,
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    color: "white",
-    padding: "5rem 0",
-  }
-
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/nurse/dashboard_info`, {
+        const response = await fetch(`${API_BASE_URL}/nurse}/nurse/dashboard_info`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
         })
 
         if (response.ok) {
-          const apiResponse = await response.json() // Resposta completa da API
-          const apiData = apiResponse.data // Objeto "data" achatado da API
-
-          // --- Início da Transformação (Adapter) ---
-
-          // 1. Transformar 'schedules' (API) em 'visits' (Frontend)
-          const transformedVisits: Visit[] = apiData.schedules.map((schedule: any) => ({
-            id: schedule.id,
-            description: schedule.description,
-            reason: schedule.reason,
-            visit_type: schedule.visit_type,
-            visit_value: schedule.value, // 'value' (API) -> 'visit_value' (Frontend)
-            created_at: schedule.created_at,
-            date: schedule.visit_date, // 'visit_date' (API) -> 'date' (Frontend)
-            status: schedule.status,
-            patient_name: schedule.patient_name,
-            patient_id: schedule.patient_id,
-            nurse_name: schedule.nurse_name,
-          }))
-
-          // 2. Calcular 'appointments_today' (Não fornecido pela API)
-          const today = new Date().toISOString().split("T")[0] // Formato YYYY-MM-DD
-          const appointmentsToday = transformedVisits.filter((visit) => {
-            const visitDate = visit.date.split("T")[0]
-            return visitDate === today && (visit.status === "PENDING" || visit.status === "CONFIRMED")
-          }).length
-
-          // 3. Transformar dados raiz em 'stats'
-          const transformedStats: DashboardStats = {
-            patients_attended: apiData.total_patients || 0,
-            appointments_today: appointmentsToday, // Usamos nosso cálculo
-            average_rating: apiData.rating || 0,
-            monthly_earnings: apiData.earnings || 0,
-          }
-
-          // 4. Transformar dados raiz em 'profile'
-          const transformedProfile: Profile = {
-            name: apiData.name || "",
-            email: "", // API não forneceu email
-            phone: apiData.phone || "",
-            coren: apiData.coren || "",
-            experience_years: apiData.experience || 0,
-            department: apiData.department || "",
-            bio: apiData.bio || "",
-          }
-
-          // 5. Transformar dados raiz em 'availability'
-          // Mesmo que a UI tenha sido removida, a interface DashboardData AINDA EXIGE isso.
-          const isAvailable = apiData.days_available !== null
-          const transformedAvailability: Availability = {
-            is_available: isAvailable,
-            start_time: apiData.start_time || "",
-            end_time: apiData.end_time || "",
-            specialization: apiData.specialization || "",
-          }
-
-          // 6. Montar o objeto DashboardData final
-          const transformedData: DashboardData = {
-            online: apiData.online,
-            stats: transformedStats, // <--- 'stats' agora está DEFINIDO
-            visits: transformedVisits,
-            profile: transformedProfile,
-            availability: transformedAvailability,
-            reviews: apiData.reviews || [],
-          }
-
-          // --- Fim da Transformação ---
-
-          // 7. Atualizar o estado com os dados transformados e limpos
-          setDashboardData(transformedData)
-          setIsOnline(transformedData.online)
+          const apiResponse: ApiResponse = await response.json()
+          const data = apiResponse.data
+          setDashboardData(data)
+          setIsOnline(data.online)
         } else {
           console.error("Failed to fetch dashboard data")
         }
@@ -206,7 +139,7 @@ export default function NurseDashboard() {
     }
 
     fetchDashboardData()
-  }, []) // Array de dependências vazio está correto
+  }, [])
 
   const toggleOnlineStatus = async () => {
     setIsToggling(true)
@@ -357,64 +290,148 @@ export default function NurseDashboard() {
           </p>
 
           <div style={{ display: "flex", justifyContent: "center", marginBottom: "3rem" }}>
-            <button
-              onClick={toggleOnlineStatus}
-              disabled={isToggling}
+            <div
               style={{
-                display: "flex",
+                position: "relative",
+                display: "inline-flex",
                 alignItems: "center",
-                gap: "0.75rem",
-                padding: "1rem 2.5rem",
-                fontSize: "1.125rem",
-                fontWeight: "600",
+                gap: "1rem",
+                padding: "0.5rem",
+                background: "rgba(255, 255, 255, 0.15)",
+                backdropFilter: "blur(10px)",
                 borderRadius: "9999px",
-                border: "3px solid",
-                borderColor: isOnline ? "#10b981" : "#6b7280",
-                backgroundColor: isOnline ? "#10b981" : "#374151",
-                color: "white",
-                cursor: isToggling ? "not-allowed" : "pointer",
-                transition: "all 0.3s ease",
-                boxShadow: isOnline
-                  ? "0 0 30px rgba(16, 185, 129, 0.6), 0 0 60px rgba(16, 185, 129, 0.3)"
-                  : "0 4px 6px rgba(0, 0, 0, 0.1)",
-                transform: isToggling ? "scale(0.95)" : "scale(1)",
-                opacity: isToggling ? 0.7 : 1,
-              }}
-              onMouseEnter={(e) => {
-                if (!isToggling) {
-                  e.currentTarget.style.transform = "scale(1.05)"
-                  e.currentTarget.style.boxShadow = isOnline
-                    ? "0 0 40px rgba(16, 185, 129, 0.7), 0 0 80px rgba(16, 185, 129, 0.4)"
-                    : "0 6px 12px rgba(0, 0, 0, 0.15)"
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isToggling) {
-                  e.currentTarget.style.transform = "scale(1)"
-                  e.currentTarget.style.boxShadow = isOnline
-                    ? "0 0 30px rgba(16, 185, 129, 0.6), 0 0 60px rgba(16, 185, 129, 0.3)"
-                    : "0 4px 6px rgba(0, 0, 0, 0.1)"
-                }
+                border: "2px solid rgba(255, 255, 255, 0.3)",
+                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
               }}
             >
-              {isToggling ? (
-                <Loader2 className="animate-spin" size={24} />
-              ) : isOnline ? (
-                <Wifi size={24} />
-              ) : (
-                <WifiOff size={24} />
-              )}
-              <span>{isToggling ? "Alterando..." : isOnline ? "ONLINE" : "OFFLINE"}</span>
+              <button
+                onClick={toggleOnlineStatus}
+                disabled={isToggling}
+                style={{
+                  position: "relative",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "1rem",
+                  padding: "0.875rem 2rem",
+                  fontSize: "1rem",
+                  fontWeight: "700",
+                  borderRadius: "9999px",
+                  border: "none",
+                  background: isOnline
+                    ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
+                    : "linear-gradient(135deg, #6b7280 0%, #4b5563 100%)",
+                  color: "white",
+                  cursor: isToggling ? "not-allowed" : "pointer",
+                  transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                  boxShadow: isOnline
+                    ? "0 0 0 0 rgba(16, 185, 129, 0.7), 0 4px 20px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)"
+                    : "0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
+                  transform: isToggling ? "scale(0.95)" : "scale(1)",
+                  opacity: isToggling ? 0.8 : 1,
+                  overflow: "hidden",
+                }}
+                onMouseEnter={(e) => {
+                  if (!isToggling) {
+                    e.currentTarget.style.transform = "scale(1.05)"
+                    e.currentTarget.style.boxShadow = isOnline
+                      ? "0 0 0 8px rgba(16, 185, 129, 0.2), 0 8px 30px rgba(16, 185, 129, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)"
+                      : "0 6px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15)"
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isToggling) {
+                    e.currentTarget.style.transform = "scale(1)"
+                    e.currentTarget.style.boxShadow = isOnline
+                      ? "0 0 0 0 rgba(16, 185, 129, 0.7), 0 4px 20px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)"
+                      : "0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)"
+                  }
+                }}
+              >
+                {/* Animated background shimmer effect */}
+                {isOnline && !isToggling && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: "-100%",
+                      width: "100%",
+                      height: "100%",
+                      background: "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent)",
+                      animation: "shimmer 3s infinite",
+                    }}
+                  />
+                )}
+
+                {/* Icon */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "28px",
+                    height: "28px",
+                    borderRadius: "50%",
+                    background: "rgba(255, 255, 255, 0.2)",
+                    transition: "all 0.3s ease",
+                  }}
+                >
+                  {isToggling ? (
+                    <Loader2 className="animate-spin" size={18} />
+                  ) : isOnline ? (
+                    <Wifi size={18} />
+                  ) : (
+                    <WifiOff size={18} />
+                  )}
+                </div>
+
+                {/* Status text */}
+                <span style={{ letterSpacing: "0.05em" }}>
+                  {isToggling ? "ALTERANDO..." : isOnline ? "ONLINE" : "OFFLINE"}
+                </span>
+
+                {/* Pulse indicator */}
+                <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div
+                    style={{
+                      width: "10px",
+                      height: "10px",
+                      borderRadius: "50%",
+                      backgroundColor: isOnline ? "#ffffff" : "#d1d5db",
+                      boxShadow: isOnline ? "0 0 8px rgba(255, 255, 255, 0.8)" : "none",
+                      transition: "all 0.3s ease",
+                    }}
+                  />
+                  {isOnline && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        width: "10px",
+                        height: "10px",
+                        borderRadius: "50%",
+                        backgroundColor: "#ffffff",
+                        animation: "ping 2s cubic-bezier(0, 0, 0.2, 1) infinite",
+                      }}
+                    />
+                  )}
+                </div>
+              </button>
+
+              {/* Status badge */}
               <div
                 style={{
-                  width: "12px",
-                  height: "12px",
-                  borderRadius: "50%",
-                  backgroundColor: isOnline ? "#ffffff" : "#9ca3af",
-                  animation: isOnline ? "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite" : "none",
+                  padding: "0.5rem 1.25rem",
+                  borderRadius: "9999px",
+                  background: isOnline ? "rgba(16, 185, 129, 0.2)" : "rgba(107, 114, 128, 0.2)",
+                  border: `1px solid ${isOnline ? "rgba(16, 185, 129, 0.4)" : "rgba(107, 114, 128, 0.4)"}`,
+                  fontSize: "0.875rem",
+                  fontWeight: "600",
+                  color: "white",
+                  transition: "all 0.3s ease",
                 }}
-              />
-            </button>
+              >
+                {isOnline ? "Aceitando Consultas" : "Indisponível"}
+              </div>
+            </div>
           </div>
 
           <div
@@ -896,6 +913,24 @@ export default function NurseDashboard() {
           </TabsContent>
         </Tabs>
       </section>
+
+      {/* Add keyframes for animations */}
+      <style jsx>{`
+        @keyframes shimmer {
+          0% {
+            left: -100%;
+          }
+          100% {
+            left: 100%;
+          }
+        }
+        @keyframes ping {
+          75%, 100% {
+            transform: scale(2);
+            opacity: 0;
+          }
+        }
+      `}</style>
     </div>
   )
 }
