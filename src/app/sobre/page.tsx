@@ -1,9 +1,12 @@
 "use client"
 
 import { Header } from "@/components/Header"
+import { Footer } from "@/components/Footer"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
+import { Star } from "lucide-react"
 import Link from "next/link"
 
 export default function About() {
@@ -18,11 +21,54 @@ export default function About() {
     padding: "5rem 0",
   }
 
+  const testimonials = [
+    {
+      name: "Maria Oliveira",
+      role: "Paciente",
+      rating: 5,
+      comment:
+        "O Vita transformou minha experiência com cuidados de saúde. Encontrei uma enfermeira incrível que cuida da minha mãe com muito carinho e profissionalismo.",
+      avatar: "👵",
+    },
+    {
+      name: "Ana Silva",
+      role: "Enfermeira",
+      rating: 5,
+      comment:
+        "Como enfermeira, o Vita me deu a flexibilidade de trabalhar com autonomia e conectar com pacientes que realmente precisam dos meus cuidados. Plataforma excelente!",
+      avatar: "👩‍⚕️",
+    },
+    {
+      name: "João Santos",
+      role: "Paciente",
+      rating: 5,
+      comment:
+        "Após minha cirurgia, precisava de cuidados especializados em casa. O Vita facilitou todo o processo e encontrei profissionais qualificados rapidamente.",
+      avatar: "👨",
+    },
+    {
+      name: "Carla Mendes",
+      role: "Enfermeira",
+      rating: 5,
+      comment:
+        "A plataforma é intuitiva e segura. Consigo gerenciar minha agenda, receber pagamentos e manter contato com meus pacientes de forma profissional.",
+      avatar: "👩‍⚕️",
+    },
+    {
+      name: "Roberto Lima",
+      role: "Paciente",
+      rating: 5,
+      comment:
+        "Meu pai precisa de cuidados constantes e o Vita nos ajudou a encontrar enfermeiros confiáveis. A qualidade do atendimento é excepcional!",
+      avatar: "👴",
+    },
+  ]
+
   return (
     <>
       <Header />
 
-      {/* --- MUDANÇA: Estilo da seção principal atualizado --- */}
+      {/* Hero Section */}
       <section style={heroStyle}>
         <div className="container mx-auto px-4 text-center">
           <div className="max-w-4xl mx-auto">
@@ -46,7 +92,6 @@ export default function About() {
 
       {/* Mission Section */}
       <section className="py-20">
-        {/* ... O resto do código permanece o mesmo ... */}
         <div className="container mx-auto px-4">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
@@ -269,8 +314,8 @@ export default function About() {
                     Presente
                   </h3>
                   <p className="text-lg" style={{ color: "#6b7280" }}>
-                    Hoje, o Vita conecta centenas de enfermeiros qualificados a milhares de pacientes em todo o
-                    Brasil. Continuamos expandindo nossos serviços e melhorando nossa plataforma para oferecer a melhor
+                    Hoje, o Vita conecta centenas de enfermeiros qualificados a milhares de pacientes em todo o Brasil.
+                    Continuamos expandindo nossos serviços e melhorando nossa plataforma para oferecer a melhor
                     experiência possível para todos os usuários.
                   </p>
                 </div>
@@ -280,8 +325,68 @@ export default function About() {
         </div>
       </section>
 
-      {/* Team Section */}
       <section className="py-20" style={{ backgroundColor: "#f0fdf4" }}>
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-balance" style={{ color: "#1f2937" }}>
+              O Que Dizem Nossos Usuários
+            </h2>
+            <p className="text-xl max-w-2xl mx-auto text-pretty" style={{ color: "#6b7280" }}>
+              Depoimentos reais de pacientes e enfermeiros que confiam no Vita.
+            </p>
+          </div>
+
+          <div className="max-w-5xl mx-auto">
+            <Carousel
+              opts={{
+                align: "start",
+                loop: true,
+              }}
+              className="w-full"
+            >
+              <CarouselContent>
+                {testimonials.map((testimonial, index) => (
+                  <CarouselItem key={index} className="md:basis-1/2 lg:basis-1/3">
+                    <div className="p-1">
+                      <Card className="h-full hover:shadow-lg transition-shadow">
+                        <CardHeader>
+                          <div className="flex items-center gap-4 mb-4">
+                            <div
+                              className="w-12 h-12 rounded-full flex items-center justify-center text-2xl"
+                              style={{ backgroundColor: "#dcfce7" }}
+                            >
+                              {testimonial.avatar}
+                            </div>
+                            <div>
+                              <CardTitle className="text-lg">{testimonial.name}</CardTitle>
+                              <CardDescription>{testimonial.role}</CardDescription>
+                            </div>
+                          </div>
+                          <div className="flex gap-1">
+                            {Array.from({ length: testimonial.rating }).map((_, i) => (
+                              <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                            ))}
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm" style={{ color: "#6b7280" }}>
+                            "{testimonial.comment}"
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious />
+              <CarouselNext />
+            </Carousel>
+          </div>
+        </div>
+      </section>
+
+      {/* Team Section */}
+      <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4 text-balance" style={{ color: "#1f2937" }}>
@@ -380,102 +485,7 @@ export default function About() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-12" style={{ backgroundColor: "#f3f4f6" }}>
-        <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-4 gap-8">
-            <div>
-              <h3 className="font-bold text-lg mb-4">Vita</h3>
-              <p className="text-sm" style={{ color: "#6b7280" }}>
-                Conectando cuidado e confiança através de uma plataforma segura e profissional de serviços de
-                enfermagem.
-              </p>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-4">Serviços</h4>
-              <ul className="space-y-2 text-sm" style={{ color: "#6b7280" }}>
-                <li>
-                  <Link href="#" className="hover:text-green-700 transition-colors">
-                    Cuidados Domiciliares
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-green-700 transition-colors">
-                    Cuidados Pós-Operatórios
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-green-700 transition-colors">
-                    Atendimento 24h
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-green-700 transition-colors">
-                    Cuidados Geriátricos
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-4">Empresa</h4>
-              <ul className="space-y-2 text-sm" style={{ color: "#6b7280" }}>
-                <li>
-                  <Link href="/about" className="hover:text-green-700 transition-colors">
-                    Sobre Nós
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/contact" className="hover:text-green-700 transition-colors">
-                    Contato
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-green-700 transition-colors">
-                    Carreiras
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-green-700 transition-colors">
-                    Blog
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-4">Suporte</h4>
-              <ul className="space-y-2 text-sm" style={{ color: "#6b7280" }}>
-                <li>
-                  <Link href="#" className="hover:text-green-700 transition-colors">
-                    Central de Ajuda
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-green-700 transition-colors">
-                    Política de Privacidade
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-green-700 transition-colors">
-                    Termos de Uso
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-green-700 transition-colors">
-                    FAQ
-                  </Link>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="mt-8 pt-8 text-center text-sm" style={{ borderTop: "1px solid #d1d5db", color: "#6b7280" }}>
-            <p>&copy; 2025 Vita. Todos os direitos reservados.</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </>
   )
 }

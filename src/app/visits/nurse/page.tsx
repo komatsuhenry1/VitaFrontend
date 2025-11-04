@@ -42,6 +42,7 @@ import {
     Star,
 } from "lucide-react"
 import { toast } from "sonner"
+import { Footer } from "@/components/Footer"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
@@ -1218,6 +1219,7 @@ export default function NurseVisitsPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            <Footer />
         </div>
     )
 }

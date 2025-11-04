@@ -21,6 +21,7 @@ import {
     MessageSquare,
 } from "lucide-react"
 import Image from "next/image"
+import { Footer } from "@/components/Footer"
 
 interface PatientData {
     id: string
@@ -552,6 +553,7 @@ export default function PatientProfile() {
                     </div>
                 </div>
             </div>
+            <Footer />
         </div>
     )
 }

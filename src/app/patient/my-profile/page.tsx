@@ -25,6 +25,7 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import type { PatientData, ApiResponse } from "@/types/patient-profile"
+import { Footer } from "@/components/Footer"
 
 export default function MyProfile() {
     const router = useRouter()
@@ -826,6 +827,7 @@ export default function MyProfile() {
                     </div>
                 </Tabs>
             </div>
+            <Footer />
         </div>
     )
 }

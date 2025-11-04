@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { ChevronDown, ChevronUp, Filter, X } from "lucide-react"
 import Link from "next/link"
+import { Footer } from "@/components/Footer"
 
 const heroStyle = {
   backgroundImage: `
@@ -811,6 +812,7 @@ export default function PatientDashboard() {
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
       `}</style>
+      <Footer />
     </div>
   )
 }

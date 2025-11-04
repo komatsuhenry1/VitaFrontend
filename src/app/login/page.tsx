@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Header } from "@/components/Header"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { Footer } from "@/components/Footer"
 
 const heroStyle = {
   backgroundImage: `
@@ -285,30 +286,7 @@ export default function LoginPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer
-        style={{
-          backgroundColor: "#1f2937",
-          color: "white",
-          padding: "2rem 1rem",
-          textAlign: "center",
-        }}
-      >
-        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-          <p style={{ marginBottom: "1rem" }}>© 2024 Vita. Todos os direitos reservados.</p>
-          <div style={{ display: "flex", justifyContent: "center", gap: "2rem", flexWrap: "wrap" }}>
-            <Link href="/terms" style={{ color: "#9ca3af", textDecoration: "none" }}>
-              Termos de Uso
-            </Link>
-            <Link href="/privacy" style={{ color: "#9ca3af", textDecoration: "none" }}>
-              Política de Privacidade
-            </Link>
-            <Link href="/contact" style={{ color: "#9ca3af", textDecoration: "none" }}>
-              Contato
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   )
 }

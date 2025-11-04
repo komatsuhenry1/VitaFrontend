@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
+import { Footer } from "@/components/Footer"
 
 // Interfaces (mantidas iguais)
 interface NurseData {
@@ -683,6 +684,7 @@ export default function ImmediateConsultationNurseProfile() {
                     </div>
                 </DialogContent>
             </Dialog>
+            <Footer />
         </div>
     )
 }

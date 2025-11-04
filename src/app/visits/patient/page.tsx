@@ -26,6 +26,7 @@ import {
 import { Clock, CheckCircle, Info, MessageCircle, CheckCheck, Calendar, Star } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
+import { Footer } from "@/components/Footer"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
@@ -863,6 +864,7 @@ export default function VisitsPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            <Footer />
         </div>
     )
 }

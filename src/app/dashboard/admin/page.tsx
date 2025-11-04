@@ -30,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import Image from "next/image"
 import { toast } from "sonner"
+import { Footer } from "@/components/Footer"
 
 interface NurseInfo {
   id: string
@@ -698,6 +699,7 @@ const AdminDashboard = () => {
         </AlertDialogContent>
       </AlertDialog>
 
+      <Footer />
       <style jsx>{`
         @keyframes spin {
           0% { transform: rotate(0deg); }

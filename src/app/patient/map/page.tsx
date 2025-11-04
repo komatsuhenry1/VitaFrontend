@@ -12,6 +12,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Loader2, MapPin, Clock, Award } from "lucide-react";
 // --- FIM DA MUDANÇA ---
+import { Footer } from "@/components/Footer"
 
 interface PatientLocation {
   latitude: number;
@@ -295,6 +296,7 @@ export default function NursesMapPage() {
           </div>
         </div>
       </div>
+      <Footer />
 
       {/* Adicionado o <style jsx global> para a scrollbar customizada */}
       <style jsx global>{`

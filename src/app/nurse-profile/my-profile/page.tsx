@@ -26,6 +26,7 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import type { NurseProfile } from "@/types/nurse-profile"
+import { Footer } from "@/components/Footer"
 
 export default function NurseMyProfile() {
     const router = useRouter()
@@ -862,6 +863,7 @@ export default function NurseMyProfile() {
                     </div>
                 </Tabs>
             </div>
+            <Footer />
         </div>
     )
 }

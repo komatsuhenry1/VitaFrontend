@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation" // <-- MUDANÇA
 import { useWebSocket } from "@/context/WebSocketContext" // <-- MUDANÇA
 import { toast } from "sonner" // <-- MUDANÇA
 // --- Fim dos Imports Adicionados ---
+import { Footer } from "@/components/Footer"
 
 interface DashboardStats {
   patients_attended: number
@@ -1056,6 +1057,7 @@ export default function NurseDashboard() {
           }
         }
       `}</style>
+      <Footer />
     </div>
   )
 }

@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Star } from "lucide-react"
 import { toast } from "sonner"
+import { Footer } from "@/components/Footer"
 
 interface NurseData {
     id: string
@@ -576,6 +577,7 @@ export default function NurseProfile() {
                     </div>
                 </DialogContent>
             </Dialog>
+            <Footer />
         </div>
     )
 }

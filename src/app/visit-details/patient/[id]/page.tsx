@@ -23,6 +23,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import dynamic from "next/dynamic"
+import { Footer } from "@/components/Footer"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
@@ -391,9 +392,7 @@ export default function PatientVisitDetailsPage() {
                     <p>Última atualização: <span style={{ fontWeight: "600", color: "#1f2937" }}>{formatDate(visit.updated_at)}</span></p>
                 </div>
             </div>
-
-            {/* Emergency Alert Dialog (Movido para dentro do Card, mas pode ficar aqui se preferir) */}
-            {/* <AlertDialog open={showEmergencyDialog} onOpenChange={setShowEmergencyDialog}> ... </AlertDialog> */}
+            <Footer />
         </div>
     )
 }

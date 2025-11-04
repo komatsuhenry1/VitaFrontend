@@ -14,6 +14,7 @@ import Link from "next/link"
 import { CheckCircle, XCircle, Upload, Loader2 } from "lucide-react"
 import Image from "next/image"
 import { toast } from "sonner"
+import { Footer } from "@/components/Footer"
 
 const validateEmail = (email: string) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -838,6 +839,7 @@ export default function PatientRegisterPage() {
           </div>
         </div>
       </section>
+      <Footer />
     </>
   )
 }

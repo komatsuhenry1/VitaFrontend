@@ -39,6 +39,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import dynamic from "next/dynamic"
+import { Footer } from "@/components/Footer"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
@@ -913,6 +914,7 @@ export default function VisitDetailsPage() {
                     </p>
                 </div>
             </div>
+            <Footer />
         </div>
     )
 }

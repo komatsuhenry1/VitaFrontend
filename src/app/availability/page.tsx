@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Clock, DollarSign, Calendar, Loader2, Plus, X, Award, MapPin } from "lucide-react"
 import { toast } from "sonner"
+import { Footer } from "@/components/Footer"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
@@ -697,6 +698,7 @@ export default function NurseAvailabilityPage() {
                     </Button>
                 </div>
             </section>
+            <Footer />
         </div>
     )
 }

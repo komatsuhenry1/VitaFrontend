@@ -14,6 +14,7 @@ import Link from "next/link"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import Image from "next/image"
+import { Footer } from "@/components/Footer"
 
 
 const validateEmail = (email: string) => {
@@ -1150,6 +1151,7 @@ export default function RegisterPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Footer />
     </>
   )
 }
