@@ -1,7 +1,8 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+// MUDANÇA: importado useEffect
+import { useState, useEffect } from "react"
 import { Header } from "@/components/Header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,7 +10,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
-import { CheckCircle, XCircle, Upload } from "lucide-react"
+// MUDANÇA: importado Loader2
+import { CheckCircle, XCircle, Upload, Loader2 } from "lucide-react"
 import Image from "next/image"
 import { toast } from "sonner"
 
@@ -116,7 +118,78 @@ export default function PatientRegisterPage() {
   const [profileImage, setProfileImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  // MUDANÇA: Estado para o loading do CEP
+  const [isCepLoading, setIsCepLoading] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+
+  // MUDANÇA: useEffect para buscar o CEP
+  useEffect(() => {
+    const cep = formData.cep.replace(/\D/g, "")
+
+    // Se o CEP não tiver 8 dígitos, não faz nada
+    if (cep.length !== 8) {
+      // Opcional: limpar campos se o usuário apagar o CEP
+      if (formData.street) {
+        setFormData((prev) => ({
+          ...prev,
+          street: "",
+          neighborhood: "",
+          city: "",
+          uf: "",
+        }))
+      }
+      return
+    }
+
+    const fetchCepData = async () => {
+      setIsCepLoading(true)
+      setValidationErrors((prev) => ({ ...prev, cep: "" })) // Limpa erros anteriores
+
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`)
+        if (!response.ok) throw new Error("Erro na rede ao buscar CEP")
+
+        const data = await response.json()
+
+        if (data.erro) {
+          // CEP não encontrado
+          setValidationErrors((prev) => ({ ...prev, cep: "CEP não encontrado" }))
+          toast.error("CEP não encontrado", {
+            description: "Verifique o número e tente novamente.",
+          })
+        } else {
+          // Sucesso: Preenche os campos
+          setFormData((prev) => ({
+            ...prev,
+            street: data.logradouro || "",
+            neighborhood: data.bairro || "",
+            city: data.localidade || "",
+            uf: data.uf || "", // A API retorna "SP", "RJ", etc.
+          }))
+          toast.success("Endereço preenchido!")
+          // Foca no campo "número" para o usuário
+          document.getElementById("number")?.focus()
+        }
+      } catch (error) {
+        console.error("Erro ao buscar CEP:", error)
+        setValidationErrors((prev) => ({ ...prev, cep: "Erro ao buscar CEP" }))
+        toast.error("Erro ao buscar CEP", {
+          description: "Não foi possível conectar ao serviço. Tente novamente.",
+        })
+      } finally {
+        setIsCepLoading(false)
+      }
+    }
+
+    // Atraso para evitar muitas requisições enquanto digita (opcional)
+    const timer = setTimeout(() => {
+      fetchCepData()
+    }, 500) // 500ms de debounce
+
+    // Limpa o timer se o CEP mudar novamente
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.cep])
 
   const handleInputChange = (field: string, value: string) => {
     let formattedValue = value
@@ -130,6 +203,7 @@ export default function PatientRegisterPage() {
 
     setFormData((prev) => ({ ...prev, [field]: formattedValue }))
 
+    // Validações
     if (field === "email" && value) {
       setValidationErrors((prev) => ({
         ...prev,
@@ -148,10 +222,18 @@ export default function PatientRegisterPage() {
       }))
     } else if (field === "cep" && value) {
       const cleaned = value.replace(/\D/g, "")
-      setValidationErrors((prev) => ({
-        ...prev,
-        cep: cleaned.length === 8 ? "" : "CEP incompleto",
-      }))
+      // MUDANÇA: Apenas valida se não estiver buscando
+      if (cleaned.length === 8 && !isCepLoading) {
+        setValidationErrors((prev) => ({
+          ...prev,
+          cep: "",
+        }))
+      } else if (cleaned.length < 8) {
+        setValidationErrors((prev) => ({
+          ...prev,
+          cep: "CEP incompleto",
+        }))
+      }
     }
   }
 
@@ -233,6 +315,9 @@ export default function PatientRegisterPage() {
   }
 
   const passwordValidation = validatePassword(formData.password)
+
+  // MUDANÇA: Variável para controlar se os campos de endereço devem ser desabilitados
+  const isAddressDisabled = isCepLoading || (formData.street.length > 0 && !validationErrors.cep)
 
   return (
     <>
@@ -405,24 +490,28 @@ export default function PatientRegisterPage() {
                             value={formData.cep}
                             onChange={(e) => handleInputChange("cep", e.target.value)}
                             className={
-                              validationErrors.cep
+                              validationErrors.cep && !isCepLoading
                                 ? "border-red-500"
-                                : formData.cep.replace(/\D/g, "").length === 8
+                                : formData.cep.replace(/\D/g, "").length === 8 && !isCepLoading
                                   ? "border-green-500"
                                   : ""
                             }
                             maxLength={9}
                             required
+                            disabled={isCepLoading} // MUDANÇA
                           />
-                          {formData.cep && (
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                              {validationErrors.cep ? (
+                          {/* MUDANÇA: Lógica de ícones (Spinner ou Validação) */}
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            {isCepLoading ? (
+                              <Loader2 className="h-5 w-5 text-primary animate-spin" />
+                            ) : formData.cep.replace(/\D/g, "").length === 8 ? (
+                              validationErrors.cep ? (
                                 <XCircle className="h-5 w-5 text-red-500" />
-                              ) : formData.cep.replace(/\D/g, "").length === 8 ? (
+                              ) : (
                                 <CheckCircle className="h-5 w-5 text-green-500" />
-                              ) : null}
-                            </div>
-                          )}
+                              )
+                            ) : null}
+                          </div>
                         </div>
                         {validationErrors.cep && <p className="text-xs text-red-500">{validationErrors.cep}</p>}
                       </div>
@@ -433,8 +522,10 @@ export default function PatientRegisterPage() {
                           id="uf"
                           value={formData.uf}
                           onChange={(e) => handleInputChange("uf", e.target.value)}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          // MUDANÇA: Desabilitado e com estilo
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-100 disabled:cursor-default"
                           required
+                          disabled={isAddressDisabled}
                         >
                           <option value="">Selecione</option>
                           <option value="AC">Acre</option>
@@ -472,10 +563,12 @@ export default function PatientRegisterPage() {
                       <Label htmlFor="street">Rua *</Label>
                       <Input
                         id="street"
-                        placeholder="Nome da rua"
+                        placeholder="Preenchido automaticamente" // MUDANÇA
                         value={formData.street}
                         onChange={(e) => handleInputChange("street", e.target.value)}
                         required
+                        disabled={isAddressDisabled} // MUDANÇA
+                        className="disabled:opacity-100 disabled:cursor-default" // MUDANÇA
                       />
                     </div>
 
@@ -503,67 +596,32 @@ export default function PatientRegisterPage() {
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-4">
+                      {/* MUDANÇA: de <select> para <Input> */}
                       <div className="space-y-2">
                         <Label htmlFor="neighborhood">Bairro *</Label>
-                        <select
+                        <Input
                           id="neighborhood"
+                          placeholder="Preenchido automaticamente"
                           value={formData.neighborhood}
                           onChange={(e) => handleInputChange("neighborhood", e.target.value)}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                           required
-                        >
-                          <option value="">Selecione</option>
-                          <option value="Centro">Centro</option>
-                          <option value="Vila Prudente">Vila Prudente</option>
-                          <option value="Tatuapé">Tatuapé</option>
-                          <option value="Mooca">Mooca</option>
-                          <option value="Ipiranga">Ipiranga</option>
-                          <option value="Vila Mariana">Vila Mariana</option>
-                          <option value="Pinheiros">Pinheiros</option>
-                          <option value="Jardins">Jardins</option>
-                          <option value="Moema">Moema</option>
-                          <option value="Itaim Bibi">Itaim Bibi</option>
-                          <option value="Brooklin">Brooklin</option>
-                          <option value="Santo Amaro">Santo Amaro</option>
-                          <option value="Butantã">Butantã</option>
-                          <option value="Lapa">Lapa</option>
-                          <option value="Santana">Santana</option>
-                          <option value="Vila Guilherme">Vila Guilherme</option>
-                          <option value="Penha">Penha</option>
-                          <option value="São Miguel">São Miguel</option>
-                          <option value="Outro">Outro</option>
-                        </select>
+                          disabled={isAddressDisabled}
+                          className="disabled:opacity-100 disabled:cursor-default"
+                        />
                       </div>
 
+                      {/* MUDANÇA: de <select> para <Input> */}
                       <div className="space-y-2">
                         <Label htmlFor="city">Cidade *</Label>
-                        <select
+                        <Input
                           id="city"
+                          placeholder="Preenchido automaticamente"
                           value={formData.city}
                           onChange={(e) => handleInputChange("city", e.target.value)}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                           required
-                        >
-                          <option value="">Selecione</option>
-                          <option value="São Paulo">São Paulo</option>
-                          <option value="Rio de Janeiro">Rio de Janeiro</option>
-                          <option value="Belo Horizonte">Belo Horizonte</option>
-                          <option value="Brasília">Brasília</option>
-                          <option value="Curitiba">Curitiba</option>
-                          <option value="Porto Alegre">Porto Alegre</option>
-                          <option value="Salvador">Salvador</option>
-                          <option value="Fortaleza">Fortaleza</option>
-                          <option value="Recife">Recife</option>
-                          <option value="Manaus">Manaus</option>
-                          <option value="Belém">Belém</option>
-                          <option value="Goiânia">Goiânia</option>
-                          <option value="Campinas">Campinas</option>
-                          <option value="São Bernardo do Campo">São Bernardo do Campo</option>
-                          <option value="Santo André">Santo André</option>
-                          <option value="Guarulhos">Guarulhos</option>
-                          <option value="Osasco">Osasco</option>
-                          <option value="Outra">Outra</option>
-                        </select>
+                          disabled={isAddressDisabled}
+                          className="disabled:opacity-100 disabled:cursor-default"
+                        />
                       </div>
                     </div>
                   </div>

@@ -9,11 +9,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Upload, FileText, Camera, CheckCircle, XCircle, Shield, Heart } from "lucide-react"
+import { Upload, FileText, Camera, CheckCircle, XCircle, Shield, Heart, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import Image from "next/image"
+
 
 const validateEmail = (email: string) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -211,6 +212,7 @@ export default function RegisterPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCameraOpen, setIsCameraOpen] = useState(false)
+  const [isCepLoading, setIsCepLoading] = useState(false)
   const [capturingField, setCapturingField] = useState<string | null>(null)
   const [stream, setStream] = useState<MediaStream | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -254,6 +256,69 @@ export default function RegisterPage() {
       stopCamera()
     }
   }, [isCameraOpen])
+
+  useEffect(() => {
+    const cep = formData.cep.replace(/\D/g, "")
+
+    // Se o CEP não tiver 8 dígitos, não faz nada
+    if (cep.length !== 8) {
+      // Opcional: limpar campos se o usuário apagar o CEP
+      if (formData.street) {
+        setFormData((prev) => ({
+          ...prev,
+          street: "",
+          neighborhood: "",
+          city: "",
+          uf: "",
+        }))
+      }
+      return
+    }
+
+    const fetchCepData = async () => {
+      setIsCepLoading(true)
+      setValidationErrors((prev) => ({ ...prev, cep: "" }))
+
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`)
+        if (!response.ok) throw new Error("Erro na rede ao buscar CEP")
+
+        const data = await response.json()
+
+        if (data.erro) {
+          // CEP não encontrado
+          setValidationErrors((prev) => ({ ...prev, cep: "CEP não encontrado" }))
+          toast.error("CEP não encontrado", {
+            description: "Verifique o número e tente novamente.",
+          })
+        } else {
+          // Sucesso: Preenche os campos
+          setFormData((prev) => ({
+            ...prev,
+            street: data.logradouro || "",
+            neighborhood: data.bairro || "",
+            city: data.localidade || "",
+            uf: data.uf ? data.uf.toLowerCase() : "", // API retorna 'SP', o select usa 'sp'
+          }))
+          toast.success("Endereço preenchido!")
+          // Foca no campo "número" para o usuário
+          document.getElementById("number")?.focus()
+        }
+      } catch (error) {
+        console.error("Erro ao buscar CEP:", error)
+        setValidationErrors((prev) => ({ ...prev, cep: "Erro ao buscar CEP" }))
+        toast.error("Erro ao buscar CEP", {
+          description: "Não foi possível conectar ao serviço. Tente novamente.",
+        })
+      } finally {
+        setIsCepLoading(false)
+      }
+    }
+
+    fetchCepData()
+    // Dispara o efeito sempre que o CEP digitado mudar
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.cep])
 
   // MUDANÇA: Função que é chamada pelos botões "Tirar Foto"
   const handleOpenCamera = (field: string) => {
@@ -425,6 +490,7 @@ export default function RegisterPage() {
   }
 
   const passwordValidation = validatePassword(formData.password)
+  const isAddressDisabled = isCepLoading || formData.street.length > 0
 
   return (
     <>
@@ -619,14 +685,22 @@ export default function RegisterPage() {
                               className={
                                 validationErrors.cep
                                   ? "border-red-500"
-                                  : formData.cep.replace(/\D/g, "").length === 8
+                                  : formData.cep.replace(/\D/g, "").length === 8 && !isCepLoading
                                     ? "border-green-500"
                                     : ""
                               }
                               maxLength={9}
                               required
+                              disabled={isCepLoading} // MUDANÇA: Desabilita enquanto busca
                             />
-                            {formData.cep.replace(/\D/g, "").length === 8 && (
+                            {/* MUDANÇA: Adiciona spinner de loading */}
+                            {isCepLoading && (
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                <Loader2 className="h-5 w-5 text-primary animate-spin" />
+                              </div>
+                            )}
+                            {/* MUDANÇA: Ajusta lógica de ícone para não conflitar com spinner */}
+                            {!isCepLoading && formData.cep.replace(/\D/g, "").length === 8 && (
                               <div className="absolute right-3 top-1/2 -translate-y-1/2">
                                 {validationErrors.cep ? (
                                   <XCircle className="h-5 w-5 text-red-500" />
@@ -643,10 +717,12 @@ export default function RegisterPage() {
                           <Label htmlFor="street">Rua *</Label>
                           <Input
                             id="street"
-                            placeholder="Nome da rua"
+                            placeholder="Preenchido automaticamente" // MUDANÇA
                             value={formData.street}
                             onChange={(e) => handleInputChange("street", e.target.value)}
                             required
+                            disabled={isAddressDisabled} // MUDANÇA
+                            className="disabled:opacity-100 disabled:cursor-default" // MUDANÇA
                           />
                         </div>
                       </div>
@@ -675,53 +751,41 @@ export default function RegisterPage() {
                       </div>
 
                       <div className="grid md:grid-cols-3 gap-4">
+                        {/* MUDANÇA: Convertido de Select para Input */}
                         <div className="space-y-2">
                           <Label htmlFor="neighborhood">Bairro *</Label>
-                          <Select onValueChange={(value) => handleInputChange("neighborhood", value)} required>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Centro">Centro</SelectItem>
-                              <SelectItem value="Vila Prudente">Vila Prudente</SelectItem>
-                              <SelectItem value="Tatuapé">Tatuapé</SelectItem>
-                              <SelectItem value="Mooca">Mooca</SelectItem>
-                              <SelectItem value="Vila Mariana">Vila Mariana</SelectItem>
-                              <SelectItem value="Pinheiros">Pinheiros</SelectItem>
-                              <SelectItem value="Itaim Bibi">Itaim Bibi</SelectItem>
-                              <SelectItem value="Jardins">Jardins</SelectItem>
-                              <SelectItem value="Moema">Moema</SelectItem>
-                              <SelectItem value="Santana">Santana</SelectItem>
-                              <SelectItem value="Ipiranga">Ipiranga</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <Input
+                            id="neighborhood"
+                            placeholder="Preenchido automaticamente"
+                            value={formData.neighborhood}
+                            onChange={(e) => handleInputChange("neighborhood", e.target.value)}
+                            required
+                            disabled={isAddressDisabled} // MUDANÇA
+                            className="disabled:opacity-100 disabled:cursor-default" // MUDANÇA
+                          />
                         </div>
 
+                        {/* MUDANÇA: Convertido de Select para Input */}
                         <div className="space-y-2">
                           <Label htmlFor="city">Cidade *</Label>
-                          <Select onValueChange={(value) => handleInputChange("city", value)} required>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="São Paulo">São Paulo</SelectItem>
-                              <SelectItem value="Rio de Janeiro">Rio de Janeiro</SelectItem>
-                              <SelectItem value="Belo Horizonte">Belo Horizonte</SelectItem>
-                              <SelectItem value="Brasília">Brasília</SelectItem>
-                              <SelectItem value="Curitiba">Curitiba</SelectItem>
-                              <SelectItem value="Porto Alegre">Porto Alegre</SelectItem>
-                              <SelectItem value="Salvador">Salvador</SelectItem>
-                              <SelectItem value="Fortaleza">Fortaleza</SelectItem>
-                              <SelectItem value="Recife">Recife</SelectItem>
-                              <SelectItem value="Manaus">Manaus</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <Input
+                            id="city"
+                            placeholder="Preenchido automaticamente"
+                            value={formData.city}
+                            onChange={(e) => handleInputChange("city", e.target.value)}
+                            required
+                            disabled={isAddressDisabled} // MUDANÇA
+                            className="disabled:opacity-100 disabled:cursor-default" // MUDANÇA
+                          />
                         </div>
-
                         <div className="space-y-2">
                           <Label htmlFor="uf">Estado *</Label>
-                          <Select onValueChange={(value) => handleInputChange("uf", value)} required>
-                            <SelectTrigger>
+                          <Select
+                            onValueChange={(value) => handleInputChange("uf", value)}
+                            value={formData.uf} // MUDANÇA: Controlado pelo estado
+                            required
+                            disabled={isAddressDisabled} // MUDANÇA
+                          >                            <SelectTrigger>
                               <SelectValue placeholder="UF" />
                             </SelectTrigger>
                             <SelectContent>
