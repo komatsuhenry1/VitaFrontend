@@ -31,6 +31,7 @@ import { Label } from "@/components/ui/label"
 import Image from "next/image"
 import { toast } from "sonner"
 import { Footer } from "@/components/Footer"
+import { Users, UserCheck, Calendar, Clock, Star, DollarSign, TrendingUp, Activity, Stethoscope } from "lucide-react"
 
 interface NurseInfo {
   id: string
@@ -40,9 +41,19 @@ interface NurseInfo {
 interface DashboardData {
   total_nurses: number
   total_patients: number
+  number_visits: number
   visits_today: number
+  average_nurse_rating: number
+  total_revenue_last_30_days: number
+  nurses_online: number
+  new_nurses_last_30_days: number
+  new_patients_last_30_days: number
+  completed_visits_last_30_days: number
   pendent_approvations: number
   nurses_ids_pendent_approvations: NurseInfo[]
+  nurses_inactive: number
+  patients_inactive: number
+  most_common_specialization: string
 }
 
 interface Document {
@@ -155,7 +166,6 @@ const AdminDashboard = () => {
       const fullDescription = details ? `${description} - ${details}` : description
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
-
       const response = await fetch(`${API_BASE_URL}/admin/reject/${nurseId}`, {
         method: "POST",
         headers: {
@@ -174,7 +184,9 @@ const AdminDashboard = () => {
         setIsRejectionModalOpen(false)
         setRejectionReason("")
         setRejectionDetails("")
-        toast.success("Enfermeiro rejeitado com sucesso! Email enviado para enfermeiro com nova solicitação de cadastro.")
+        toast.success(
+          "Enfermeiro rejeitado com sucesso! Email enviado para enfermeiro com nova solicitação de cadastro.",
+        )
       } else {
         toast.error("Erro ao rejeitar enfermeiro: " + result.message)
       }
@@ -204,6 +216,7 @@ const AdminDashboard = () => {
     setApprovalLoading(true)
     try {
       const token = localStorage.getItem("token")
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
       const response = await fetch(`${API_BASE_URL}/admin/approve/${nurseId}`, {
         method: "PATCH",
@@ -248,29 +261,42 @@ const AdminDashboard = () => {
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
+  const renderStars = (rating: number) => {
+    return (
+      <div className="flex gap-0.5">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`h-4 w-4 ${star <= rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+          />
+        ))}
+      </div>
+    )
+  }
+
   if (loading) {
     return (
-        <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
-            <Header />
-            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
-                <div style={{ textAlign: "center" }}>
-                    <div
-                        style={{
-                            width: "40px",
-                            height: "40px",
-                            border: "4px solid #e5e7eb",
-                            borderTop: "4px solid #15803d",
-                            borderRadius: "50%",
-                            animation: "spin 1s linear infinite",
-                            margin: "0 auto 1rem",
-                        }}
-                    ></div>
-                    <p style={{ color: "#6b7280" }}>Carregando dados de dashboard...</p>
-                </div>
-            </div>
+      <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
+        <Header />
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
+          <div style={{ textAlign: "center" }}>
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                border: "4px solid #e5e7eb",
+                borderTop: "4px solid #15803d",
+                borderRadius: "50%",
+                animation: "spin 1s linear infinite",
+                margin: "0 auto 1rem",
+              }}
+            ></div>
+            <p style={{ color: "#6b7280" }}>Carregando dados de dashboard...</p>
+          </div>
         </div>
+      </div>
     )
-}
+  }
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
@@ -278,7 +304,7 @@ const AdminDashboard = () => {
 
       {/* Hero Section */}
       <section style={heroStyle}>
-        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+        <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 1rem" }}>
           <h1 style={{ fontSize: "2.5rem", fontWeight: "bold", marginBottom: "1rem" }}>Dashboard Administrativo</h1>
           <p style={{ fontSize: "1.25rem", opacity: 0.9 }}>
             Gerencie usuários, monitore atividades e acompanhe métricas da plataforma Vita
@@ -288,61 +314,160 @@ const AdminDashboard = () => {
 
       {/* Stats Cards */}
       <section style={{ padding: "2rem 1rem", maxWidth: "1200px", margin: "0 auto" }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-            gap: "1.5rem",
-            marginBottom: "2rem",
-          }}
-        >
-          <Card>
-            <CardHeader style={{ paddingBottom: "0.5rem" }}>
-              <CardTitle style={{ fontSize: "0.875rem", color: "#6b7280" }}>Total de Enfermeiros</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#15803d" }}>
-                {dashboardData?.total_nurses || 0}
-              </div>
-              <p style={{ fontSize: "0.875rem", color: "#10b981" }}>Enfermeiros cadastrados</p>
-            </CardContent>
-          </Card>
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">Visão Geral</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="border-l-4 border-l-green-600">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm text-gray-600">Total de Enfermeiros</CardTitle>
+                  <Users className="h-5 w-5 text-green-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-green-600">{dashboardData?.total_nurses || 0}</div>
+                <p className="text-xs text-gray-500 mt-1">{dashboardData?.nurses_online || 0} online agora</p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader style={{ paddingBottom: "0.5rem" }}>
-              <CardTitle style={{ fontSize: "0.875rem", color: "#6b7280" }}>Total de Pacientes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#15803d" }}>
-                {dashboardData?.total_patients || 0}
-              </div>
-              <p style={{ fontSize: "0.875rem", color: "#10b981" }}>Pacientes cadastrados</p>
-            </CardContent>
-          </Card>
+            <Card className="border-l-4 border-l-blue-600">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm text-gray-600">Total de Pacientes</CardTitle>
+                  <UserCheck className="h-5 w-5 text-blue-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-blue-600">{dashboardData?.total_patients || 0}</div>
+                <p className="text-xs text-gray-500 mt-1">{dashboardData?.patients_inactive || 0} inativos</p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader style={{ paddingBottom: "0.5rem" }}>
-              <CardTitle style={{ fontSize: "0.875rem", color: "#6b7280" }}>Consultas Hoje</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#15803d" }}>
-                {dashboardData?.visits_today || 0}
-              </div>
-              <p style={{ fontSize: "0.875rem", color: "#10b981" }}>Atendimentos realizados</p>
-            </CardContent>
-          </Card>
+            <Card className="border-l-4 border-l-purple-600">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm text-gray-600">Total de Visitas</CardTitle>
+                  <Calendar className="h-5 w-5 text-purple-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-purple-600">{dashboardData?.number_visits || 0}</div>
+                <p className="text-xs text-gray-500 mt-1">{dashboardData?.visits_today || 0} hoje</p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader style={{ paddingBottom: "0.5rem" }}>
-              <CardTitle style={{ fontSize: "0.875rem", color: "#6b7280" }}>Aprovações Pendentes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#dc2626" }}>
-                {dashboardData?.pendent_approvations || 0}
-              </div>
-              <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>Requer atenção</p>
-            </CardContent>
-          </Card>
+            <Card className="border-l-4 border-l-red-600">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm text-gray-600">Aprovações Pendentes</CardTitle>
+                  <Clock className="h-5 w-5 text-red-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-red-600">{dashboardData?.pendent_approvations || 0}</div>
+                <p className="text-xs text-gray-500 mt-1">Requer atenção</p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">Métricas dos Últimos 30 Dias</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="bg-gradient-to-br from-green-50 to-green-100">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm text-gray-700">Novos Enfermeiros</CardTitle>
+                  <TrendingUp className="h-5 w-5 text-green-700" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-700">{dashboardData?.new_nurses_last_30_days || 0}</div>
+                <p className="text-xs text-green-600 mt-1">Cadastros recentes</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-blue-50 to-blue-100">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm text-gray-700">Novos Pacientes</CardTitle>
+                  <TrendingUp className="h-5 w-5 text-blue-700" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-700">{dashboardData?.new_patients_last_30_days || 0}</div>
+                <p className="text-xs text-blue-600 mt-1">Cadastros recentes</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-purple-50 to-purple-100">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm text-gray-700">Visitas Completadas</CardTitle>
+                  <Activity className="h-5 w-5 text-purple-700" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-purple-700">
+                  {dashboardData?.completed_visits_last_30_days || 0}
+                </div>
+                <p className="text-xs text-purple-600 mt-1">Atendimentos finalizados</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm text-gray-700">Receita Total</CardTitle>
+                  <DollarSign className="h-5 w-5 text-yellow-700" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-yellow-700">
+                  R$ {dashboardData?.total_revenue_last_30_days?.toFixed(2) || "0.00"}
+                </div>
+                <p className="text-xs text-yellow-600 mt-1">Últimos 30 dias</p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">Métricas de Qualidade</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="bg-gradient-to-br from-amber-50 to-amber-100">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm text-gray-700">Avaliação Média dos Enfermeiros</CardTitle>
+                  <Star className="h-5 w-5 text-amber-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-3">
+                  <div className="text-3xl font-bold text-amber-700">
+                    {dashboardData?.average_nurse_rating?.toFixed(1) || "0.0"}
+                  </div>
+                  {renderStars(Math.round(dashboardData?.average_nurse_rating || 0))}
+                </div>
+                <p className="text-xs text-amber-600 mt-1">Baseado em avaliações de pacientes</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-teal-50 to-teal-100">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm text-gray-700">Especialização Mais Comum</CardTitle>
+                  <Stethoscope className="h-5 w-5 text-teal-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-teal-700 capitalize">
+                  {dashboardData?.most_common_specialization || "N/A"}
+                </div>
+                <p className="text-xs text-teal-600 mt-1">Área de maior demanda</p>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         {/* Main Content Tabs */}
@@ -363,7 +488,7 @@ const AdminDashboard = () => {
               </CardHeader>
               <CardContent>
                 {dashboardData?.nurses_ids_pendent_approvations &&
-                dashboardData.nurses_ids_pendent_approvations.length > 0 ? (
+                  dashboardData.nurses_ids_pendent_approvations.length > 0 ? (
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -403,7 +528,7 @@ const AdminDashboard = () => {
                                       Revise os documentos enviados por {currentNurseName} (ID: {currentNurseId})
                                     </DialogDescription>
                                   </DialogHeader>
-                                  <div style={{ maxHeight: "500px", overflowY: "auto" }}>
+                                  <div style={{ maxHeight: "450px", overflowY: "auto" }}>
                                     {selectedNurseDocuments.length > 0 ? (
                                       <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                                         {selectedNurseDocuments.map((doc, index) => {
@@ -465,7 +590,7 @@ const AdminDashboard = () => {
                                       style={{ color: "#dc2626", borderColor: "#dc2626", flex: 1 }}
                                       onClick={() => handleRejectClick(currentNurseId, currentNurseName)}
                                       disabled={approvalLoading || rejectionLoading}
-                                    >   
+                                    >
                                       {rejectionLoading ? "Rejeitando..." : "Rejeitar"}
                                     </Button>
                                   </div>
@@ -702,8 +827,12 @@ const AdminDashboard = () => {
       <Footer />
       <style jsx>{`
         @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
         }
       `}</style>
     </div>
