@@ -370,9 +370,8 @@ export default function About() {
                         </CardHeader>
                         <CardContent>
                           <p className="text-sm" style={{ color: "#6b7280" }}>
-                            "{testimonial.comment}"
-                          </p>
-                        </CardContent>
+                            &ldquo;{testimonial.comment}&rdquo;
+                          </p>                        </CardContent>
                       </Card>
                     </div>
                   </CarouselItem>

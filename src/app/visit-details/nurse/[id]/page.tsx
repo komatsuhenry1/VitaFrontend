@@ -264,7 +264,7 @@ export default function VisitDetailsPage() {
 
             if (result.success) {
                 toast.success(result.message || "Visita confirmada com sucesso!")
-                router.push("/nurse-visits")
+                router.push("/visits/nurse")
             } else {
                 throw new Error(result.message || "Código inválido ou erro ao confirmar.")
             }

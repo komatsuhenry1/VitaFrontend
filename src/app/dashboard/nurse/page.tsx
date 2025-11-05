@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/button"
 import { Wifi, WifiOff, Loader2, Star, Calendar, Clock, DollarSign, User } from "lucide-react"
 
 // --- Imports Adicionados da Lógica Antiga ---
-import { useRouter } from "next/navigation" // <-- MUDANÇA
-import { useWebSocket } from "@/context/WebSocketContext" // <-- MUDANÇA
-import { toast } from "sonner" // <-- MUDANÇA
+import { useRouter } from "next/navigation"
+import { useWebSocket } from "@/context/WebSocketContext"
+import { toast } from "sonner"
 // --- Fim dos Imports Adicionados ---
 import { Footer } from "@/components/Footer"
 
@@ -68,8 +68,43 @@ interface DashboardData {
   reviews: Review[]
 }
 
+// --- MUDANÇA: Interfaces adicionadas para tipar a resposta crua da API ---
+interface RawVisit {
+  id: string
+  description: string
+  reason: string
+  visit_type: string
+  value: number // Mapeia para visit_value
+  created_at: string
+  visit_date: string // Mapeia para date
+  status: "PENDING" | "CONFIRMED" | "COMPLETED"
+  patient_name: string
+  patient_id: string
+  nurse_name: string
+}
+
+interface RawDashboardData {
+  schedules: RawVisit[]
+  total_patients: number
+  rating: number
+  earnings: number
+  name: string
+  email?: string // Opcional
+  phone: string
+  coren: string
+  experience: number // Mapeia para experience_years
+  department: string
+  bio: string
+  online: boolean
+  start_time?: string // Opcional
+  end_time?: string // Opcional
+  specialization: string
+  reviews: Review[]
+}
+// --- Fim da mudança ---
+
 interface ApiResponse {
-  data: DashboardData
+  data: DashboardData // Esta interface parece não ser usada, a de baixo é
   message: string
   success: boolean
 }
@@ -119,45 +154,40 @@ export default function NurseDashboard() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // --- Estados Locais Removidos ---
-  // const [isOnline, setIsOnline] = useState(false) // <-- MUDANÇA: Removido
-  // const [isToggling, setIsToggling] = useState(false) // <-- MUDANÇA: Removido
-
-  // --- Contexto e Router Adicionados ---
-  const router = useRouter() // <-- MUDANÇA
-  const { isOnline, isConnecting, connectWebSocket, disconnectWebSocket } = useWebSocket() // <-- MUDANÇA
+  const router = useRouter()
+  const { isOnline, isConnecting, connectWebSocket, disconnectWebSocket } = useWebSocket()
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        // --- Lógica de verificação de token (da versão antiga) ---
         const token = localStorage.getItem("token")
         if (!token) {
           toast.error("Sessão expirada. Faça login novamente.")
           router.push("/login")
           return
         }
-        // --- Fim da verificação ---
 
         const response = await fetch(`${API_BASE_URL}/nurse/dashboard_info`, {
           headers: {
-            Authorization: `Bearer ${token}`, // <-- MUDANÇA: Usando a variável token
+            Authorization: `Bearer ${token}`,
           },
         })
 
         if (response.ok) {
           const apiResponse = await response.json()
-          const rawData = apiResponse.data as any
+          // --- MUDANÇA: Substituído 'any' por 'RawDashboardData' ---
+          const rawData = apiResponse.data as RawDashboardData
 
           // --- Início da Lógica de Mapeamento (Mantida) ---
-          const mappedVisits: Visit[] = rawData.schedules.map((visit: any) => ({
+          // --- MUDANÇA: Substituído '(visit: any)' por '(visit: RawVisit)' ---
+          const mappedVisits: Visit[] = rawData.schedules.map((visit: RawVisit) => ({
             id: visit.id,
             description: visit.description,
             reason: visit.reason,
             visit_type: visit.visit_type,
-            visit_value: visit.value,
+            visit_value: visit.value, // Mapeado de 'value'
             created_at: visit.created_at,
-            date: visit.visit_date,
+            date: visit.visit_date, // Mapeado de 'visit_date'
             status: visit.status,
             patient_name: visit.patient_name,
             patient_id: visit.patient_id,
@@ -182,13 +212,13 @@ export default function NurseDashboard() {
             email: rawData.email || "",
             phone: rawData.phone,
             coren: rawData.coren,
-            experience_years: rawData.experience,
+            experience_years: rawData.experience, // Mapeado de 'experience'
             department: rawData.department,
             bio: rawData.bio,
           }
 
           const mappedAvailability: Availability = {
-            is_available: rawData.online,
+            is_available: rawData.online, // Mapeado de 'online'
             start_time: rawData.start_time || "N/A",
             end_time: rawData.end_time || "N/A",
             specialization: rawData.specialization,
@@ -205,9 +235,7 @@ export default function NurseDashboard() {
           // --- Fim da Lógica de Mapeamento ---
 
           setDashboardData(formattedData)
-          // setIsOnline(data.online) // <-- MUDANÇA: Removido. O estado vem do CONTEXTO.
         } else {
-          // --- Lógica de erro (da versão antiga) ---
           if (response.status === 401 || response.status === 403) {
             toast.error("Sessão expirada. Faça login novamente.")
             router.push("/login")
@@ -223,12 +251,8 @@ export default function NurseDashboard() {
     }
 
     fetchDashboardData()
-  }, [router]) // <-- MUDANÇA: Adicionada dependência do router
+  }, [router])
 
-  // --- Função de Toggle Substituída ---
-  // const toggleOnlineStatus = async () => { ... } // <-- MUDANÇA: Removida
-
-  // --- Adicionada a função da Lógica Antiga ---
   const handleToggleOnline = async () => {
     const token = localStorage.getItem("token")
     if (!token) {
@@ -276,7 +300,6 @@ export default function NurseDashboard() {
       }
     }
   }
-  // --- Fim da substituição da função ---
 
   const getScheduleVisits = () => {
     if (!dashboardData) return []
@@ -364,8 +387,6 @@ export default function NurseDashboard() {
     )
   }
 
-  // O restante do JSX (return) permanece quase idêntico,
-  // apenas atualizamos as variáveis do botão de toggle.
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#f9fafb" }}>
       <Header />
@@ -420,8 +441,8 @@ export default function NurseDashboard() {
             >
               {/* --- BOTÃO ATUALIZADO PARA USAR O CONTEXTO --- */}
               <button
-                onClick={handleToggleOnline} // <-- MUDANÇA
-                disabled={isConnecting} // <-- MUDANÇA
+                onClick={handleToggleOnline}
+                disabled={isConnecting}
                 style={{
                   position: "relative",
                   display: "flex",
@@ -432,38 +453,38 @@ export default function NurseDashboard() {
                   fontWeight: "700",
                   borderRadius: "9999px",
                   border: "none",
-                  background: isOnline // <-- MUDANÇA
+                  background: isOnline
                     ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
                     : "linear-gradient(135deg, #6b7280 0%, #4b5563 100%)",
                   color: "white",
-                  cursor: isConnecting ? "not-allowed" : "pointer", // <-- MUDANÇA
+                  cursor: isConnecting ? "not-allowed" : "pointer",
                   transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-                  boxShadow: isOnline // <-- MUDANÇA
+                  boxShadow: isOnline
                     ? "0 0 0 0 rgba(16, 185, 129, 0.7), 0 4px 20px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)"
                     : "0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
-                  transform: isConnecting ? "scale(0.95)" : "scale(1)", // <-- MUDANÇA
-                  opacity: isConnecting ? 0.8 : 1, // <-- MUDANÇA
+                  transform: isConnecting ? "scale(0.95)" : "scale(1)",
+                  opacity: isConnecting ? 0.8 : 1,
                   overflow: "hidden",
                 }}
                 onMouseEnter={(e) => {
-                  if (!isConnecting) { // <-- MUDANÇA
+                  if (!isConnecting) {
                     e.currentTarget.style.transform = "scale(1.05)"
-                    e.currentTarget.style.boxShadow = isOnline // <-- MUDANÇA
+                    e.currentTarget.style.boxShadow = isOnline
                       ? "0 0 0 8px rgba(16, 185, 129, 0.2), 0 8px 30px rgba(16, 185, 129, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)"
                       : "0 6px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15)"
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (!isConnecting) { // <-- MUDANÇA
+                  if (!isConnecting) {
                     e.currentTarget.style.transform = "scale(1)"
-                    e.currentTarget.style.boxShadow = isOnline // <-- MUDANÇA
+                    e.currentTarget.style.boxShadow = isOnline
                       ? "0 0 0 0 rgba(16, 185, 129, 0.7), 0 4px 20px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)"
                       : "0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)"
                   }
                 }}
               >
                 {/* Animated background shimmer effect */}
-                {isOnline && !isConnecting && ( // <-- MUDANÇA
+                {isOnline && !isConnecting && (
                   <div
                     style={{
                       position: "absolute",
@@ -490,18 +511,11 @@ export default function NurseDashboard() {
                     transition: "all 0.3s ease",
                   }}
                 >
-                  {isConnecting ? ( // <-- MUDANÇA
-                    <Loader2 className="animate-spin" size={18} />
-                  ) : isOnline ? ( // <-- MUDANÇA
-                    <Wifi size={18} />
-                  ) : (
-                    <WifiOff size={18} />
-                  )}
+                  {isConnecting ? <Loader2 className="animate-spin" size={18} /> : isOnline ? <Wifi size={18} /> : <WifiOff size={18} />}
                 </div>
 
                 {/* Status text */}
                 <span style={{ letterSpacing: "0.05em" }}>
-                  {/* <-- MUDANÇA: Lógica de texto mais detalhada --> */}
                   {isConnecting
                     ? isOnline
                       ? "DESCONECTANDO..."
@@ -518,12 +532,12 @@ export default function NurseDashboard() {
                       width: "10px",
                       height: "10px",
                       borderRadius: "50%",
-                      backgroundColor: isOnline ? "#ffffff" : "#d1d5db", // <-- MUDANÇA
-                      boxShadow: isOnline ? "0 0 8px rgba(255, 255, 255, 0.8)" : "none", // <-- MUDANÇA
+                      backgroundColor: isOnline ? "#ffffff" : "#d1d5db",
+                      boxShadow: isOnline ? "0 0 8px rgba(255, 255, 255, 0.8)" : "none",
                       transition: "all 0.3s ease",
                     }}
                   />
-                  {isOnline && ( // <-- MUDANÇA
+                  {isOnline && (
                     <div
                       style={{
                         position: "absolute",
@@ -543,15 +557,15 @@ export default function NurseDashboard() {
                 style={{
                   padding: "0.5rem 1.25rem",
                   borderRadius: "9999px",
-                  background: isOnline ? "rgba(16, 185, 129, 0.2)" : "rgba(107, 114, 128, 0.2)", // <-- MUDANÇA
-                  border: `1px solid ${isOnline ? "rgba(16, 185, 129, 0.4)" : "rgba(107, 114, 128, 0.4)"}`, // <-- MUDANÇA
+                  background: isOnline ? "rgba(16, 185, 129, 0.2)" : "rgba(107, 114, 128, 0.2)",
+                  border: `1px solid ${isOnline ? "rgba(16, 185, 129, 0.4)" : "rgba(107, 114, 128, 0.4)"}`,
                   fontSize: "0.875rem",
                   fontWeight: "600",
                   color: "white",
                   transition: "all 0.3s ease",
                 }}
               >
-                {isOnline ? "Aceitando Consultas" : "Indisponível"} {/* <-- MUDANÇA */}
+                {isOnline ? "Aceitando Consultas" : "Indisponível"}
               </div>
             </div>
           </div>
@@ -1028,7 +1042,10 @@ export default function NurseDashboard() {
                             borderLeft: "3px solid #fbbf24",
                           }}
                         >
-                          "{review.comment}"
+                          {/* --- MUDANÇA AQUI ---
+                            Substituí as aspas literais por entidades HTML
+                          */}
+                          &ldquo;{review.comment}&rdquo;
                         </p>
                       </div>
                     ))}
@@ -1051,7 +1068,8 @@ export default function NurseDashboard() {
           }
         }
         @keyframes ping {
-          75%, 100% {
+          75%,
+          100% {
             transform: scale(2);
             opacity: 0;
           }
