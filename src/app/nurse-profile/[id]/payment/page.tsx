@@ -9,22 +9,36 @@ import { ArrowLeft, Lock } from "lucide-react"
 import { toast } from "sonner"
 import { Footer } from "@/components/Footer"
 
-// 👈 1. IMPORTAR AS BIBLIOTECAS DO STRIPE
+// 1. IMPORTAR AS BIBLIOTECAS DO STRIPE
 import { loadStripe } from "@stripe/stripe-js"
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
-// 👈 2. SUA CHAVE PUBLICÁVEL (PUBLISHABLE KEY)
-// Troque pela sua chave real ou use uma variável de ambiente
+// 2. SUA CHAVE PUBLICÁVEL (PUBLISHABLE KEY)
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_51SQAOzEYds56Ja3VWP3pa9wykrXuHW0CVYhFEBoLLwQvXJwCSEeK6O3dcubKnuvdlSoe7YxzBdaf7PCA9t0SMkgg00458FviHW');
 
+// --- MUDANÇA: Interface para tipar os dados do agendamento ---
+interface BookingData {
+    nurseId: string;
+    nurseName: string;
+    selectedDate: string; // Ex: "2025-10-31"
+    selectedTime: string; // Ex: "14:30"
+    reason: string;
+    message?: string;
+    visitType: "clinica" | "domiciliar" | string; // Use tipos mais específicos se possível
+    value: number;
+}
+// --- Fim da Mudança ---
+
+
 // -----------------------------------------------------------------
-// 👈 3. CRIAMOS UM COMPONENTE INTERNO PARA O FORMULÁRIO
-//    Isso é necessário para que ele esteja "dentro" do <Elements>
-//    e possa usar os hooks useStripe() e useElements()
+// 3. COMPONENTE INTERNO PARA O FORMULÁRIO
 // -----------------------------------------------------------------
-function CheckoutForm({ bookingData }: { bookingData: any }) {
+
+// --- MUDANÇA: Corrigido o 'any' da prop (Erro da linha 27) ---
+function CheckoutForm({ bookingData }: { bookingData: BookingData }) {
+    // --- Fim da Mudança ---
     const stripe = useStripe();
     const elements = useElements();
     const router = useRouter();
@@ -60,15 +74,18 @@ function CheckoutForm({ bookingData }: { bookingData: any }) {
         // ---------------------------------------------------------------
         if (paymentIntent && paymentIntent.status === "succeeded") {
             try {
-                const dateTimeString = `${bookingData.selectedDate}T${bookingData.selectedTime}:00Z`;
+                // Ajuste para garantir que a data/hora esteja correta
+                // Usar 'Z' assume que a hora selecionada é UTC. 
+                // Se a hora for local, talvez precise de uma lib (ex: date-fns-tz)
+                const dateTimeString = `${bookingData.selectedDate}T${bookingData.selectedTime}:00`;
+
                 const requestBody = {
                     description: bookingData.message || "Consulta de enfermagem",
                     reason: bookingData.reason,
                     visit_type: bookingData.visitType,
                     nurse_id: bookingData.nurseId,
-                    date: dateTimeString,
+                    date: dateTimeString, // Enviando a data/hora local
                     value: bookingData.value,
-                    // 👈 BÔNUS: Salve o ID do pagamento no seu banco!
                     payment_intent_id: paymentIntent.id
                 };
 
@@ -87,7 +104,6 @@ function CheckoutForm({ bookingData }: { bookingData: any }) {
                 if (response.ok && result.success) {
                     toast.success("Pagamento realizado e visita agendada com sucesso!");
                     sessionStorage.removeItem("bookingData");
-                    // Redireciona para a página de visitas
                     router.push("/patient-visits");
                 } else {
                     throw new Error(result.message || "Erro ao agendar visita após o pagamento.");
@@ -108,8 +124,7 @@ function CheckoutForm({ bookingData }: { bookingData: any }) {
     return (
         <form onSubmit={handlePayment}>
             <CardContent>
-                {/* 👈 4. ESTE É O FORMULÁRIO MÁGICO E SEGURO DO STRIPE */}
-                {/* Ele substitui todos os seus <Input> de cartão, CVC, etc. */}
+                {/* 4. FORMULÁRIO SEGURO DO STRIPE */}
                 <PaymentElement />
             </CardContent>
             <CardFooter className="flex flex-col space-y-4">
@@ -133,19 +148,20 @@ function CheckoutForm({ bookingData }: { bookingData: any }) {
 
 // -----------------------------------------------------------------
 // COMPONENTE PRINCIPAL (PaymentPage)
-// Sua única tarefa é carregar os dados e o client_secret
 // -----------------------------------------------------------------
 export default function PaymentPage() {
     const params = useParams();
     const router = useRouter();
     const nurseId = params.id as string;
 
-    const [bookingData, setBookingData] = useState<any>(null);
+    // --- MUDANÇA: Corrigido o 'any' do useState (Erro da linha 143) ---
+    const [bookingData, setBookingData] = useState<BookingData | null>(null);
+    // --- Fim da Mudança ---
 
-    // 👈 5. ESTADO PARA GUARDAR O CLIENT SECRET
+    // 5. ESTADO PARA GUARDAR O CLIENT SECRET
     const [clientSecret, setClientSecret] = useState<string | null>(null);
 
-    // Efeito para carregar dados do agendamento (isso está OK)
+    // Efeito para carregar dados do agendamento
     useEffect(() => {
         const data = sessionStorage.getItem("bookingData");
         if (!data) {
@@ -153,10 +169,12 @@ export default function PaymentPage() {
             router.push(`/nurse-profile/${nurseId}`);
             return;
         }
+        // Ao fazer o parse, o TypeScript confiará que os dados
+        // batem com a interface BookingData (definida no useState)
         setBookingData(JSON.parse(data));
     }, [nurseId, router]);
 
-    // 👈 6. EFEITO NOVO: BUSCAR O CLIENT SECRET QUANDO OS DADOS CARREGAREM
+    // 6. EFEITO NOVO: BUSCAR O CLIENT SECRET QUANDO OS DADOS CARREGAREM
     useEffect(() => {
         if (bookingData && bookingData.value > 0) {
 
@@ -226,7 +244,7 @@ export default function PaymentPage() {
                 </Button>
 
                 <div className="space-y-6">
-                    {/* Resumo (Isso está OK) */}
+                    {/* Resumo */}
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-green-700">Resumo do Agendamento</CardTitle>
@@ -238,6 +256,7 @@ export default function PaymentPage() {
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-gray-600">Data:</span>
+                                {/* Corrigido timeZone para UTC para evitar problemas de fuso no display simples */}
                                 <span className="font-semibold">{new Date(`${bookingData.selectedDate}T00:00:00`).toLocaleDateString("pt-BR", { timeZone: 'UTC' })}</span>
                             </div>
                             <div className="flex justify-between">
@@ -255,7 +274,7 @@ export default function PaymentPage() {
                         </CardContent>
                     </Card>
 
-                    {/* 👈 7. O FORMULÁRIO DE PAGAMENTO AGORA É O STRIPE ELEMENTS */}
+                    {/* 7. O FORMULÁRIO DE PAGAMENTO AGORA É O STRIPE ELEMENTS */}
                     <Card>
                         <CardHeader>
                             <CardTitle>Pagamento da Visita</CardTitle>
