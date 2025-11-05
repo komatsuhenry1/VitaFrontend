@@ -74,14 +74,11 @@ function CheckoutForm({ bookingData }: { bookingData: BookingData }) {
         // ---------------------------------------------------------------
         if (paymentIntent && paymentIntent.status === "succeeded") {
             try {
-                // Ajuste para garantir que a data/hora esteja correta
-                // Usar 'Z' assume que a hora selecionada é UTC. 
-                // Se a hora for local, talvez precise de uma lib (ex: date-fns-tz)
-                const dateTimeString = `${bookingData.selectedDate}T${bookingData.selectedTime}:00`;
+                // 👇 MUDANÇA AQUI: Adicionado 'Z' ao final da string
+                const dateTimeString = `${bookingData.selectedDate}T${bookingData.selectedTime}:00Z`;
 
                 const requestBody = {
-                    description: bookingData.message || "Consulta de enfermagem",
-                    reason: bookingData.reason,
+                    description: bookingData.message || "Consulta de enfermagem", reason: bookingData.reason,
                     visit_type: bookingData.visitType,
                     nurse_id: bookingData.nurseId,
                     date: dateTimeString, // Enviando a data/hora local
@@ -102,9 +99,9 @@ function CheckoutForm({ bookingData }: { bookingData: BookingData }) {
                 const result = await response.json();
 
                 if (response.ok && result.success) {
-                    toast.success("Pagamento realizado e visita agendada com sucesso!");
+                    toast.success("Pagamento realizado e visita solicitada com sucesso!");
                     sessionStorage.removeItem("bookingData");
-                    router.push("/patient-visits");
+                    router.push("/visits/patient");
                 } else {
                     throw new Error(result.message || "Erro ao agendar visita após o pagamento.");
                 }
