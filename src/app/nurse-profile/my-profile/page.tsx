@@ -25,6 +25,8 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+// --- MUDANÇA AQUI ---
+// Atualize seu tipo NurseProfile para incluir `two_factor: boolean`
 import type { NurseProfile } from "@/types/nurse-profile"
 import { Footer } from "@/components/Footer"
 
@@ -37,6 +39,9 @@ export default function NurseMyProfile() {
 
     const [deletePassword, setDeletePassword] = useState("")
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+
+    // NOVO ESTADO: Armazena o valor original do 2FA
+    const [originalTwoFactor, setOriginalTwoFactor] = useState(false)
 
     const [editForm, setEditForm] = useState({
         name: "",
@@ -53,7 +58,7 @@ export default function NurseMyProfile() {
         currentPassword: "",
         newPassword: "",
         confirmPassword: "",
-        twoFactorEnabled: false,
+        twoFactorEnabled: false, // Será preenchido pelo useEffect
     })
 
     const [notificationPrefs, setNotificationPrefs] = useState({
@@ -80,9 +85,6 @@ export default function NurseMyProfile() {
                     return
                 }
 
-                const user = JSON.parse(storedUser)
-                const nurseId = user._id
-
                 const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/nurse/my-profile`, {
                     method: "GET",
                     headers: {
@@ -99,16 +101,34 @@ export default function NurseMyProfile() {
 
                 if (result.success && result.data) {
                     setNurseData(result.data)
+
+                    // --- MUDANÇAS NO setEditForm ---
+                    // Corrigido para usar os nomes de campo corretos da sua API (experience, location)
+                    // ⚠️ ALERTA: Sua API não está retornando 'email'. Adicione 'email' à sua resposta da API
                     setEditForm({
                         name: result.data.name || "",
-                        email: result.data.email || "",
+                        email: result.data.email || "", // ⚠️ CUIDADO: result.data.email está vindo como undefined!
                         phone: result.data.phone || "",
-                        address: result.data.address || "",
+                        address: result.data.location || "", // API envia 'location', não 'address'
                         department: result.data.department || "",
                         specialization: result.data.specialization || "",
                         bio: result.data.bio || "",
-                        years_experience: result.data.years_experience || 0,
+                        years_experience: result.data.experience || 0, // API envia 'experience', não 'years_experience'
                     })
+                    // --- FIM DAS MUDANÇAS ---
+
+
+                    // --- MUDANÇA NO 2FA ---
+                    // Corrigido para usar 'two_factor' como sua API envia
+                    const currentTwoFactor = result.data.two_factor || false
+                    setSecurityForm((prev) => ({
+                        ...prev,
+                        twoFactorEnabled: currentTwoFactor,
+                    }))
+                    // Armazena o valor original para comparação
+                    setOriginalTwoFactor(currentTwoFactor)
+                    // --- FIM DA MUDANÇA ---
+
                 } else {
                     throw new Error(result.message || "Erro ao carregar dados")
                 }
@@ -162,20 +182,33 @@ export default function NurseMyProfile() {
         }
     }
 
+    // --- FUNÇÃO handleSaveSecurity (Sem alterações, já estava correta) ---
     const handleSaveSecurity = async () => {
-        if (securityForm.newPassword !== securityForm.confirmPassword) {
-            toast.error("As senhas não coincidem")
+        // 1. Verificar o que realmente mudou
+        const passwordChanged = securityForm.newPassword !== ""
+        const twoFactorChanged = securityForm.twoFactorEnabled !== originalTwoFactor
+
+        if (!passwordChanged && !twoFactorChanged) {
+            toast.info("Nenhuma alteração detectada.")
             return
         }
 
-        if (securityForm.newPassword && securityForm.newPassword.length < 6) {
-            toast.error("A senha deve ter pelo menos 6 caracteres")
-            return
-        }
-
+        // 2. Senha atual é sempre necessária para qualquer alteração de segurança
         if (!securityForm.currentPassword) {
-            toast.error("Digite sua senha atual")
+            toast.error("Digite sua senha atual para salvar as alterações.")
             return
+        }
+
+        // 3. Validar nova senha APENAS se ela foi preenchida
+        if (passwordChanged) {
+            if (securityForm.newPassword !== securityForm.confirmPassword) {
+                toast.error("As senhas não coincidem")
+                return
+            }
+            if (securityForm.newPassword.length < 6) {
+                toast.error("A nova senha deve ter pelo menos 6 caracteres")
+                return
+            }
         }
 
         try {
@@ -189,18 +222,39 @@ export default function NurseMyProfile() {
                 },
                 body: JSON.stringify({
                     password: securityForm.currentPassword,
-                    new_password: securityForm.newPassword,
+                    new_password: securityForm.newPassword, // O backend agora sabe lidar se isso for ""
                     two_fa: securityForm.twoFactorEnabled,
                 }),
             })
 
+            console.log(response)
+
             const result = await response.json()
+            console.log(result)
 
             if (response.ok && result.success) {
-                toast.success("Configurações de segurança atualizadas! Faça login novamente.")
-                localStorage.removeItem("token")
-                localStorage.removeItem("user")
-                router.push("/login")
+                // 4. Lógica de sucesso condicional
+                if (passwordChanged) {
+                    // Se a senha mudou, deslogue
+                    toast.success("Senha atualizada! Faça login novamente.")
+                    localStorage.removeItem("token")
+                    localStorage.removeItem("user")
+                    router.push("/login")
+                } else {
+                    // Se APENAS o 2FA mudou, mostre sucesso e fique na página
+                    toast.success("Configuração de dois fatores atualizada!")
+
+                    // Atualize o "estado original" para o novo estado
+                    setOriginalTwoFactor(securityForm.twoFactorEnabled)
+
+                    // Limpe os campos de senha por segurança
+                    setSecurityForm((prev) => ({
+                        ...prev,
+                        currentPassword: "",
+                        newPassword: "",
+                        confirmPassword: "",
+                    }))
+                }
             } else {
                 throw new Error(result.message || "Erro ao atualizar segurança")
             }
@@ -210,6 +264,7 @@ export default function NurseMyProfile() {
             setIsSaving(false)
         }
     }
+    // --- FIM DA FUNÇÃO ATUALIZADA ---
 
     const handleSaveNotifications = async () => {
         try {
@@ -316,6 +371,7 @@ export default function NurseMyProfile() {
 
     const formatPhone = (phone: string) => {
         if (!phone) return "N/A"
+        // Este regex formata (XX) XXXXX-XXXX
         return phone.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3")
     }
 
@@ -454,6 +510,7 @@ export default function NurseMyProfile() {
                                                 value={editForm.email}
                                                 onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
                                                 className="mt-1"
+                                            // ⚠️ Lembre-se, a API não está preenchendo isso!
                                             />
                                         </div>
                                         <div>
@@ -463,6 +520,7 @@ export default function NurseMyProfile() {
                                                 value={editForm.phone}
                                                 onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
                                                 className="mt-1"
+                                                placeholder="(XX) XXXXX-XXXX"
                                             />
                                         </div>
                                         <div>
@@ -555,7 +613,9 @@ export default function NurseMyProfile() {
                                             <KeyRound size={20} />
                                             Alterar Senha
                                         </CardTitle>
-                                        <CardDescription>Atualize sua senha para manter sua conta segura</CardDescription>
+                                        <CardDescription>
+                                            Atualize sua senha para manter sua conta segura. Deixe em branco para não alterar.
+                                        </CardDescription>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
                                         <div>
