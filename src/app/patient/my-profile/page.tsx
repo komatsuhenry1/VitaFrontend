@@ -24,6 +24,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+// Certifique-se que seu tipo inclua `two_factor: boolean`
 import type { PatientData, ApiResponse } from "@/types/patient-profile"
 import { Footer } from "@/components/Footer"
 
@@ -36,6 +37,9 @@ export default function MyProfile() {
     const [deletePassword, setDeletePassword] = useState("")
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
+    // --- MUDANÇA 1: Adicionar estado para 2FA original ---
+    const [originalTwoFactor, setOriginalTwoFactor] = useState(false)
+
     const [editForm, setEditForm] = useState({
         name: "",
         email: "",
@@ -47,7 +51,7 @@ export default function MyProfile() {
         currentPassword: "",
         newPassword: "",
         confirmPassword: "",
-        twoFactorEnabled: false,
+        twoFactorEnabled: false, // Será preenchido pelo useEffect
     })
 
     const [notificationPrefs, setNotificationPrefs] = useState({
@@ -63,6 +67,7 @@ export default function MyProfile() {
         showPhone: false,
     })
 
+    // --- MUDANÇA 2: Atualizar o useEffect ---
     useEffect(() => {
         const fetchPatientData = async () => {
             try {
@@ -74,10 +79,8 @@ export default function MyProfile() {
                     return
                 }
 
-                const user = JSON.parse(storedUser)
-                const patientId = user._id
-
-                const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/nurse/patient/${patientId}`, {
+                // O endpoint /user/my-profile usa o token, não precisa de ID
+                const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/user/my-profile`, {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",
@@ -99,6 +102,15 @@ export default function MyProfile() {
                         phone: result.data.phone,
                         address: result.data.address,
                     })
+
+                    // Carregar o estado de segurança (2FA)
+                    const currentTwoFactor = result.data.two_factor || false
+                    setSecurityForm((prev) => ({
+                        ...prev,
+                        twoFactorEnabled: currentTwoFactor,
+                    }))
+                    setOriginalTwoFactor(currentTwoFactor)
+
                 } else {
                     throw new Error(result.message || "Erro ao carregar dados")
                 }
@@ -111,6 +123,7 @@ export default function MyProfile() {
 
         fetchPatientData()
     }, [router])
+    // --- FIM DA MUDANÇA 2 ---
 
     const handleSaveProfile = async () => {
         try {
@@ -152,20 +165,33 @@ export default function MyProfile() {
         }
     }
 
+    // --- MUDANÇA 3: Lógica inteligente no handleSaveSecurity ---
     const handleSaveSecurity = async () => {
-        if (securityForm.newPassword !== securityForm.confirmPassword) {
-            toast.error("As senhas não coincidem")
+        // 1. Verificar o que realmente mudou
+        const passwordChanged = securityForm.newPassword !== ""
+        const twoFactorChanged = securityForm.twoFactorEnabled !== originalTwoFactor
+
+        if (!passwordChanged && !twoFactorChanged) {
+            toast.info("Nenhuma alteração detectada.")
             return
         }
 
-        if (securityForm.newPassword && securityForm.newPassword.length < 6) {
-            toast.error("A senha deve ter pelo menos 6 caracteres")
-            return
-        }
-
+        // 2. Senha atual é sempre necessária
         if (!securityForm.currentPassword) {
-            toast.error("Digite sua senha atual")
+            toast.error("Digite sua senha atual para salvar as alterações.")
             return
+        }
+
+        // 3. Validar nova senha APENAS se ela foi alterada
+        if (passwordChanged) {
+            if (securityForm.newPassword !== securityForm.confirmPassword) {
+                toast.error("As senhas não coincidem")
+                return
+            }
+            if (securityForm.newPassword.length < 6) {
+                toast.error("A senha deve ter pelo menos 6 caracteres")
+                return
+            }
         }
 
         try {
@@ -179,7 +205,7 @@ export default function MyProfile() {
                 },
                 body: JSON.stringify({
                     password: securityForm.currentPassword,
-                    new_password: securityForm.newPassword,
+                    new_password: securityForm.newPassword, // Backend lida com ""
                     two_fa: securityForm.twoFactorEnabled,
                 }),
             })
@@ -187,16 +213,26 @@ export default function MyProfile() {
             const result = await response.json()
 
             if (response.ok && result.success) {
-                toast.success("Configurações de segurança atualizadas! Faça login novamente.")
-                localStorage.removeItem("token")
-                localStorage.removeItem("user")
-                router.push("/login")
-                setSecurityForm({
-                    currentPassword: "",
-                    newPassword: "",
-                    confirmPassword: "",
-                    twoFactorEnabled: securityForm.twoFactorEnabled,
-                })
+                // 4. Lógica de sucesso condicional
+                if (passwordChanged) {
+                    // Se a senha mudou, deslogue
+                    toast.success("Senha atualizada! Faça login novamente.")
+                    localStorage.removeItem("token")
+                    localStorage.removeItem("user")
+                    router.push("/login")
+                } else {
+                    // Se APENAS o 2FA mudou, mostre sucesso e fique na página
+                    toast.success("Configuração de dois fatores atualizada!")
+                    // Atualize o "estado original" para o novo estado
+                    setOriginalTwoFactor(securityForm.twoFactorEnabled)
+                    // Limpe os campos de senha por segurança
+                    setSecurityForm((prev) => ({
+                        ...prev,
+                        currentPassword: "",
+                        newPassword: "",
+                        confirmPassword: "",
+                    }))
+                }
             } else {
                 throw new Error(result.message || "Erro ao atualizar segurança")
             }
@@ -206,6 +242,8 @@ export default function MyProfile() {
             setIsSaving(false)
         }
     }
+    // --- FIM DA MUDANÇA 3 ---
+
 
     const handleSaveNotifications = async () => {
         try {
@@ -756,11 +794,13 @@ export default function MyProfile() {
                                                     >
                                                         {patient.hidden ? "Inativo" : "Ativo"}
                                                     </Badge>
+                                                    {/* O JSON de exemplo não tinha 'first_access', removi
                                                     {patient.first_access && (
                                                         <Badge variant="outline" className="border-amber-500 text-amber-500">
                                                             Primeiro Acesso
                                                         </Badge>
                                                     )}
+                                                    */}
                                                 </div>
                                             </div>
                                         </div>

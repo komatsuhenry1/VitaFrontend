@@ -7,6 +7,7 @@ export interface PatientData {
     cpf: string
     role: string
     first_access: boolean
+    two_factor: boolean
     created_at: string
     updated_at: string
     hidden: boolean
