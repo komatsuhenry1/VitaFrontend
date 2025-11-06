@@ -67,6 +67,20 @@ const navLinksConfig = {
   ],
 }
 
+// Função auxiliar para traduzir os papéis
+const getRoleDisplayName = (role: UserData["role"]) => {
+  switch (role) {
+    case "NURSE":
+      return "ENFERMEIRO(A)"
+    case "PATIENT":
+      return "PACIENTE"
+    case "ADMIN":
+      return "ADMNISTRADOR"
+    default:
+      return role
+  }
+}
+
 export function Header() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [userData, setUserData] = useState<UserData | null>(null)
@@ -184,8 +198,8 @@ export function Header() {
     <>
       <header
         className={`sticky top-0 z-50 transition-all duration-300 ${scrolled
-            ? "bg-white/80 backdrop-blur-xl shadow-lg border-b border-gray-200/50"
-            : "bg-white/60 backdrop-blur-md border-b border-gray-100"
+          ? "bg-white/80 backdrop-blur-xl shadow-lg border-b border-gray-200/50"
+          : "bg-white/60 backdrop-blur-md border-b border-gray-100"
           }`}
         style={{
           backdropFilter: "blur(20px)",
@@ -271,19 +285,19 @@ export function Header() {
                     >
                       <div className="relative">
                         <Avatar className="h-10 w-10 ring-2 ring-[#15803d]/20 ring-offset-2">
-                          {avatarUrl && <AvatarImage src={avatarUrl || "/placeholder.svg"} alt={userData?.name} />}
+                          {avatarUrl && <AvatarImage src={avatarUrl || "/placeholder.svg"} alt={userData?.name} className="object-cover" />}
                           <AvatarFallback className="bg-gradient-to-br from-[#15803d] to-[#166534] text-white font-semibold">
                             {userData ? getInitials(userData.name) : "U"}
                           </AvatarFallback>
-                        </Avatar>
-                        {userData?.role === "NURSE" && (
+                        </Avatar>                        {userData?.role === "NURSE" && (
                           <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-white"></span>
                         )}
                       </div>
                       <div className="text-left">
                         <p className="text-sm font-semibold text-gray-900">{userData?.name?.split(" ")[0]}</p>
-                        <p className="text-xs text-gray-500">{userData?.role}</p>
-                      </div>
+                        <p className="text-xs text-gray-500">
+                          {userData ? getRoleDisplayName(userData.role) : ""}
+                        </p>                      </div>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-64 rounded-2xl shadow-2xl border-gray-200">
