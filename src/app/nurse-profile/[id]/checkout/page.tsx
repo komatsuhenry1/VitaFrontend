@@ -19,7 +19,7 @@ interface NurseData {
     specialization: string
     price: number
     image: string
-    neighborhood: string
+    neighborhood: string // Bairro principal do enfermeiro
 }
 
 interface ApiResponse {
@@ -38,12 +38,20 @@ export default function CheckoutPage() {
     const [nurse, setNurse] = useState<NurseData | null>(null)
     const [loading, setLoading] = useState(true)
 
+    // Estados do formulário de agendamento
     const [selectedDate, setSelectedDate] = useState("")
     const [selectedTime, setSelectedTime] = useState("")
-    const [message, setMessage] = useState("")
+    const [message, setMessage] = useState("") // Descrição opcional
     const [reason, setReason] = useState("")
     const [visitType, setVisitType] = useState("domiciliar")
     const [value, setValue] = useState("")
+
+    // Estados do formulário de endereço da visita
+    const [cep, setCep] = useState("")
+    const [street, setStreet] = useState("")
+    const [number, setNumber] = useState("")
+    const [complement, setComplement] = useState("")
+    const [neighborhood, setNeighborhood] = useState("") // Bairro da visita
 
     const [formError, setFormError] = useState<string | null>(null)
 
@@ -81,9 +89,32 @@ export default function CheckoutPage() {
         }
     }, [nurseId])
 
+    // Função para formatar o CEP enquanto o usuário digita
+    const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let cepValue = e.target.value.replace(/\D/g, "") // Remove tudo que não é dígito
+
+        if (cepValue.length > 8) {
+            cepValue = cepValue.substring(0, 8) // Limita a 8 dígitos
+        }
+
+        cepValue = cepValue.replace(/^(\d{5})(\d)/, "$1-$2") // Adiciona o hífen (12345-678)
+
+        setCep(cepValue)
+
+        // Opcional: Adicionar aqui uma chamada para a API ViaCEP
+        // para preencher rua e bairro automaticamente
+        // if (cepValue.length === 9) {
+        //   fetchAddressFromCep(cepValue);
+        // }
+    }
+
+
     const handleContinueToPayment = () => {
-        if (!selectedDate || !selectedTime || !value || !reason) {
-            setFormError("Por favor, preencha todos os campos obrigatórios.")
+        setFormError(null) // Limpa erros anteriores
+
+        // Validação de todos os campos obrigatórios
+        if (!selectedDate || !selectedTime || !value || !reason || !cep || !street || !number || !neighborhood) {
+            setFormError("Por favor, preencha todos os campos obrigatórios (*).")
             return
         }
 
@@ -93,20 +124,29 @@ export default function CheckoutPage() {
             return
         }
 
-        // Store booking data in sessionStorage to use in payment page
+        // Coleta todos os dados para salvar na sessionStorage
         const bookingData = {
             nurseId,
             nurseName: nurse?.name,
             selectedDate,
             selectedTime,
-            message,
+            message, // Será mapeado para 'description' no backend
             reason,
             visitType,
             value: numericValue,
+
+            // Campos de endereço adicionados
+            cep,
+            street,
+            number,
+            complement,
+            neighborhood,
         }
+
+        // Salva no sessionStorage para a página de pagamento usar
         sessionStorage.setItem("bookingData", JSON.stringify(bookingData))
 
-        // Navigate to payment page
+        // Navega para a página de pagamento
         router.push(`/nurse-profile/${nurseId}/payment`)
     }
 
@@ -149,7 +189,7 @@ export default function CheckoutPage() {
                 </Button>
 
                 <div className="grid md:grid-cols-3 gap-6">
-                    {/* Left Column - Nurse Summary */}
+                    {/* Coluna da Esquerda - Resumo */}
                     <div className="md:col-span-1">
                         <Card>
                             <CardHeader>
@@ -182,7 +222,7 @@ export default function CheckoutPage() {
                         </Card>
                     </div>
 
-                    {/* Right Column - Booking Form */}
+                    {/* Coluna da Direita - Formulário */}
                     <div className="md:col-span-2">
                         <Card>
                             <CardHeader>
@@ -192,7 +232,7 @@ export default function CheckoutPage() {
                             <CardContent className="space-y-6">
                                 {formError && <div className="bg-red-50 text-red-600 p-4 rounded-lg text-center">{formError}</div>}
 
-                                {/* Date and Time */}
+                                {/* Data e Hora */}
                                 <div className="grid md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="flex items-center gap-2 text-sm font-semibold mb-2">
@@ -224,7 +264,7 @@ export default function CheckoutPage() {
                                     </div>
                                 </div>
 
-                                {/* Value */}
+                                {/* Valor */}
                                 <div>
                                     <label className="flex items-center gap-2 text-sm font-semibold mb-2">
                                         <DollarSign className="h-4 w-4 text-green-700" />
@@ -238,7 +278,7 @@ export default function CheckoutPage() {
                                     />
                                 </div>
 
-                                {/* Visit Type */}
+                                {/* Tipo de Visita */}
                                 <div>
                                     <label className="flex items-center gap-2 text-sm font-semibold mb-2">
                                         <MapPin className="h-4 w-4 text-green-700" />
@@ -256,7 +296,7 @@ export default function CheckoutPage() {
                                     </Select>
                                 </div>
 
-                                {/* Reason */}
+                                {/* Motivo */}
                                 <div>
                                     <label className="flex items-center gap-2 text-sm font-semibold mb-2">
                                         <FileText className="h-4 w-4 text-green-700" />
@@ -269,7 +309,7 @@ export default function CheckoutPage() {
                                     />
                                 </div>
 
-                                {/* Description */}
+                                {/* Descrição */}
                                 <div>
                                     <label className="flex items-center gap-2 text-sm font-semibold mb-2">
                                         <FileText className="h-4 w-4 text-green-700" />
@@ -283,7 +323,57 @@ export default function CheckoutPage() {
                                     />
                                 </div>
 
-                                {/* Action Buttons */}
+                                {/* Seção de Endereço */}
+                                <div className="pt-4 border-t">
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Endereço da Visita</h3>
+
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="flex items-center gap-2 text-sm font-semibold mb-2">
+                                                <MapPin className="h-4 w-4 text-green-700" />
+                                                CEP *
+                                            </label>
+                                            <Input
+                                                placeholder="00000-000"
+                                                value={cep}
+                                                onChange={handleCepChange} // Usei a nova função com máscara
+                                                maxLength={9} // 8 dígitos + 1 hífen
+                                            />
+                                        </div>
+
+                                        <div className="grid md:grid-cols-3 gap-4">
+                                            <div className="md:col-span-2">
+                                                <label className="block text-sm font-semibold mb-2">Rua *</label>
+                                                <Input placeholder="Nome da rua" value={street} onChange={(e) => setStreet(e.target.value)} />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-semibold mb-2">Número *</label>
+                                                <Input placeholder="123" value={number} onChange={(e) => setNumber(e.target.value)} />
+                                            </div>
+                                        </div>
+
+                                        <div className="grid md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-semibold mb-2">Complemento</label>
+                                                <Input
+                                                    placeholder="Apto, bloco, etc."
+                                                    value={complement}
+                                                    onChange={(e) => setComplement(e.target.value)}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-semibold mb-2">Bairro *</label>
+                                                <Input
+                                                    placeholder="Nome do bairro"
+                                                    value={neighborhood}
+                                                    onChange={(e) => setNeighborhood(e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Botões de Ação */}
                                 <div className="flex gap-4 pt-4">
                                     <Button variant="outline" onClick={() => router.back()} className="flex-1">
                                         Cancelar
@@ -291,7 +381,9 @@ export default function CheckoutPage() {
                                     <Button
                                         onClick={handleContinueToPayment}
                                         className="flex-1 bg-green-700 hover:bg-green-800 text-white"
-                                        disabled={!selectedDate || !selectedTime || !value || !reason}
+                                        disabled={
+                                            !selectedDate || !selectedTime || !value || !reason || !cep || !street || !number || !neighborhood
+                                        }
                                     >
                                         Continuar para Pagamento
                                     </Button>
