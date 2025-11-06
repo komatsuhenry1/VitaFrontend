@@ -1,12 +1,11 @@
 "use client"; // Correto para Next.js
 
 import { useState, useEffect } from "react";
-// 👇 ALTERAÇÃO: Trocado 'useNavigate' do 'react-router-dom' pelo 'useRouter' do 'next/navigation'
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Header } from "@/components/Header";
+import { Header } from "@/components/Header"; // Importado (estava faltando no seu último envio)
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Dialog,
@@ -49,7 +48,6 @@ import {
 import { toast } from "sonner";
 import { VariantProps } from "class-variance-authority";
 
-// 👇 ALTERAÇÃO: Corrigido para o padrão do Next.js (você já tinha feito isso)
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1";
 
 // --- Interfaces ---
@@ -142,7 +140,6 @@ const getVisitTypeLabel = (type: string) => {
 // --- Componente Principal ---
 
 const Visits = () => {
-    // 👇 ALTERAÇÃO: Usando o hook do Next.js
     const router = useRouter();
     const [visits, setVisits] = useState<Visit[]>([]);
     const [visitsToday, setVisitsToday] = useState<Visit[]>([]);
@@ -156,6 +153,7 @@ const Visits = () => {
 
     useEffect(() => {
         fetchVisits();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchVisits = async () => {
@@ -164,7 +162,6 @@ const Visits = () => {
             const token = localStorage.getItem("token");
 
             if (!token) {
-                // 👇 ALTERAÇÃO: navigate(...) -> router.push(...)
                 router.push("/login");
                 return;
             }
@@ -268,7 +265,7 @@ const Visits = () => {
 
     return (
         <div className="min-h-screen bg-background">
-            <Header/>
+            <Header />
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Header */}
                 <div className="mb-8">
@@ -339,13 +336,14 @@ const Visits = () => {
                                             </div>
                                         </div>
 
+                                        {/* 👇 ALTERAÇÃO: Botão com ícone posicionado */}
                                         <Button
-                                            // 👇 ALTERAÇÃO: navigate(...) -> router.push(...)
                                             onClick={() => router.push(`/visit-details/patient/${visit.id}`)}
-                                            className="w-full"
+                                            className="w-full relative" // Adicionado 'relative'
                                             size="sm"
                                         >
-                                            <Info className="h-4 w-4 mr-2" />
+                                            {/* Ícone posicionado absolutamente */}
+                                            <Info className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2" />
                                             Ver Detalhes
                                         </Button>
                                     </CardContent>
@@ -369,7 +367,6 @@ const Visits = () => {
                                 Você ainda não tem visitas agendadas. Encontre um enfermeiro e agende sua
                                 primeira consulta!
                             </p>
-                            {/* 👇 ALTERAÇÃO: navigate(...) -> router.push(...) */}
                             <Button onClick={() => router.push("/")} size="lg">
                                 Buscar Enfermeiros
                             </Button>
@@ -422,7 +419,6 @@ const Visits = () => {
                                     <VisitCard
                                         key={visit.id}
                                         visit={visit}
-                                        // 👇 ALTERAÇÃO: navigate(...) -> router.push(...)
                                         onViewDetails={() => router.push(`/visit-details/patient/${visit.id}`)}
                                     />
                                 ))
@@ -441,7 +437,6 @@ const Visits = () => {
                                     <VisitCard
                                         key={visit.id}
                                         visit={visit}
-                                        // 👇 ALTERAÇÃO: navigate(...) -> router.push(...)
                                         onViewDetails={() => router.push(`/visit-details/patient/${visit.id}`)}
                                         onViewProfile={() => router.push(`/nurse-profile/${visit.nurse?.id}`)}
                                         onChat={() => router.push(`/chat/${visit.nurse?.id}`)}
@@ -462,7 +457,6 @@ const Visits = () => {
                                     <VisitCard
                                         key={visit.id}
                                         visit={visit}
-                                        // 👇 ALTERAÇÃO: navigate(...) -> router.push(...)
                                         onViewDetails={() => router.push(`/visit-details/patient/${visit.id}`)}
                                         onReview={
                                             visit.rating === 0
@@ -555,13 +549,16 @@ const Visits = () => {
                         >
                             Cancelar
                         </Button>
+                        {/* 👇 ALTERAÇÃO: Botão de Envio do Review */}
                         <Button
                             onClick={handleSubmitReview}
                             disabled={submittingReview || rating === 0}
+                            className="relative" // Adicionado 'relative'
                         >
                             {submittingReview ? (
                                 <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    {/* Ícone posicionado absolutamente */}
+                                    <Loader2 className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 animate-spin" />
                                     Enviando...
                                 </>
                             ) : (
@@ -576,7 +573,6 @@ const Visits = () => {
 };
 
 // --- Componente VisitCard ---
-// (Nenhuma alteração necessária aqui, pois ele recebe as funções `on...` já prontas)
 interface VisitCardProps {
     visit: Visit;
     onViewDetails: () => void;
@@ -594,8 +590,6 @@ const VisitCard = ({
     onReview,
     rating,
 }: VisitCardProps) => {
-    // O `VisitCard` não precisa saber sobre 'router' ou 'navigate'
-    // Ele apenas chama as funções que recebeu via props.
     return (
         <Card className="hover:shadow-md transition-shadow">
             <CardContent className="p-6">
@@ -656,26 +650,42 @@ const VisitCard = ({
                     </div>
 
                     {/* Actions */}
+                    {/* 👇 ALTERAÇÃO: Aplicado layout 'relative' + 'absolute' em todos os botões */}
                     <div className="flex flex-col gap-2 sm:w-48">
                         {visit.status === "CONFIRMED" && (
                             <>
                                 {onViewProfile && (
-                                    <Button onClick={onViewProfile} variant="default" size="sm">
-                                        <User className="h-4 w-4 mr-2" />
+                                    <Button
+                                        onClick={onViewProfile}
+                                        variant="default"
+                                        size="sm"
+                                        className="relative"
+                                    >
+                                        <User className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2" />
                                         Ver Perfil
                                     </Button>
                                 )}
                                 {onChat && (
-                                    <Button onClick={onChat} variant="outline" size="sm">
-                                        <MessageCircle className="h-4 w-4 mr-2" />
+                                    <Button
+                                        onClick={onChat}
+                                        variant="outline"
+                                        size="sm"
+                                        className="relative justify-center"
+                                    >
+                                        <MessageCircle className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2" />
                                         Chat
                                     </Button>
                                 )}
                             </>
                         )}
 
-                        <Button onClick={onViewDetails} variant="outline" size="sm">
-                            <Info className="h-4 w-4 mr-2" />
+                        <Button
+                            onClick={onViewDetails}
+                            variant="outline"
+                            size="sm"
+                            className="relative justify-center"
+                        >
+                            <Info className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2" />
                             Ver Detalhes
                         </Button>
 
@@ -702,8 +712,8 @@ const VisitCard = ({
                                     </div>
                                 ) : (
                                     onReview && (
-                                        <Button onClick={onReview} variant="default" size="sm">
-                                            <Star className="h-4 w-4 mr-2" />
+                                        <Button onClick={onReview} variant="default" size="sm" className="relative">
+                                            <Star className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2" />
                                             Avaliar
                                         </Button>
                                     )

@@ -147,7 +147,7 @@ export default function CheckoutPage() {
         sessionStorage.setItem("bookingData", JSON.stringify(bookingData))
 
         // Navega para a página de pagamento
-        router.push(`/nurse-profile/${nurseId}/payment`)
+        router.push(`/nurse-profile/scheduled/${nurseId}/payment`)
     }
 
     if (loading) {

@@ -5,21 +5,38 @@ import { useParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import { Header } from "@/components/Header"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Calendar, Clock, DollarSign, FileText, MapPin } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Star } from "lucide-react"
 import { toast } from "sonner"
-import { Footer } from "@/components/Footer"
 
 interface NurseData {
   id: string
   name: string
   specialization: string
+  experience: number
+  rating: number
   price: number
+  shift: string
+  department: string
   image: string
+  available: boolean
   neighborhood: string
+  bio: string
+  qualifications: string[]
+  services: string[]
+  days_available: string[]
+  start_time: string
+  end_time: string
+  reviews: Array<{
+    patient_name: string
+    rating: number
+    comment: string
+  }>
 }
 
 interface ApiResponse {
@@ -30,28 +47,61 @@ interface ApiResponse {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
-export default function CheckoutPage() {
+const renderStars = (rating: number) => {
+  const stars = []
+  const fullStars = Math.floor(rating)
+  const hasHalfStar = rating % 1 >= 0.5
+
+  for (let i = 0; i < 5; i++) {
+    if (i < fullStars) {
+      stars.push(<Star key={i} size={24} fill="#fbbf24" color="#fbbf24" strokeWidth={1.5} />)
+    } else if (i === fullStars && hasHalfStar) {
+      stars.push(
+        <div key={i} style={{ position: "relative", display: "inline-block" }}>
+          <Star size={24} fill="none" color="#d1d5db" strokeWidth={1.5} />
+          <Star
+            size={24}
+            fill="#fbbf24"
+            color="#fbbf24"
+            strokeWidth={1.5}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              clipPath: "polygon(0 0, 50% 0, 50% 100%, 0 100%)",
+            }}
+          />
+        </div>,
+      )
+    } else {
+      stars.push(<Star key={i} size={24} fill="none" color="#d1d5db" strokeWidth={1.5} />)
+    }
+  }
+
+  return stars
+}
+
+export default function NurseProfile() {
   const params = useParams()
   const router = useRouter()
   const nurseId = params.id as string
 
   const [nurse, setNurse] = useState<NurseData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const [selectedDate, setSelectedDate] = useState("")
   const [selectedTime, setSelectedTime] = useState("")
   const [message, setMessage] = useState("")
+  const [showBookingForm, setShowBookingForm] = useState(false)
+
   const [reason, setReason] = useState("")
   const [visitType, setVisitType] = useState("domiciliar")
   const [value, setValue] = useState("")
 
-  const [cep, setCep] = useState("")
-  const [street, setStreet] = useState("")
-  const [number, setNumber] = useState("")
-  const [complement, setComplement] = useState("")
-  const [neighborhood, setNeighborhood] = useState("")
-
-  const [formError, setFormError] = useState<string | null>(null)
+  const [bookingLoading, setBookingLoading] = useState(false)
+  const [bookingSuccess, setBookingSuccess] = useState(false)
+  const [bookingError, setBookingError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchNurseData = async () => {
@@ -74,9 +124,11 @@ export default function CheckoutPage() {
         if (result.success && result.data) {
           setNurse(result.data)
           setValue(result.data.price > 0 ? String(result.data.price) : "")
+        } else {
+          throw new Error(result.message || "Erro ao carregar dados do enfermeiro")
         }
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erro ao carregar dados")
+        setError(err instanceof Error ? err.message : "Erro desconhecido")
       } finally {
         setLoading(false)
       }
@@ -87,283 +139,441 @@ export default function CheckoutPage() {
     }
   }, [nurseId])
 
-  const handleContinueToPayment = () => {
-    if (!selectedDate || !selectedTime || !value || !reason || !cep || !street || !number || !neighborhood) {
-      setFormError("Por favor, preencha todos os campos obrigatórios.")
+  if (loading) {
+    return (
+      <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
+        <Header />
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
+          <div style={{ textAlign: "center" }}>
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                border: "4px solid #e5e7eb",
+                borderTop: "4px solid #15803d",
+                borderRadius: "50%",
+                animation: "spin 1s linear infinite",
+                margin: "0 auto 1rem",
+              }}
+            ></div>
+            <p style={{ color: "#6b7280" }}>Carregando perfil do enfermeiro...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !nurse) {
+    return (
+      <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
+        <Header />
+        <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem", textAlign: "center" }}>
+          <h1 style={{ color: "#dc2626", marginBottom: "1rem" }}>{error || "Enfermeiro não encontrado"}</h1>
+          <Button onClick={() => router.back()} style={{ marginTop: "1rem" }}>
+            Voltar
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  const handleBooking = async () => {
+    if (!selectedDate || !selectedTime || !value) {
+      setBookingError("Por favor, selecione data, horário e informe o valor.")
       return
     }
 
     const numericValue = Number.parseFloat(value.replace(",", "."))
     if (isNaN(numericValue) || numericValue <= 0) {
-      setFormError("O valor deve ser um número positivo válido.")
+      setBookingError("O valor deve ser um número positivo válido.")
       return
     }
 
-    const bookingData = {
-      nurseId,
-      nurseName: nurse?.name,
-      selectedDate,
-      selectedTime,
-      message,
-      reason,
-      visitType,
-      value: numericValue,
-      cep,
-      street,
-      number,
-      complement,
-      neighborhood,
+    try {
+      setBookingLoading(true)
+      setBookingError(null)
+
+      const dateTimeString = `${selectedDate}T${selectedTime}:00Z`
+
+      const requestBody = {
+        description: message || "Consulta de enfermagem",
+        reason: reason || "Atendimento geral",
+        visit_type: visitType,
+        nurse_id: nurseId,
+        date: dateTimeString,
+        value: numericValue,
+      }
+
+      const token = localStorage.getItem("token")
+      const response = await fetch(`${API_BASE_URL}/user/visit`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(requestBody),
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        toast.success("Visita solicitada com sucesso!")
+        setBookingSuccess(true)
+        setBookingError(null)
+
+        setTimeout(() => {
+          setShowBookingForm(false)
+          setBookingSuccess(false)
+          setSelectedDate("")
+          setSelectedTime("")
+          setMessage("")
+          setReason("")
+          setVisitType("domiciliar")
+          setValue(nurse && typeof nurse.price === "number" && nurse.price > 0 ? String(nurse.price) : "")
+        }, 2000)
+      } else {
+        throw new Error(result.message || "Erro ao agendar visita")
+      }
+    } catch (err) {
+      setBookingError(err instanceof Error ? err.message : "Erro ao agendar visita")
+    } finally {
+      setBookingLoading(false)
     }
-    sessionStorage.setItem("bookingData", JSON.stringify(bookingData))
-
-    router.push(`/nurse-profile/scheduled/${nurseId}/payment`)
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Header />
-        <div className="flex justify-center items-center min-h-[60vh]">
-          <div className="text-center">
-            <div className="w-10 h-10 border-4 border-gray-200 border-t-green-700 rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600">Carregando...</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (!nurse) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Header />
-        <div className="max-w-4xl mx-auto px-4 py-8 text-center">
-          <h1 className="text-red-600 mb-4">Enfermeiro não encontrado</h1>
-          <Button onClick={() => router.back()}>Voltar</Button>
-        </div>
-      </div>
-    )
   }
 
   const imageUrl = nurse?.image ? `${API_BASE_URL}/user/file/${nurse.image}` : "/placeholder-avatar.png"
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
       <Header />
 
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        <Button variant="ghost" onClick={() => router.back()} className="mb-6">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar ao Perfil
-        </Button>
+      <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "2rem" }}>
+          {/* Left Column - Nurse Info */}
+          <div>
+            <Card style={{ marginBottom: "1.5rem" }}>
+              <CardContent style={{ padding: "2rem", textAlign: "center" }}>
+                <div
+                  style={{
+                    position: "relative",
+                    width: "150px",
+                    height: "150px",
+                    borderRadius: "50%",
+                    overflow: "hidden",
+                    margin: "0 auto 1rem",
+                  }}
+                >
+                  <Image src={imageUrl || "/placeholder.svg"} alt={nurse.name} fill style={{ objectFit: "cover" }} />
+                </div>
+                <h1 style={{ fontSize: "1.75rem", fontWeight: "bold", marginBottom: "0.5rem", color: "#1f2937" }}>
+                  {nurse.name}
+                </h1>
+                <p style={{ color: "#15803d", fontWeight: "600", fontSize: "1.125rem", marginBottom: "0.5rem" }}>
+                  {nurse.specialization}
+                </p>
+                <p style={{ color: "#6b7280", marginBottom: "1rem" }}>{nurse.department}</p>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          {/* Left Column - Nurse Summary */}
-          <div className="md:col-span-1">
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }}>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#15803d" }}>{nurse.experience}</div>
+                    <div style={{ fontSize: "0.875rem", color: "#6b7280" }}>Anos de experiência</div>
+                  </div>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ display: "flex", justifyContent: "center", gap: "0.25rem", marginBottom: "0.25rem" }}>
+                      {nurse.rating > 0 ? (
+                        renderStars(nurse.rating)
+                      ) : (
+                        <span style={{ color: "#6b7280" }}>Sem avaliações</span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: "0.875rem", color: "#6b7280" }}>
+                      {nurse.rating > 0 ? `${nurse.rating.toFixed(1)} estrelas` : "Avaliação"}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#15803d", marginBottom: "0.25rem" }}>
+                  {nurse.price > 0 ? `R$ ${nurse.price}/hora` : "Preço a combinar"}
+                </div>
+                <p style={{ color: "#6b7280", fontSize: "0.875rem", marginBottom: "1.5rem" }}>
+                  📍 {nurse.neighborhood}
+                </p>
+
+                <Button
+                  onClick={() => router.push(`/nurse-profile/scheduled/${nurseId}/checkout`)}
+                  style={{ backgroundColor: "#15803d", color: "white", width: "100%" }}
+                >
+                  Agendar Consulta
+                </Button>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
-                <CardTitle className="text-green-700">Resumo da Consulta</CardTitle>
+                <CardTitle style={{ color: "#15803d" }}>Disponibilidade</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="relative w-16 h-16 rounded-full overflow-hidden flex-shrink-0">
-                    <Image src={imageUrl || "/placeholder.svg"} alt={nurse.name} fill className="object-cover" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{nurse.name}</h3>
-                    <p className="text-sm text-green-700">{nurse.specialization}</p>
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t">
-                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                    <MapPin className="h-4 w-4" />
-                    <span>{nurse.neighborhood}</span>
-                  </div>
-                  {value && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <DollarSign className="h-4 w-4" />
-                      <span className="font-semibold text-green-700">R$ {value}</span>
+              <CardContent>
+                {nurse.days_available && nurse.days_available.length > 0 ? (
+                  <>
+                    <div style={{ marginBottom: "1rem" }}>
+                      <div style={{ fontWeight: "600", marginBottom: "0.5rem", color: "#1f2937" }}>
+                        Dias Disponíveis:
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                        {nurse.days_available.map((day, index) => (
+                          <Badge key={index} style={{ backgroundColor: "#dcfce7", color: "#15803d" }}>
+                            {day}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                  )}
-                </div>
+                    {nurse.start_time && nurse.end_time && (
+                      <div>
+                        <div style={{ fontWeight: "600", marginBottom: "0.5rem", color: "#1f2937" }}>
+                          Horário de Trabalho:
+                        </div>
+                        <div style={{ color: "#6b7280" }}>
+                          {nurse.start_time} - {nurse.end_time}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p style={{ color: "#6b7280", textAlign: "center" }}>Disponibilidade não informada</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle style={{ color: "#15803d" }}>Avaliações dos Pacientes</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {nurse.reviews && nurse.reviews.length > 0 ? (
+                  nurse.reviews.map((review, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        padding: "1rem 0",
+                        borderBottom: index < nurse.reviews.length - 1 ? "1px solid #e5e7eb" : "none",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginBottom: "0.5rem",
+                        }}
+                      >
+                        <span style={{ fontWeight: "600", color: "#1f2937" }}>{review.patient_name}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                          {renderStars(review.rating)}
+                        </div>
+                      </div>
+                      <p style={{ color: "#4b5563", lineHeight: "1.5", fontSize: "0.875rem" }}>{review.comment}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p style={{ color: "#6b7280", textAlign: "center" }}>Nenhuma avaliação disponível</p>
+                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Right Column - Booking Form */}
-          <div className="md:col-span-2">
-            <Card>
+          {/* Right Column - Details */}
+          <div>
+            <Card style={{ marginBottom: "1.5rem" }}>
               <CardHeader>
-                <CardTitle className="text-green-700">Detalhes do Agendamento</CardTitle>
-                <CardDescription>Preencha as informações para agendar sua consulta</CardDescription>
+                <CardTitle style={{ color: "#15803d" }}>Sobre</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
-                {formError && <div className="bg-red-50 text-red-600 p-4 rounded-lg text-center">{formError}</div>}
+              <CardContent>
+                <p style={{ lineHeight: "1.6", color: "#4b5563" }}>
+                  {nurse.bio || "Informações sobre o profissional não disponíveis."}
+                </p>
+              </CardContent>
+            </Card>
 
-                {/* Date and Time */}
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="flex items-center gap-2 text-sm font-semibold mb-2">
-                      <Calendar className="h-4 w-4 text-green-700" />
-                      Data *
-                    </label>
-                    <Input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="flex items-center gap-2 text-sm font-semibold mb-2">
-                      <Clock className="h-4 w-4 text-green-700" />
-                      Horário *
-                    </label>
-                    <Select value={selectedTime} onValueChange={setSelectedTime}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o horário" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="08:00">08:00</SelectItem>
-                        <SelectItem value="09:00">09:00</SelectItem>
-                        <SelectItem value="10:00">10:00</SelectItem>
-                        <SelectItem value="11:00">11:00</SelectItem>
-                        <SelectItem value="14:00">14:00</SelectItem>
-                        <SelectItem value="15:00">15:00</SelectItem>
-                        <SelectItem value="16:00">16:00</SelectItem>
-                        <SelectItem value="17:00">17:00</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+            <Card style={{ marginBottom: "1.5rem" }}>
+              <CardHeader>
+                <CardTitle style={{ color: "#15803d" }}>Qualificações</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {nurse.qualifications && nurse.qualifications.length > 0 ? (
+                  <ul style={{ listStyle: "none", padding: 0 }}>
+                    {nurse.qualifications.map((qualification, index) => (
+                      <li
+                        key={index}
+                        style={{
+                          padding: "0.5rem 0",
+                          borderBottom: index < nurse.qualifications.length - 1 ? "1px solid #e5e7eb" : "none",
+                        }}
+                      >
+                        <span style={{ color: "#15803d", marginRight: "0.5rem" }}>✓</span>
+                        {qualification}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p style={{ color: "#6b7280", textAlign: "center" }}>Qualificações não informadas</p>
+                )}
+              </CardContent>
+            </Card>
 
-                {/* Value */}
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-semibold mb-2">
-                    <DollarSign className="h-4 w-4 text-green-700" />
-                    Valor da Consulta (R$) *
-                  </label>
-                  <Input
-                    type="number"
-                    placeholder="Ex: 120.00"
-                    value={value}
-                    onChange={(e) => setValue(e.target.value)}
-                  />
-                </div>
-
-                {/* Visit Type */}
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-semibold mb-2">
-                    <MapPin className="h-4 w-4 text-green-700" />
-                    Tipo de Visita *
-                  </label>
-                  <Select value={visitType} onValueChange={setVisitType}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="domiciliar">Domiciliar</SelectItem>
-                      <SelectItem value="hospitalar">Hospitalar</SelectItem>
-                      <SelectItem value="clinica">Clínica</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Reason */}
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-semibold mb-2">
-                    <FileText className="h-4 w-4 text-green-700" />
-                    Motivo da Consulta *
-                  </label>
-                  <Input
-                    placeholder="Ex: Acompanhamento pós-operatório"
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                  />
-                </div>
-
-                {/* Description */}
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-semibold mb-2">
-                    <FileText className="h-4 w-4 text-green-700" />
-                    Descrição (opcional)
-                  </label>
-                  <Textarea
-                    placeholder="Descreva brevemente o tipo de cuidado necessário..."
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    rows={4}
-                  />
-                </div>
-
-                {/* Address Fields Section */}
-                <div className="pt-4 border-t">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Endereço da Visita</h3>
-
-                  <div className="space-y-4">
-                    <div>
-                      <label className="flex items-center gap-2 text-sm font-semibold mb-2">
-                        <MapPin className="h-4 w-4 text-green-700" />
-                        CEP *
-                      </label>
-                      <Input
-                        placeholder="00000-000"
-                        value={cep}
-                        onChange={(e) => setCep(e.target.value)}
-                        maxLength={9}
-                      />
-                    </div>
-
-                    <div className="grid md:grid-cols-3 gap-4">
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-semibold mb-2">Rua *</label>
-                        <Input placeholder="Nome da rua" value={street} onChange={(e) => setStreet(e.target.value)} />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold mb-2">Número *</label>
-                        <Input placeholder="123" value={number} onChange={(e) => setNumber(e.target.value)} />
-                      </div>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-semibold mb-2">Complemento</label>
-                        <Input
-                          placeholder="Apto, bloco, etc."
-                          value={complement}
-                          onChange={(e) => setComplement(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold mb-2">Bairro *</label>
-                        <Input
-                          placeholder="Nome do bairro"
-                          value={neighborhood}
-                          onChange={(e) => setNeighborhood(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-4 pt-4">
-                  <Button variant="outline" onClick={() => router.back()} className="flex-1">
-                    Cancelar
-                  </Button>
-                  <Button
-                    onClick={handleContinueToPayment}
-                    className="flex-1 bg-green-700 hover:bg-green-800 text-white"
-                    disabled={
-                      !selectedDate || !selectedTime || !value || !reason || !cep || !street || !number || !neighborhood
-                    }
-                  >
-                    Continuar para Pagamento
-                  </Button>
-                </div>
+            <Card style={{ marginBottom: "1.5rem" }}>
+              <CardHeader>
+                <CardTitle style={{ color: "#15803d" }}>Serviços Oferecidos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {nurse.services && nurse.services.length > 0 ? (
+                  <ul style={{ listStyle: "none", padding: 0 }}>
+                    {nurse.services.map((service, index) => (
+                      <li
+                        key={index}
+                        style={{
+                          padding: "0.5rem 0",
+                          borderBottom: index < nurse.services.length - 1 ? "1px solid #e5e7eb" : "none",
+                        }}
+                      >
+                        <span style={{ color: "#15803d", marginRight: "0.5rem" }}>•</span>
+                        {service}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p style={{ color: "#6b7280", textAlign: "center" }}>Serviços não informados</p>
+                )}
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
 
-      <Footer />
+      <Dialog open={showBookingForm} onOpenChange={setShowBookingForm}>
+        <DialogContent style={{ maxWidth: "600px" }}>
+          <DialogHeader>
+            <DialogTitle style={{ color: "#15803d", fontSize: "1.5rem" }}>Agendar Consulta</DialogTitle>
+            <DialogDescription>Preencha os dados abaixo para agendar uma consulta com {nurse.name}</DialogDescription>
+          </DialogHeader>
+
+          <div style={{ marginTop: "1rem" }}>
+            {bookingSuccess && (
+              <div
+                style={{
+                  backgroundColor: "#dcfce7",
+                  color: "#15803d",
+                  padding: "1rem",
+                  borderRadius: "0.5rem",
+                  marginBottom: "1rem",
+                  textAlign: "center",
+                  fontWeight: "600",
+                }}
+              >
+                ✓ Visita solicitada com sucesso!
+              </div>
+            )}
+
+            {bookingError && (
+              <div
+                style={{
+                  backgroundColor: "#fee2e2",
+                  color: "#dc2626",
+                  padding: "1rem",
+                  borderRadius: "0.5rem",
+                  marginBottom: "1rem",
+                  textAlign: "center",
+                }}
+              >
+                {bookingError}
+              </div>
+            )}
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+              <div>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>Data</label>
+                <Input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
+              </div>
+              <div>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>Horário</label>
+                <Select value={selectedTime} onValueChange={setSelectedTime}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o horário" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="08:00">08:00</SelectItem>
+                    <SelectItem value="09:00">09:00</SelectItem>
+                    <SelectItem value="10:00">10:00</SelectItem>
+                    <SelectItem value="11:00">11:00</SelectItem>
+                    <SelectItem value="14:00">14:00</SelectItem>
+                    <SelectItem value="15:00">15:00</SelectItem>
+                    <SelectItem value="16:00">16:00</SelectItem>
+                    <SelectItem value="17:00">17:00</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>
+                Valor da Consulta (R$)
+              </label>
+              <Input type="number" placeholder="Ex: 80.00" value={value} onChange={(e) => setValue(e.target.value)} />
+            </div>
+
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>Tipo de Visita</label>
+              <Select value={visitType} onValueChange={setVisitType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="domiciliar">Domiciliar</SelectItem>
+                  <SelectItem value="hospitalar">Hospitalar</SelectItem>
+                  <SelectItem value="clinica">Clínica</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>Motivo da Consulta</label>
+              <Input
+                placeholder="Ex: Acompanhamento pós-operatório"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+              />
+            </div>
+
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>
+                Descrição (opcional)
+              </label>
+              <Textarea
+                placeholder="Descreva brevemente o tipo de cuidado necessário..."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+              />
+            </div>
+
+            <div style={{ display: "flex", gap: "1rem" }}>
+              <Button
+                onClick={() => setShowBookingForm(false)}
+                variant="outline"
+                style={{ flex: 1 }}
+                disabled={bookingLoading}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleBooking}
+                style={{ backgroundColor: "#15803d", color: "white", flex: 1 }}
+                disabled={!selectedDate || !selectedTime || !value || bookingLoading}
+              >
+                {bookingLoading ? "Agendando..." : "Confirmar Agendamento"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

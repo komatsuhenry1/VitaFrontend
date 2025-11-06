@@ -82,9 +82,6 @@ export default function PatientProfile() {
                 const result: ApiResponse = await response.json()
 
                 if (result.success && result.data) {
-                    toast.success("Perfil do paciente carregado com sucesso!")
-
-                    // Normaliza os dados para garantir que arrays nunca sejam nulos
                     const normalizedData: PatientData = {
                         ...result.data,
                         comments: result.data.comments || [], // Garante que 'comments' seja sempre um array
