@@ -4,7 +4,6 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -16,7 +15,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,12 +25,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Menu, LogOut, User, UserPlus, Bell } from "lucide-react"
-
-// --- 1. Importa o hook do Contexto WebSocket ---
-import { useWebSocket } from '@/context/WebSocketContext'; // Ajuste o caminho se necessário
-import { toast } from "sonner" // toast importado (já estava no outro arquivo, bom ter aqui)
-
+import { Menu, LogOut, User, UserPlus, Bell, Search, Settings } from "lucide-react"
+import { useWebSocket } from "@/context/WebSocketContext"
+import { toast } from "sonner"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
@@ -40,13 +35,11 @@ interface UserData {
   name: string
   email: string
   role: "PATIENT" | "NURSE" | "ADMIN"
-  // Ajuste: id pode vir como _id do localStorage
-  _id?: string;
-  id?: string; // Mantém 'id' caso venha assim
+  _id?: string
+  id?: string
   profile_image_id?: string
 }
 
-// Configuração dos links (mantida)
 const navLinksConfig = {
   base: [
     { href: "/sobre", label: "Sobre" },
@@ -78,11 +71,18 @@ export function Header() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [userData, setUserData] = useState<UserData | null>(null)
   const [isLogoutAlertOpen, setIsLogoutAlertOpen] = useState(false)
-  const notificationsCount = 0 // Exemplo, ajuste conforme sua lógica
+  const [scrolled, setScrolled] = useState(false)
+  const notificationsCount = 3
   const router = useRouter()
+  const { disconnectWebSocket } = useWebSocket()
 
-  // --- 2. Pega a função de desconectar do contexto ---
-  const { disconnectWebSocket } = useWebSocket();
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20)
+    }
+    window.addEventListener("scroll", handleScroll)
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
 
   useEffect(() => {
     const token = localStorage.getItem("token")
@@ -92,83 +92,45 @@ export function Header() {
       if (storedUser) {
         try {
           const user = JSON.parse(storedUser)
-          // Normaliza o ID para userData.id
-          user.id = user._id || user.id;
+          user.id = user._id || user.id
           setUserData(user)
         } catch (error) {
           console.error("Erro ao processar dados do usuário:", error)
-          // Considerar limpar localStorage inválido
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
-          setIsAuthenticated(false);
+          localStorage.removeItem("token")
+          localStorage.removeItem("user")
+          setIsAuthenticated(false)
         }
-      } else {
-        // Token existe mas user não? Limpa tudo.
-        localStorage.removeItem("token");
-        setIsAuthenticated(false);
       }
     }
   }, [])
 
-  // ===================================
-  // FUNÇÃO 'handleLogout' ATUALIZADA
-  // ===================================
   const handleLogout = async () => {
-    console.log("Executando logout...");
-
-    // Pega o token ANTES de removê-lo, para usar na API
-    const token = localStorage.getItem("token");
-
-    // Verifica se é um enfermeiro antes de desconectar
+    const token = localStorage.getItem("token")
     if (userData?.role === "NURSE") {
-      console.log("Usuário é enfermeiro, desconectando WebSocket e atualizando status DB...");
-
-      // 1. Desconecta o WebSocket (ação do cliente)
-      disconnectWebSocket();
-
-      // 2. Tenta atualizar o status no banco de dados (ação do servidor)
+      disconnectWebSocket()
       if (token) {
         try {
-          const response = await fetch(`${API_BASE_URL}/nurse/offline`, {
-            method: "PATCH", // Usando PATCH para atualizar o status para offline
+          await fetch(`${API_BASE_URL}/nurse/offline`, {
+            method: "PATCH",
             headers: {
-              "Authorization": `Bearer ${token}`,
+              Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
             },
-          });
-
-          if (!response.ok) {
-            // Se falhar, avisa no console, mas o logout local continua
-            console.error("Falha ao atualizar status para offline no servidor.");
-            toast.warning("Não foi possível atualizar seu status no servidor, mas você foi desconectado.");
-          } else {
-            console.log("Status atualizado para offline no servidor com sucesso.");
-          }
-
+          })
         } catch (error) {
-          // Se der erro de rede, avisa no console, mas o logout local continua
-          console.error("Erro de rede ao tentar ficar offline:", error);
-          toast.warning("Erro de rede ao atualizar status, mas você foi desconectado.");
+          console.error("Erro ao atualizar status:", error)
         }
-      } else {
-        console.warn("Logout de enfermeiro sem token. Não foi possível chamar /nurse/offline.");
       }
-
-    } else {
-      console.log("Usuário não é enfermeiro, pulando desconexão WebSocket e API.");
     }
-
-    // 3. Continua com o processo normal de logout local (agora remove o token)
     localStorage.removeItem("token")
     localStorage.removeItem("user")
     setIsAuthenticated(false)
     setUserData(null)
-    router.push("/") // Redireciona para home (ou login)
+    router.push("/")
     setIsLogoutAlertOpen(false)
-    toast.success("Logout realizado com sucesso!"); // Adiciona feedback
+    toast.success("Logout realizado com sucesso!")
   }
 
-  // Função getInitials (mantida)
   const getInitials = (name: string) => {
     if (!name) return ""
     return name
@@ -179,33 +141,27 @@ export function Header() {
       .slice(0, 2)
   }
 
-  // Lógica de links e avatar (mantida)
   const currentNavLinks =
-    isAuthenticated && userData?.role
-      ? navLinksConfig[userData.role] ?? navLinksConfig.base
-      : navLinksConfig.base
+    isAuthenticated && userData?.role ? (navLinksConfig[userData.role] ?? navLinksConfig.base) : navLinksConfig.base
 
-  const avatarUrl = userData?.profile_image_id
-    ? `${API_BASE_URL}/user/file/${userData.profile_image_id}`
-    : undefined
+  const avatarUrl = userData?.profile_image_id ? `${API_BASE_URL}/user/file/${userData.profile_image_id}` : undefined
 
   let profileUrl = "#"
   if (userData) {
-    // Usa userData.id (normalizado no useEffect)
-    const userId = userData.id;
+    const userId = userData.id
     switch (userData.role) {
       case "PATIENT":
-        profileUrl = `/patient/my-profile` // Ou use ID se necessário: `/patient/profile/${userId}`
+        profileUrl = `/patient/my-profile`
         break
       case "NURSE":
-        profileUrl = `/nurse-profile/my-profile` // Ou use ID se necessário: `/nurse/profile/${userId}`
+        profileUrl = `/nurse-profile/my-profile`
         break
       default:
-        // Rota genérica ou específica para Admin
-        profileUrl = `/profile/${userId}` // Assumindo uma rota genérica
+        profileUrl = `/profile/${userId}`
         break
     }
   }
+
   let logoUrl = "/"
   if (isAuthenticated && userData?.role) {
     switch (userData.role) {
@@ -213,7 +169,7 @@ export function Header() {
         logoUrl = "/dashboard/nurse"
         break
       case "PATIENT":
-        logoUrl = "/nurses-list" // Ou talvez um dashboard de paciente?
+        logoUrl = "/nurses-list"
         break
       case "ADMIN":
         logoUrl = "/dashboard/admin"
@@ -224,173 +180,243 @@ export function Header() {
     }
   }
 
-  // --- JSX (mantido igual, apenas a função onClick do logout foi alterada) ---
   return (
     <>
-      <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
-        <div className="flex h-16 w-full items-center justify-between px-4">
-          <Link href={logoUrl} className="flex items-center space-x-2">
-            <Image src="/logo.png" alt="Vita Logo" width={40} height={40} className="object-cover" /> {/* Corrigido object-cove */}
-            <span className="text-lg font-semibold hidden sm:block text-[#15803d]">Vita</span>
+      <header
+        className={`sticky top-0 z-50 transition-all duration-300 ${scrolled
+            ? "bg-white/80 backdrop-blur-xl shadow-lg border-b border-gray-200/50"
+            : "bg-white/60 backdrop-blur-md border-b border-gray-100"
+          }`}
+        style={{
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+        }}
+      >
+        <div className="flex h-20 w-full items-center justify-between px-6 max-w-7xl mx-auto">
+          {/* Logo */}
+          <Link href={logoUrl} className="flex items-center space-x-3 group">
+            <div className="relative">
+              <div className="absolute inset-0 bg-[#15803d]/20 rounded-full blur-xl group-hover:bg-[#15803d]/30 transition-all duration-300"></div>
+              <Image
+                src="/logo.png"
+                alt="Vita Logo"
+                width={48}
+                height={48}
+                className="object-cover relative z-10 group-hover:scale-110 transition-transform duration-300"
+              />
+            </div>
+            <span className="text-2xl font-bold bg-gradient-to-r from-[#15803d] to-[#166534] bg-clip-text text-transparent hidden sm:block">
+              Vita
+            </span>
           </Link>
 
-          <nav className="hidden md:flex items-center space-x-8">
+          {/* Navigation */}
+          <nav className="hidden lg:flex items-center space-x-1">
             {currentNavLinks.map((link) => (
-              <Link key={link.href} href={link.href} className="text-sm font-medium hover:text-primary transition-colors">
+              <Link
+                key={link.href}
+                href={link.href}
+                className="relative px-4 py-2 text-sm font-medium text-gray-700 hover:text-[#15803d] transition-colors group"
+              >
                 {link.label}
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-[#15803d] to-[#166534] group-hover:w-full transition-all duration-300"></span>
               </Link>
             ))}
           </nav>
 
-          <div className="flex items-center">
-            {/* --- Lógica Desktop --- */}
-            <div className="hidden md:flex items-center space-x-3 ml-auto"> {/* Adicionado ml-auto para empurrar para a direita */}
-              {isAuthenticated ? (
-                <>
-                  {/* Removido DropdownMenu vazio */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="rounded-full">
-                        <Avatar className="h-10 w-10">
-                          {avatarUrl && <AvatarImage src={avatarUrl} alt={userData?.name} />}
-                          <AvatarFallback className="bg-[#15803d] text-white">
+          {/* Actions */}
+          <div className="flex items-center gap-3">
+            {isAuthenticated ? (
+              <>
+                {/* Search Button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="hidden md:flex rounded-full hover:bg-gray-100 transition-all duration-300"
+                >
+                  <Search className="h-5 w-5 text-gray-600" />
+                </Button>
+
+                {/* Notifications */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="hidden md:flex rounded-full hover:bg-gray-100 relative transition-all duration-300"
+                    >
+                      <Bell className="h-5 w-5 text-gray-600" />
+                      {notificationsCount > 0 && (
+                        <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-semibold animate-pulse">
+                          {notificationsCount}
+                        </span>
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-80 rounded-2xl shadow-2xl border-gray-200">
+                    <DropdownMenuLabel className="text-base font-semibold">Notificações</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <div className="p-4 text-sm text-gray-600 text-center">
+                      Você tem {notificationsCount} notificações não lidas
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* User Menu */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="hidden md:flex items-center gap-3 rounded-full hover:bg-gray-100 pr-4 transition-all duration-300"
+                    >
+                      <div className="relative">
+                        <Avatar className="h-10 w-10 ring-2 ring-[#15803d]/20 ring-offset-2">
+                          {avatarUrl && <AvatarImage src={avatarUrl || "/placeholder.svg"} alt={userData?.name} />}
+                          <AvatarFallback className="bg-gradient-to-br from-[#15803d] to-[#166534] text-white font-semibold">
                             {userData ? getInitials(userData.name) : "U"}
                           </AvatarFallback>
                         </Avatar>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      <DropdownMenuLabel>
-                        <div className="flex flex-col space-y-1">
-                          <p className="text-sm font-medium leading-none">{userData?.name}</p>
-                          <p className="text-xs leading-none text-muted-foreground">{userData?.email}</p>
-                        </div>
-                      </DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <Link href={profileUrl} className="cursor-pointer flex items-center">
-                          <User className="mr-2 h-4 w-4" />
-                          <span>Meu Perfil</span>
-                        </Link>
-                      </DropdownMenuItem>
-                      {/* Link de Notificações Condicional (Exemplo) */}
-                      {userData?.role !== 'ADMIN' && ( // Não mostra para Admin, por exemplo
-                        <DropdownMenuItem asChild>
-                          <Link href="/notifications" className="cursor-pointer flex items-center">
-                            <Bell className="mr-2 h-4 w-4" />
-                            <span>Notificações</span>
-                            {/* Lógica de contagem de notificações precisa ser implementada */}
-                            {/* {notificationsCount > 0 && <Badge variant="destructive" className="ml-auto">{notificationsCount}</Badge>} */}
-                          </Link>
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => setIsLogoutAlertOpen(true)}
-                        className="cursor-pointer text-red-600 hover:!text-red-700 hover:!bg-red-50 flex items-center" // Adicionado hover styles
-                      >
-                        <LogOut className="mr-2 h-4 w-4" />
-                        <span>Sair</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </>
-              ) : (
-                <>
-                  <Link href="/login">
-                    <Button variant="outline" size="sm" className="flex items-center gap-2 bg-transparent">
-                      <User className="h-4 w-4" />
-                      Login
+                        {userData?.role === "NURSE" && (
+                          <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-white"></span>
+                        )}
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-semibold text-gray-900">{userData?.name?.split(" ")[0]}</p>
+                        <p className="text-xs text-gray-500">{userData?.role}</p>
+                      </div>
                     </Button>
-                  </Link>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="default" size="sm" className="flex items-center gap-2 bg-[#15803d] hover:bg-[#166534]">
-                        <UserPlus className="h-4 w-4" />
-                        Cadastro
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-40 rounded-xl shadow-lg">
-                      <DropdownMenuItem asChild>
-                        <Link href="/register/patient" className="cursor-pointer w-full justify-start"> Paciente </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <Link href="/register/nurse" className="cursor-pointer w-full justify-start"> Enfermeiro(a) </Link>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </>
-              )}
-            </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64 rounded-2xl shadow-2xl border-gray-200">
+                    <DropdownMenuLabel>
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-semibold leading-none">{userData?.name}</p>
+                        <p className="text-xs leading-none text-gray-500">{userData?.email}</p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href={profileUrl} className="cursor-pointer flex items-center gap-3 py-2">
+                        <User className="h-4 w-4 text-gray-600" />
+                        <span>Meu Perfil</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/settings" className="cursor-pointer flex items-center gap-3 py-2">
+                        <Settings className="h-4 w-4 text-gray-600" />
+                        <span>Configurações</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => setIsLogoutAlertOpen(true)}
+                      className="cursor-pointer text-red-600 hover:!text-red-700 hover:!bg-red-50 flex items-center gap-3 py-2"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span>Sair</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
+              <div className="hidden md:flex items-center gap-3">
+                <Link href="/login">
+                  <Button variant="ghost" className="rounded-full hover:bg-gray-100">
+                    <User className="h-4 w-4 mr-2" />
+                    Login
+                  </Button>
+                </Link>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button className="rounded-full bg-gradient-to-r from-[#15803d] to-[#166534] hover:from-[#166534] hover:to-[#15803d] shadow-lg shadow-[#15803d]/30">
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Cadastro
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-48 rounded-2xl shadow-2xl">
+                    <DropdownMenuItem asChild>
+                      <Link href="/register/patient" className="cursor-pointer py-3">
+                        Paciente
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/register/nurse" className="cursor-pointer py-3">
+                        Enfermeiro(a)
+                      </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
 
-            {/* --- Lógica Mobile (Sheet) --- */}
-            <div className="md:hidden ml-auto"> {/* Adicionado ml-auto */}
+            {/* Mobile Menu */}
+            <div className="lg:hidden">
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <Menu className="h-5 w-5" />
-                    <span className="sr-only">Abrir menu</span>
+                  <Button variant="ghost" size="icon" className="rounded-full">
+                    <Menu className="h-6 w-6" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="w-64">
+                <SheetContent side="right" className="w-80">
                   <div className="flex flex-col gap-6 mt-8">
-                    {/* User Info no Topo */}
                     {isAuthenticated && userData && (
-                      <div className="flex flex-col items-center gap-2 pb-4 border-b text-center">
-                        <Avatar className="h-10 w-10">
-                          {avatarUrl && <AvatarImage src={avatarUrl} alt={userData.name} />}
-                          <AvatarFallback className="bg-[#15803d] text-white">{getInitials(userData.name)}</AvatarFallback>
+                      <div className="flex flex-col items-center gap-3 pb-6 border-b">
+                        <Avatar className="h-16 w-16 ring-4 ring-[#15803d]/20">
+                          {avatarUrl && <AvatarImage src={avatarUrl || "/placeholder.svg"} alt={userData.name} />}
+                          <AvatarFallback className="bg-gradient-to-br from-[#15803d] to-[#166534] text-white text-xl">
+                            {getInitials(userData.name)}
+                          </AvatarFallback>
                         </Avatar>
-                        <div>
-                          <p className="text-sm font-medium">{userData.name}</p>
-                          <p className="text-xs text-muted-foreground">{userData.email}</p>
+                        <div className="text-center">
+                          <p className="font-semibold text-gray-900">{userData.name}</p>
+                          <p className="text-sm text-gray-500">{userData.email}</p>
                         </div>
                       </div>
                     )}
-
-                    {/* Links de Navegação */}
                     <nav className="flex flex-col gap-2">
                       {currentNavLinks.map((link) => (
-                        <Link key={link.href} href={link.href} passHref>
-                          <Button variant="ghost" size="sm" className="w-full justify-start">{link.label}</Button>
+                        <Link key={link.href} href={link.href}>
+                          <Button variant="ghost" className="w-full justify-start text-base">
+                            {link.label}
+                          </Button>
                         </Link>
                       ))}
                     </nav>
-
-                    {/* Links de Ação (Login/Logout, Perfil, Cadastro) */}
                     <div className="flex flex-col gap-2 pt-4 border-t">
                       {isAuthenticated ? (
                         <>
-                          <Link href={profileUrl} passHref>
-                            <Button variant="ghost" size="sm" className="justify-start w-full"><User className="h-4 w-4 mr-2" />Meu Perfil</Button>
+                          <Link href={profileUrl}>
+                            <Button variant="ghost" className="w-full justify-start">
+                              <User className="h-4 w-4 mr-2" />
+                              Meu Perfil
+                            </Button>
                           </Link>
-                          {/* Link de Notificações Condicional */}
-                          {userData?.role !== 'ADMIN' && (
-                            <Link href="/notifications" passHref>
-                              <Button variant="ghost" size="sm" className="justify-start w-full">
-                                <Bell className="h-4 w-4 mr-2" />Notificações
-                                {/* {notificationsCount > 0 && <Badge variant="destructive" className="ml-auto">{notificationsCount}</Badge>} */}
-                              </Button>
-                            </Link>
-                          )}
                           <Button
-                            variant="ghost" size="sm" onClick={() => setIsLogoutAlertOpen(true)}
-                            className="justify-start text-red-600 hover:text-red-700 hover:bg-red-50 w-full"
+                            variant="ghost"
+                            onClick={() => setIsLogoutAlertOpen(true)}
+                            className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
                           >
-                            <LogOut className="h-4 w-4 mr-2" />Sair
+                            <LogOut className="h-4 w-4 mr-2" />
+                            Sair
                           </Button>
                         </>
                       ) : (
                         <>
-                          <Link href="/login" passHref>
-                            <Button variant="outline" size="sm" className="justify-start w-full bg-transparent"><User className="h-4 w-4 mr-2" />Login</Button>
+                          <Link href="/login">
+                            <Button variant="outline" className="w-full justify-start bg-transparent">
+                              <User className="h-4 w-4 mr-2" />
+                              Login
+                            </Button>
                           </Link>
-                          <Link href="/register/patient" passHref>
-                            <Button variant="ghost" size="sm" className="justify-start w-full">Cadastrar Paciente</Button>
+                          <Link href="/register/patient">
+                            <Button variant="ghost" className="w-full justify-start">
+                              Cadastrar Paciente
+                            </Button>
                           </Link>
-                          <Link href="/register/nurse" passHref>
-                            <Button variant="ghost" size="sm" className="justify-start w-full">Cadastrar Enfermeiro(a)</Button>
+                          <Link href="/register/nurse">
+                            <Button variant="ghost" className="w-full justify-start">
+                              Cadastrar Enfermeiro(a)
+                            </Button>
                           </Link>
                         </>
                       )}
@@ -403,19 +429,19 @@ export function Header() {
         </div>
       </header>
 
-      {/* --- AlertDialog (mantido igual) --- */}
       <AlertDialog open={isLogoutAlertOpen} onOpenChange={setIsLogoutAlertOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Você tem certeza que deseja sair?</AlertDialogTitle>
             <AlertDialogDescription>
               Sua sessão será encerrada e você precisará fazer o login novamente para acessar sua conta.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter> 
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            {/* handleLogout (agora async) chama a API e disconnectWebSocket */}
-            <AlertDialogAction onClick={handleLogout} className="bg-red-600 hover:bg-red-700">Confirmar Saída</AlertDialogAction>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-full">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleLogout} className="rounded-full bg-red-600 hover:bg-red-700">
+              Confirmar Saída
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
