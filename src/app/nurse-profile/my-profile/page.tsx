@@ -12,7 +12,21 @@ import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
-import { History, Trash2, User, Lock, Bell, Eye, Calendar, Shield, Save, KeyRound } from "lucide-react"
+import {
+    History,
+    Trash2,
+    User,
+    Lock,
+    Bell,
+    Eye,
+    Calendar,
+    Shield,
+    Save,
+    KeyRound,
+    // --- MUDANÇA (1/6): Importar novos ícones ---
+    CreditCard,
+    ExternalLink,
+} from "lucide-react"
 import { toast } from "sonner"
 import {
     AlertDialog,
@@ -25,10 +39,13 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-// --- MUDANÇA AQUI ---
-// Atualize seu tipo NurseProfile para incluir `two_factor: boolean`
+// --- MUDANÇA (2/6): Lembre-se de atualizar seu tipo NurseProfile ---
+// No arquivo @/types/nurse-profile.ts, adicione:
+// stripe_account_id?: string
 import type { NurseProfile } from "@/types/nurse-profile"
 import { Footer } from "@/components/Footer"
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
 export default function NurseMyProfile() {
     const router = useRouter()
@@ -40,8 +57,10 @@ export default function NurseMyProfile() {
     const [deletePassword, setDeletePassword] = useState("")
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
-    // NOVO ESTADO: Armazena o valor original do 2FA
     const [originalTwoFactor, setOriginalTwoFactor] = useState(false)
+
+    // --- MUDANÇA (3/6): Novo estado para o loading do botão Stripe ---
+    const [isSettingUpPayment, setIsSettingUpPayment] = useState(false)
 
     const [editForm, setEditForm] = useState({
         name: "",
@@ -58,9 +77,10 @@ export default function NurseMyProfile() {
         currentPassword: "",
         newPassword: "",
         confirmPassword: "",
-        twoFactorEnabled: false, // Será preenchido pelo useEffect
+        twoFactorEnabled: false,
     })
 
+    // ... (outros estados 'notificationPrefs' e 'privacySettings' sem mudança) ...
     const [notificationPrefs, setNotificationPrefs] = useState({
         emailNotifications: true,
         smsNotifications: false,
@@ -78,18 +98,18 @@ export default function NurseMyProfile() {
         const fetchNurseData = async () => {
             try {
                 setIsLoading(true)
-                const storedUser = localStorage.getItem("user")
-                if (!storedUser) {
+                const token = localStorage.getItem("token")
+                if (!token) {
                     toast.error("Usuário não encontrado. Faça login novamente.")
                     router.push("/login")
                     return
                 }
 
-                const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/nurse/my-profile`, {
+                const response = await fetch(`${API_BASE_URL}/nurse/my-profile`, {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${localStorage.getItem("token")}`,
+                        Authorization: `Bearer ${token}`,
                     },
                 })
 
@@ -100,34 +120,27 @@ export default function NurseMyProfile() {
                 const result = await response.json()
 
                 if (result.success && result.data) {
+                    // setNurseData irá conter o nurseData completo, 
+                    // incluindo o novo campo 'stripe_account_id'
                     setNurseData(result.data)
 
-                    // --- MUDANÇAS NO setEditForm ---
-                    // Corrigido para usar os nomes de campo corretos da sua API (experience, location)
-                    // ⚠️ ALERTA: Sua API não está retornando 'email'. Adicione 'email' à sua resposta da API
                     setEditForm({
                         name: result.data.name || "",
-                        email: result.data.email || "", // ⚠️ CUIDADO: result.data.email está vindo como undefined!
+                        email: result.data.email || "",
                         phone: result.data.phone || "",
-                        address: result.data.location || "", // API envia 'location', não 'address'
+                        address: result.data.location || "",
                         department: result.data.department || "",
                         specialization: result.data.specialization || "",
                         bio: result.data.bio || "",
-                        years_experience: result.data.experience || 0, // API envia 'experience', não 'years_experience'
+                        years_experience: result.data.experience || 0,
                     })
-                    // --- FIM DAS MUDANÇAS ---
 
-
-                    // --- MUDANÇA NO 2FA ---
-                    // Corrigido para usar 'two_factor' como sua API envia
                     const currentTwoFactor = result.data.two_factor || false
                     setSecurityForm((prev) => ({
                         ...prev,
                         twoFactorEnabled: currentTwoFactor,
                     }))
-                    // Armazena o valor original para comparação
                     setOriginalTwoFactor(currentTwoFactor)
-                    // --- FIM DA MUDANÇA ---
 
                 } else {
                     throw new Error(result.message || "Erro ao carregar dados")
@@ -143,10 +156,11 @@ export default function NurseMyProfile() {
     }, [router])
 
     const handleSaveProfile = async () => {
+        // ... (código da função sem alteração) ...
         try {
             setIsSaving(true)
 
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/nurse/update`, {
+            const response = await fetch(`${API_BASE_URL}/nurse/update`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -182,8 +196,8 @@ export default function NurseMyProfile() {
         }
     }
 
-    // --- FUNÇÃO handleSaveSecurity (Sem alterações, já estava correta) ---
     const handleSaveSecurity = async () => {
+        // ... (código da função sem alteração) ...
         // 1. Verificar o que realmente mudou
         const passwordChanged = securityForm.newPassword !== ""
         const twoFactorChanged = securityForm.twoFactorEnabled !== originalTwoFactor
@@ -214,7 +228,7 @@ export default function NurseMyProfile() {
         try {
             setIsSaving(true)
 
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/logged/password`, {
+            const response = await fetch(`${API_BASE_URL}/auth/logged/password`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -264,13 +278,52 @@ export default function NurseMyProfile() {
             setIsSaving(false)
         }
     }
-    // --- FIM DA FUNÇÃO ATUALIZADA ---
+
+    // --- MUDANÇA (4/6): Nova função para o Onboarding do Stripe ---
+    const handleSetupPayments = async () => {
+        try {
+            setIsSettingUpPayment(true)
+            const token = localStorage.getItem("token")
+            if (!token) {
+                toast.error("Sessão expirada. Faça login novamente.")
+                setIsSettingUpPayment(false)
+                return
+            }
+
+            // Chama o novo endpoint do backend
+            const response = await fetch(`${API_BASE_URL}/nurse/stripe-onboarding`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+            })
+
+            const result = await response.json()
+
+            // O backend retorna { success: true, data: { url: "..." } }
+            if (response.ok && result.success && result.data.url) {
+                toast.loading("Redirecionando para o portal seguro do Stripe...")
+                // Redireciona o usuário para o formulário do Stripe
+                window.location.href = result.data.url
+            } else {
+                throw new Error(result.message || "Erro ao iniciar configuração de pagamentos")
+            }
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Erro ao conectar com Stripe")
+            setIsSettingUpPayment(false)
+        }
+        // O finally não é necessário aqui, pois o 'loading' só deve parar
+        // se houver erro. Se houver sucesso, a página será redirecionada.
+    }
+    // --- FIM DA NOVA FUNÇÃO ---
 
     const handleSaveNotifications = async () => {
+        // ... (código da função sem alteração) ...
         try {
             setIsSaving(true)
 
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/nurse/update`, {
+            const response = await fetch(`${API_BASE_URL}/nurse/update`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -294,10 +347,11 @@ export default function NurseMyProfile() {
     }
 
     const handleSavePrivacy = async () => {
+        // ... (código da função sem alteração) ...
         try {
             setIsSaving(true)
 
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/nurse/update`, {
+            const response = await fetch(`${API_BASE_URL}/nurse/update`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -321,6 +375,7 @@ export default function NurseMyProfile() {
     }
 
     const handleDeleteAccount = async () => {
+        // ... (código da função sem alteração) ...
         if (!deletePassword) {
             toast.error("Por favor, digite sua senha para confirmar")
             return
@@ -329,7 +384,7 @@ export default function NurseMyProfile() {
         try {
             setIsSaving(true)
 
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/nurse/delete`, {
+            const response = await fetch(`${API_BASE_URL}/nurse/delete`, {
                 method: "DELETE",
                 headers: {
                     "Content-Type": "application/json",
@@ -360,6 +415,7 @@ export default function NurseMyProfile() {
     }
 
     const formatDate = (dateString?: string) => {
+        // ... (código da função sem alteração) ...
         if (!dateString) return "N/A"
         const date = new Date(dateString)
         return date.toLocaleDateString("pt-BR", {
@@ -370,12 +426,14 @@ export default function NurseMyProfile() {
     }
 
     const formatPhone = (phone: string) => {
+        // ... (código da função sem alteração) ...
         if (!phone) return "N/A"
         // Este regex formata (XX) XXXXX-XXXX
         return phone.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3")
     }
 
     if (isLoading) {
+        // ... (JSX de loading sem alteração) ...
         return (
             <div className="min-h-screen bg-gray-50">
                 <Header />
@@ -390,6 +448,7 @@ export default function NurseMyProfile() {
     }
 
     if (!nurseData) {
+        // ... (JSX de erro sem alteração) ...
         return (
             <div className="min-h-screen bg-gray-50">
                 <Header />
@@ -417,6 +476,7 @@ export default function NurseMyProfile() {
                         <div className="md:col-span-1">
                             <Card>
                                 <CardContent className="p-4">
+                                    {/* ... (JSX do Avatar e Nome sem alteração) ... */}
                                     <div className="text-center mb-6 pt-2">
                                         <div className="w-24 h-24 mx-auto mb-3 rounded-full bg-[#15803d] text-white flex items-center justify-center text-2xl font-bold overflow-hidden">
                                             {avatarUrl ? (
@@ -455,6 +515,15 @@ export default function NurseMyProfile() {
                                             <Lock className="h-4 w-4 mr-2" />
                                             Segurança
                                         </TabsTrigger>
+                                        {/* --- MUDANÇA (5/6): Adicionar o botão "Pagamentos" no menu --- */}
+                                        <TabsTrigger
+                                            value="payments"
+                                            className="w-full justify-start data-[state=active]:bg-[#15803d] data-[state=active]:text-white"
+                                        >
+                                            <CreditCard className="h-4 w-4 mr-2" />
+                                            Pagamentos
+                                        </TabsTrigger>
+                                        {/* --- FIM DA MUDANÇA --- */}
                                         <TabsTrigger
                                             value="notifications"
                                             className="w-full justify-start data-[state=active]:bg-[#15803d] data-[state=active]:text-white"
@@ -484,6 +553,7 @@ export default function NurseMyProfile() {
                         <div className="md:col-span-3">
                             {/* Profile Tab */}
                             <TabsContent value="profile" className="mt-0 space-y-6">
+                                {/* ... (JSX da aba "Perfil" sem alteração) ... */}
                                 <Card>
                                     <CardHeader>
                                         <CardTitle className="text-[#15803d] flex items-center gap-2">
@@ -607,6 +677,7 @@ export default function NurseMyProfile() {
 
                             {/* Security Tab */}
                             <TabsContent value="security" className="mt-0 space-y-6">
+                                {/* ... (JSX da aba "Segurança" sem alteração) ... */}
                                 <Card>
                                     <CardHeader>
                                         <CardTitle className="text-[#15803d] flex items-center gap-2">
@@ -686,8 +757,84 @@ export default function NurseMyProfile() {
                                 </Card>
                             </TabsContent>
 
+                            {/* --- MUDANÇA (6/6): Adicionar o conteúdo da aba "Pagamentos" --- */}
+                            <TabsContent value="payments" className="mt-0">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-[#15803d] flex items-center gap-2">
+                                            <CreditCard size={20} />
+                                            Configuração de Pagamentos
+                                        </CardTitle>
+                                        <CardDescription>
+                                            Configure sua conta Stripe para receber pagamentos pelas visitas realizadas.
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-6">
+                                        <div className="p-6 bg-gray-50 rounded-lg border">
+                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                                                <div>
+                                                    <h3 className="text-lg font-semibold">Stripe Connect</h3>
+                                                    <p className="text-sm text-gray-600">
+                                                        Conecte sua conta para receber repasses de forma segura.
+                                                    </p>
+                                                </div>
+                                                {/* Renderização condicional baseada no 'stripe_account_id'.
+                                                    Certifique-se que sua API /nurse/my-profile está retornando este campo.
+                                                */}
+                                                {nurseData.stripe_account_id ? (
+                                                    <Badge variant="default" className="bg-green-600 text-base mt-2 sm:mt-0">
+                                                        Conta Conectada
+                                                    </Badge>
+                                                ) : (
+                                                    <Badge variant="destructive" className="text-base mt-2 sm:mt-0">
+                                                        Não Conectado
+                                                    </Badge>
+                                                )}
+                                            </div>
+
+                                            <Separator className="my-4" />
+
+                                            {nurseData.stripe_account_id ? (
+                                                <div>
+                                                    <p className="text-sm text-gray-700 mb-4">
+                                                        Sua conta de pagamentos está configurada. Você pode gerenciar seus
+                                                        dados bancários e repasses a qualquer momento acessando o portal seguro do Stripe.
+                                                    </p>
+                                                    <Button
+                                                        onClick={handleSetupPayments}
+                                                        disabled={isSettingUpPayment}
+                                                        className="w-full bg-[#15803d] hover:bg-[#166534]"
+                                                    >
+                                                        <ExternalLink className="h-4 w-4 mr-2" />
+                                                        {isSettingUpPayment ? "Carregando Portal..." : "Gerenciar Conta no Stripe"}
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <p className="text-sm text-gray-700 mb-4">
+                                                        Para receber pagamentos dos pacientes, você precisa configurar uma conta
+                                                        Stripe Express. Clique no botão abaixo para ser redirecionado
+                                                        para o portal seguro do Stripe e preencher seus dados (CPF, conta bancária, etc).
+                                                    </p>
+                                                    <Button
+                                                        onClick={handleSetupPayments}
+                                                        disabled={isSettingUpPayment}
+                                                        className="w-full bg-[#15803d] hover:bg-[#166534]"
+                                                    >
+                                                        <ExternalLink className="h-4 w-4 mr-2" />
+                                                        {isSettingUpPayment ? "Carregando..." : "Configurar Conta de Pagamento"}
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+                            {/* --- FIM DA MUDANÇA --- */}
+
                             {/* Notifications Tab */}
                             <TabsContent value="notifications" className="mt-0">
+                                {/* ... (JSX da aba "Notificações" sem alteração) ... */}
                                 <Card>
                                     <CardHeader>
                                         <CardTitle className="text-[#15803d] flex items-center gap-2">
@@ -763,6 +910,7 @@ export default function NurseMyProfile() {
 
                             {/* Privacy Tab */}
                             <TabsContent value="privacy" className="mt-0">
+                                {/* ... (JSX da aba "Privacidade" sem alteração) ... */}
                                 <Card>
                                     <CardHeader>
                                         <CardTitle className="text-[#15803d] flex items-center gap-2">
@@ -821,6 +969,7 @@ export default function NurseMyProfile() {
 
                             {/* Account Tab */}
                             <TabsContent value="account" className="mt-0">
+                                {/* ... (JSX da aba "Conta" sem alteração) ... */}
                                 <Card>
                                     <CardHeader>
                                         <CardTitle className="text-[#15803d] flex items-center gap-2">

@@ -15,4 +15,5 @@ export interface NurseProfile {
     profile_image_id?: string
     experience?: number
     location?: string
+    stripe_account_id: string
 }

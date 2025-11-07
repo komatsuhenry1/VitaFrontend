@@ -179,8 +179,10 @@ export default function NurseDashboard() {
           const rawData = apiResponse.data as RawDashboardData
 
           // --- Início da Lógica de Mapeamento (Mantida) ---
-          // --- MUDANÇA: Substituído '(visit: any)' por '(visit: RawVisit)' ---
-          const mappedVisits: Visit[] = rawData.schedules.map((visit: RawVisit) => ({
+
+          // --- MUDANÇA CORRIGIDA AQUI ---
+          // Adicionado '|| []' para tratar o caso de 'schedules' ser null
+          const mappedVisits: Visit[] = (rawData.schedules || []).map((visit: RawVisit) => ({
             id: visit.id,
             description: visit.description,
             reason: visit.reason,
@@ -230,7 +232,8 @@ export default function NurseDashboard() {
             visits: mappedVisits,
             profile: mappedProfile,
             availability: mappedAvailability,
-            reviews: rawData.reviews,
+            // --- MUDANÇA: Adicionado '|| []' aqui também por segurança ---
+            reviews: rawData.reviews || [],
           }
           // --- Fim da Lógica de Mapeamento ---
 
