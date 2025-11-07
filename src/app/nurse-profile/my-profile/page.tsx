@@ -23,7 +23,6 @@ import {
     Shield,
     Save,
     KeyRound,
-    // --- MUDANÇA (1/6): Importar novos ícones ---
     CreditCard,
     ExternalLink,
 } from "lucide-react"
@@ -39,27 +38,61 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-// --- MUDANÇA (2/6): Lembre-se de atualizar seu tipo NurseProfile ---
-// No arquivo @/types/nurse-profile.ts, adicione:
-// stripe_account_id?: string
 import type { NurseProfile } from "@/types/nurse-profile"
 import { Footer } from "@/components/Footer"
 
+// --- O QUE EU MUDEI (1/3): Imports adicionados ---
+import { Suspense } from "react"
+import { useSearchParams } from "next/navigation"
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
+
+// --- O QUE EU MUDEI (2/3): Novo componente handler ---
+// Este componente lê a URL e controla a aba ativa e os toasts
+function StripeOnboardingHandler({
+    setActiveTab,
+}: {
+    setActiveTab: (tab: string) => void
+}) {
+    const searchParams = useSearchParams()
+
+    useEffect(() => {
+        const stripeSuccess = searchParams.get("stripe_success")
+        const stripeError = searchParams.get("stripe_error")
+
+        const handleRedirect = (status: "success" | "error") => {
+            if (status === "success") {
+                toast.success("Conta de pagamentos configurada com sucesso!")
+            } else if (status === "error") {
+                toast.error("Houve um problema ao configurar sua conta. Tente novamente.")
+            }
+            // Muda para a aba de pagamentos
+            setActiveTab("payments")
+            // Limpa a URL (remove o ?stripe_success=true)
+            window.history.replaceState(null, "", "/nurse-profile/my-profile")
+        }
+
+        if (stripeSuccess === "true") {
+            handleRedirect("success")
+        } else if (stripeError === "true") {
+            handleRedirect("error")
+        }
+    }, [searchParams, setActiveTab])
+
+    return null // Este componente não renderiza nada visualmente
+}
 
 export default function NurseMyProfile() {
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(true)
     const [isSaving, setIsSaving] = useState(false)
     const [nurseData, setNurseData] = useState<NurseProfile | null>(null)
-    const [activeTab, setActiveTab] = useState("profile")
+    const [activeTab, setActiveTab] = useState("profile") // O handler vai mudar isso
 
     const [deletePassword, setDeletePassword] = useState("")
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
     const [originalTwoFactor, setOriginalTwoFactor] = useState(false)
-
-    // --- MUDANÇA (3/6): Novo estado para o loading do botão Stripe ---
     const [isSettingUpPayment, setIsSettingUpPayment] = useState(false)
 
     const [editForm, setEditForm] = useState({
@@ -80,7 +113,6 @@ export default function NurseMyProfile() {
         twoFactorEnabled: false,
     })
 
-    // ... (outros estados 'notificationPrefs' e 'privacySettings' sem mudança) ...
     const [notificationPrefs, setNotificationPrefs] = useState({
         emailNotifications: true,
         smsNotifications: false,
@@ -95,6 +127,7 @@ export default function NurseMyProfile() {
     })
 
     useEffect(() => {
+        // Esta função fetchNurseData permanece inalterada
         const fetchNurseData = async () => {
             try {
                 setIsLoading(true)
@@ -120,8 +153,6 @@ export default function NurseMyProfile() {
                 const result = await response.json()
 
                 if (result.success && result.data) {
-                    // setNurseData irá conter o nurseData completo, 
-                    // incluindo o novo campo 'stripe_account_id'
                     setNurseData(result.data)
 
                     setEditForm({
@@ -155,8 +186,9 @@ export default function NurseMyProfile() {
         fetchNurseData()
     }, [router])
 
+    // Todas as funções handle... (handleSaveProfile, handleSaveSecurity, etc.)
+    // permanecem exatamente iguais.
     const handleSaveProfile = async () => {
-        // ... (código da função sem alteração) ...
         try {
             setIsSaving(true)
 
@@ -197,8 +229,6 @@ export default function NurseMyProfile() {
     }
 
     const handleSaveSecurity = async () => {
-        // ... (código da função sem alteração) ...
-        // 1. Verificar o que realmente mudou
         const passwordChanged = securityForm.newPassword !== ""
         const twoFactorChanged = securityForm.twoFactorEnabled !== originalTwoFactor
 
@@ -207,13 +237,11 @@ export default function NurseMyProfile() {
             return
         }
 
-        // 2. Senha atual é sempre necessária para qualquer alteração de segurança
         if (!securityForm.currentPassword) {
             toast.error("Digite sua senha atual para salvar as alterações.")
             return
         }
 
-        // 3. Validar nova senha APENAS se ela foi preenchida
         if (passwordChanged) {
             if (securityForm.newPassword !== securityForm.confirmPassword) {
                 toast.error("As senhas não coincidem")
@@ -236,32 +264,22 @@ export default function NurseMyProfile() {
                 },
                 body: JSON.stringify({
                     password: securityForm.currentPassword,
-                    new_password: securityForm.newPassword, // O backend agora sabe lidar se isso for ""
+                    new_password: securityForm.newPassword,
                     two_fa: securityForm.twoFactorEnabled,
                 }),
             })
 
-            console.log(response)
-
             const result = await response.json()
-            console.log(result)
 
             if (response.ok && result.success) {
-                // 4. Lógica de sucesso condicional
                 if (passwordChanged) {
-                    // Se a senha mudou, deslogue
                     toast.success("Senha atualizada! Faça login novamente.")
                     localStorage.removeItem("token")
                     localStorage.removeItem("user")
                     router.push("/login")
                 } else {
-                    // Se APENAS o 2FA mudou, mostre sucesso e fique na página
                     toast.success("Configuração de dois fatores atualizada!")
-
-                    // Atualize o "estado original" para o novo estado
                     setOriginalTwoFactor(securityForm.twoFactorEnabled)
-
-                    // Limpe os campos de senha por segurança
                     setSecurityForm((prev) => ({
                         ...prev,
                         currentPassword: "",
@@ -279,7 +297,6 @@ export default function NurseMyProfile() {
         }
     }
 
-    // --- MUDANÇA (4/6): Nova função para o Onboarding do Stripe ---
     const handleSetupPayments = async () => {
         try {
             setIsSettingUpPayment(true)
@@ -290,7 +307,6 @@ export default function NurseMyProfile() {
                 return
             }
 
-            // Chama o novo endpoint do backend
             const response = await fetch(`${API_BASE_URL}/nurse/stripe-onboarding`, {
                 method: "POST",
                 headers: {
@@ -301,10 +317,8 @@ export default function NurseMyProfile() {
 
             const result = await response.json()
 
-            // O backend retorna { success: true, data: { url: "..." } }
             if (response.ok && result.success && result.data.url) {
                 toast.loading("Redirecionando para o portal seguro do Stripe...")
-                // Redireciona o usuário para o formulário do Stripe
                 window.location.href = result.data.url
             } else {
                 throw new Error(result.message || "Erro ao iniciar configuração de pagamentos")
@@ -313,16 +327,11 @@ export default function NurseMyProfile() {
             toast.error(err instanceof Error ? err.message : "Erro ao conectar com Stripe")
             setIsSettingUpPayment(false)
         }
-        // O finally não é necessário aqui, pois o 'loading' só deve parar
-        // se houver erro. Se houver sucesso, a página será redirecionada.
     }
-    // --- FIM DA NOVA FUNÇÃO ---
 
     const handleSaveNotifications = async () => {
-        // ... (código da função sem alteração) ...
         try {
             setIsSaving(true)
-
             const response = await fetch(`${API_BASE_URL}/nurse/update`, {
                 method: "PATCH",
                 headers: {
@@ -331,9 +340,7 @@ export default function NurseMyProfile() {
                 },
                 body: JSON.stringify(notificationPrefs),
             })
-
             const result = await response.json()
-
             if (response.ok && result.success) {
                 toast.success(result.message || "Preferências de notificação atualizadas!")
             } else {
@@ -347,10 +354,8 @@ export default function NurseMyProfile() {
     }
 
     const handleSavePrivacy = async () => {
-        // ... (código da função sem alteração) ...
         try {
             setIsSaving(true)
-
             const response = await fetch(`${API_BASE_URL}/nurse/update`, {
                 method: "PATCH",
                 headers: {
@@ -359,9 +364,7 @@ export default function NurseMyProfile() {
                 },
                 body: JSON.stringify(privacySettings),
             })
-
             const result = await response.json()
-
             if (response.ok && result.success) {
                 toast.success(result.message || "Configurações de privacidade atualizadas!")
             } else {
@@ -375,7 +378,6 @@ export default function NurseMyProfile() {
     }
 
     const handleDeleteAccount = async () => {
-        // ... (código da função sem alteração) ...
         if (!deletePassword) {
             toast.error("Por favor, digite sua senha para confirmar")
             return
@@ -383,7 +385,6 @@ export default function NurseMyProfile() {
 
         try {
             setIsSaving(true)
-
             const response = await fetch(`${API_BASE_URL}/nurse/delete`, {
                 method: "DELETE",
                 headers: {
@@ -415,7 +416,6 @@ export default function NurseMyProfile() {
     }
 
     const formatDate = (dateString?: string) => {
-        // ... (código da função sem alteração) ...
         if (!dateString) return "N/A"
         const date = new Date(dateString)
         return date.toLocaleDateString("pt-BR", {
@@ -426,14 +426,11 @@ export default function NurseMyProfile() {
     }
 
     const formatPhone = (phone: string) => {
-        // ... (código da função sem alteração) ...
         if (!phone) return "N/A"
-        // Este regex formata (XX) XXXXX-XXXX
         return phone.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3")
     }
 
     if (isLoading) {
-        // ... (JSX de loading sem alteração) ...
         return (
             <div className="min-h-screen bg-gray-50">
                 <Header />
@@ -448,7 +445,6 @@ export default function NurseMyProfile() {
     }
 
     if (!nurseData) {
-        // ... (JSX de erro sem alteração) ...
         return (
             <div className="min-h-screen bg-gray-50">
                 <Header />
@@ -466,17 +462,26 @@ export default function NurseMyProfile() {
 
     return (
         <div className="min-h-screen bg-gray-50">
+            {/* --- O QUE EU MUDEI (3/3): Adicionado o Suspense e o Handler --- */}
+            {/* Isso permite que o handler leia a URL sem travar a página */}
+            <Suspense fallback={null}>
+                <StripeOnboardingHandler setActiveTab={setActiveTab} />
+            </Suspense>
+
             <Header />
 
             <div className="container mx-auto px-4 py-8 max-w-7xl">
                 <h1 className="text-3xl font-bold text-gray-900 mb-6">Meu Perfil</h1>
 
+                {/* O 'value={activeTab}' e 'onValueChange={setActiveTab}'
+                  agora são controlados tanto pelo clique do usuário
+                  quanto pelo 'StripeOnboardingHandler' 
+                */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
                     <div className="grid md:grid-cols-4 gap-6">
                         <div className="md:col-span-1">
                             <Card>
                                 <CardContent className="p-4">
-                                    {/* ... (JSX do Avatar e Nome sem alteração) ... */}
                                     <div className="text-center mb-6 pt-2">
                                         <div className="w-24 h-24 mx-auto mb-3 rounded-full bg-[#15803d] text-white flex items-center justify-center text-2xl font-bold overflow-hidden">
                                             {avatarUrl ? (
@@ -515,7 +520,7 @@ export default function NurseMyProfile() {
                                             <Lock className="h-4 w-4 mr-2" />
                                             Segurança
                                         </TabsTrigger>
-                                        {/* --- MUDANÇA (5/6): Adicionar o botão "Pagamentos" no menu --- */}
+                                        {/* Este botão já estava correto */}
                                         <TabsTrigger
                                             value="payments"
                                             className="w-full justify-start data-[state=active]:bg-[#15803d] data-[state=active]:text-white"
@@ -523,7 +528,6 @@ export default function NurseMyProfile() {
                                             <CreditCard className="h-4 w-4 mr-2" />
                                             Pagamentos
                                         </TabsTrigger>
-                                        {/* --- FIM DA MUDANÇA --- */}
                                         <TabsTrigger
                                             value="notifications"
                                             className="w-full justify-start data-[state=active]:bg-[#15803d] data-[state=active]:text-white"
@@ -553,7 +557,6 @@ export default function NurseMyProfile() {
                         <div className="md:col-span-3">
                             {/* Profile Tab */}
                             <TabsContent value="profile" className="mt-0 space-y-6">
-                                {/* ... (JSX da aba "Perfil" sem alteração) ... */}
                                 <Card>
                                     <CardHeader>
                                         <CardTitle className="text-[#15803d] flex items-center gap-2">
@@ -580,7 +583,6 @@ export default function NurseMyProfile() {
                                                 value={editForm.email}
                                                 onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
                                                 className="mt-1"
-                                            // ⚠️ Lembre-se, a API não está preenchendo isso!
                                             />
                                         </div>
                                         <div>
@@ -602,9 +604,7 @@ export default function NurseMyProfile() {
                                                 className="mt-1"
                                             />
                                         </div>
-
                                         <Separator />
-
                                         <div>
                                             <Label htmlFor="department">Departamento</Label>
                                             <Input
@@ -649,9 +649,7 @@ export default function NurseMyProfile() {
                                                 placeholder="Conte um pouco sobre sua experiência profissional..."
                                             />
                                         </div>
-
                                         <Separator />
-
                                         <div className="grid md:grid-cols-2 gap-4">
                                             <div className="p-4 bg-gray-50 rounded-lg">
                                                 <div className="text-sm text-gray-600 mb-1">COREN</div>
@@ -662,7 +660,6 @@ export default function NurseMyProfile() {
                                                 <div className="font-semibold text-gray-900">Enfermeiro(a)</div>
                                             </div>
                                         </div>
-
                                         <Button
                                             onClick={handleSaveProfile}
                                             disabled={isSaving}
@@ -677,7 +674,6 @@ export default function NurseMyProfile() {
 
                             {/* Security Tab */}
                             <TabsContent value="security" className="mt-0 space-y-6">
-                                {/* ... (JSX da aba "Segurança" sem alteração) ... */}
                                 <Card>
                                     <CardHeader>
                                         <CardTitle className="text-[#15803d] flex items-center gap-2">
@@ -744,7 +740,6 @@ export default function NurseMyProfile() {
                                                 onCheckedChange={(checked) => setSecurityForm({ ...securityForm, twoFactorEnabled: checked })}
                                             />
                                         </div>
-
                                         <Button
                                             onClick={handleSaveSecurity}
                                             disabled={isSaving}
@@ -757,7 +752,7 @@ export default function NurseMyProfile() {
                                 </Card>
                             </TabsContent>
 
-                            {/* --- MUDANÇA (6/6): Adicionar o conteúdo da aba "Pagamentos" --- */}
+                            {/* Payments Tab */}
                             <TabsContent value="payments" className="mt-0">
                                 <Card>
                                     <CardHeader>
@@ -778,9 +773,6 @@ export default function NurseMyProfile() {
                                                         Conecte sua conta para receber repasses de forma segura.
                                                     </p>
                                                 </div>
-                                                {/* Renderização condicional baseada no 'stripe_account_id'.
-                                                    Certifique-se que sua API /nurse/my-profile está retornando este campo.
-                                                */}
                                                 {nurseData.stripe_account_id ? (
                                                     <Badge variant="default" className="bg-green-600 text-base mt-2 sm:mt-0">
                                                         Conta Conectada
@@ -830,11 +822,9 @@ export default function NurseMyProfile() {
                                     </CardContent>
                                 </Card>
                             </TabsContent>
-                            {/* --- FIM DA MUDANÇA --- */}
 
                             {/* Notifications Tab */}
                             <TabsContent value="notifications" className="mt-0">
-                                {/* ... (JSX da aba "Notificações" sem alteração) ... */}
                                 <Card>
                                     <CardHeader>
                                         <CardTitle className="text-[#15803d] flex items-center gap-2">
@@ -856,7 +846,6 @@ export default function NurseMyProfile() {
                                                 }
                                             />
                                         </div>
-
                                         <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                                             <div className="flex-1">
                                                 <div className="font-semibold text-gray-900 mb-1">Notificações por SMS</div>
@@ -869,7 +858,6 @@ export default function NurseMyProfile() {
                                                 }
                                             />
                                         </div>
-
                                         <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                                             <div className="flex-1">
                                                 <div className="font-semibold text-gray-900 mb-1">Lembretes de Consultas</div>
@@ -882,7 +870,6 @@ export default function NurseMyProfile() {
                                                 }
                                             />
                                         </div>
-
                                         <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                                             <div className="flex-1">
                                                 <div className="font-semibold text-gray-900 mb-1">Emails Promocionais</div>
@@ -895,7 +882,6 @@ export default function NurseMyProfile() {
                                                 }
                                             />
                                         </div>
-
                                         <Button
                                             onClick={handleSaveNotifications}
                                             disabled={isSaving}
@@ -910,7 +896,6 @@ export default function NurseMyProfile() {
 
                             {/* Privacy Tab */}
                             <TabsContent value="privacy" className="mt-0">
-                                {/* ... (JSX da aba "Privacidade" sem alteração) ... */}
                                 <Card>
                                     <CardHeader>
                                         <CardTitle className="text-[#15803d] flex items-center gap-2">
@@ -932,7 +917,6 @@ export default function NurseMyProfile() {
                                                 }
                                             />
                                         </div>
-
                                         <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                                             <div className="flex-1">
                                                 <div className="font-semibold text-gray-900 mb-1">Mostrar Email</div>
@@ -943,7 +927,6 @@ export default function NurseMyProfile() {
                                                 onCheckedChange={(checked) => setPrivacySettings({ ...privacySettings, showEmail: checked })}
                                             />
                                         </div>
-
                                         <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                                             <div className="flex-1">
                                                 <div className="font-semibold text-gray-900 mb-1">Mostrar Telefone</div>
@@ -954,7 +937,6 @@ export default function NurseMyProfile() {
                                                 onCheckedChange={(checked) => setPrivacySettings({ ...privacySettings, showPhone: checked })}
                                             />
                                         </div>
-
                                         <Button
                                             onClick={handleSavePrivacy}
                                             disabled={isSaving}
@@ -969,7 +951,6 @@ export default function NurseMyProfile() {
 
                             {/* Account Tab */}
                             <TabsContent value="account" className="mt-0">
-                                {/* ... (JSX da aba "Conta" sem alteração) ... */}
                                 <Card>
                                     <CardHeader>
                                         <CardTitle className="text-[#15803d] flex items-center gap-2">
@@ -986,7 +967,6 @@ export default function NurseMyProfile() {
                                                 <div className="font-semibold text-gray-900">{formatDate(nurseData.created_at)}</div>
                                             </div>
                                         </div>
-
                                         <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
                                             <Calendar size={20} className="text-[#15803d]" />
                                             <div className="flex-1">
@@ -994,7 +974,6 @@ export default function NurseMyProfile() {
                                                 <div className="font-semibold text-gray-900">{formatDate(nurseData.updated_at)}</div>
                                             </div>
                                         </div>
-
                                         <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
                                             <Shield size={20} className="text-[#15803d]" />
                                             <div className="flex-1">
@@ -1009,9 +988,7 @@ export default function NurseMyProfile() {
                                                 </div>
                                             </div>
                                         </div>
-
                                         <Separator />
-
                                         <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
                                             <h3 className="font-semibold text-red-900 mb-2">Zona de Perigo</h3>
                                             <p className="text-sm text-red-700 mb-4">
