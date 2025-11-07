@@ -854,8 +854,7 @@ export default function NurseVisitsPage() {
                                         <Star
                                             className="h-10 w-10"
                                             fill={star <= rating ? "hsl(var(--warning))" : "transparent"}
-                                            stroke={star <= rating ? "hsl(var(--warning))" : "hsl(var(--border))"}
-                                            strokeWidth={2}
+                                            strokeWidth={1.5}
                                         />
                                     </button>
                                 ))}
@@ -1067,8 +1066,7 @@ const VisitCard = ({
                                                     key={star}
                                                     className="h-4 w-4"
                                                     fill={star <= visit.rating ? "hsl(var(--warning))" : "transparent"}
-                                                    stroke={star <= visit.rating ? "hsl(var(--warning))" : "hsl(var(--border))"}
-                                                    strokeWidth={2}
+                                                    strokeWidth={1.5}
                                                 />
                                             ))}
                                         </div>

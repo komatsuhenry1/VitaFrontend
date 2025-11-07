@@ -1,12 +1,14 @@
-"use client"; // Correto para Next.js
+"use client" // Correto para Next.js
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Header } from "@/components/Header"; // Importado (estava faltando no seu último envio)
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type React from "react"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Header } from "@/components/Header"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
     Dialog,
     DialogContent,
@@ -14,24 +16,8 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
     Clock,
     CheckCircle,
@@ -44,126 +30,123 @@ import {
     MapPin,
     FileText,
     Loader2,
-} from "lucide-react";
-import { toast } from "sonner";
-import { VariantProps } from "class-variance-authority";
+} from "lucide-react"
+import { toast } from "sonner"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
 // --- Interfaces ---
 
 interface Visit {
-    id: string;
-    description: string;
-    reason: string;
-    visit_type: string;
-    date: string;
-    status: string;
+    id: string
+    description: string
+    reason: string
+    visit_type: string
+    date: string
+    status: string
     nurse: {
-        id: string;
-        name: string;
-        specialization: string;
-        image: string;
-    };
-    created_at: string;
-    rating: number;
+        id: string
+        name: string
+        specialization: string
+        image: string
+    }
+    created_at: string
+    rating: number
 }
 
 interface VisitsResponse {
     data: {
-        all_visits: Visit[];
-        visits_today: Visit[];
-    };
-    message: string;
-    success: boolean;
+        all_visits: Visit[]
+        visits_today: Visit[]
+    }
+    message: string
+    success: boolean
 }
 
 // --- Funções Utilitárias (HELPER FUNCTIONS) ---
 
 const formatDate = (dateString: string) => {
     try {
-        const date = new Date(dateString);
+        const date = new Date(dateString)
         return date.toLocaleDateString("pt-BR", {
             day: "2-digit",
             month: "2-digit",
             year: "numeric",
             hour: "2-digit",
             minute: "2-digit",
-        });
+        })
     } catch (error) {
-        console.error("Erro ao formatar data:", dateString, error);
-        return "Data inválida";
+        console.error("Erro ao formatar data:", dateString, error)
+        return "Data inválida"
     }
-};
+}
 
-const getStatusVariant = (
-    status: string,
-): "default" | "secondary" | "destructive" | "outline" => {
+const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
         case "PENDING":
-            return "secondary";
+            return "secondary"
         case "CONFIRMED":
-            return "default";
+            return "default"
         case "COMPLETED":
-            return "outline";
+            return "outline"
         default:
-            return "secondary";
+            return "secondary"
     }
-};
+}
 
 const getStatusLabel = (status: string) => {
     switch (status) {
         case "PENDING":
-            return "Pendente";
+            return "Pendente"
         case "CONFIRMED":
-            return "Confirmada";
+            return "Confirmada"
         case "COMPLETED":
-            return "Concluída";
+            return "Concluída"
         default:
-            return status;
+            return status
     }
-};
+}
 
 const getVisitTypeLabel = (type: string) => {
     switch (type?.toLowerCase()) {
         case "domiciliar":
-            return "Domiciliar";
+            return "Domiciliar"
         case "hospitalar":
-            return "Hospitalar";
+            return "Hospitalar"
         case "clinica":
-            return "Clínica";
+            return "Clínica"
         default:
-            return type || "N/A";
+            return type || "N/A"
     }
-};
+}
 
 // --- Componente Principal ---
 
 const Visits = () => {
-    const router = useRouter();
-    const [visits, setVisits] = useState<Visit[]>([]);
-    const [visitsToday, setVisitsToday] = useState<Visit[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [showReviewDialog, setShowReviewDialog] = useState(false);
-    const [reviewVisit, setReviewVisit] = useState<Visit | null>(null);
-    const [rating, setRating] = useState(0);
-    const [comment, setComment] = useState("");
-    const [submittingReview, setSubmittingReview] = useState(false);
+    const router = useRouter()
+    const [visits, setVisits] = useState<Visit[]>([])
+    const [visitsToday, setVisitsToday] = useState<Visit[]>([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+    const [showReviewDialog, setShowReviewDialog] = useState(false)
+    const [reviewVisit, setReviewVisit] = useState<Visit | null>(null)
+    const [rating, setRating] = useState(0)
+    const [comment, setComment] = useState("")
+    const [submittingReview, setSubmittingReview] = useState(false)
 
     useEffect(() => {
-        fetchVisits();
+        fetchVisits()
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [])
 
     const fetchVisits = async () => {
         try {
-            setLoading(true);
-            const token = localStorage.getItem("token");
+            setLoading(true)
+            const token = localStorage.getItem("token")
 
             if (!token) {
-                router.push("/login");
-                return;
+                router.push("/login")
+                return
             }
 
             const response = await fetch(`${API_BASE_URL}/user/visits`, {
@@ -172,36 +155,36 @@ const Visits = () => {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
-            });
+            })
 
             if (!response.ok) {
-                throw new Error("Erro ao carregar visitas");
+                throw new Error("Erro ao carregar visitas")
             }
 
-            const result: VisitsResponse = await response.json();
+            const result: VisitsResponse = await response.json()
 
             if (result.success && result.data) {
-                setVisits(result.data.all_visits || []);
-                setVisitsToday(result.data.visits_today || []);
+                setVisits(result.data.all_visits || [])
+                setVisitsToday(result.data.visits_today || [])
             } else {
-                throw new Error(result.message || "Erro ao carregar visitas");
+                throw new Error(result.message || "Erro ao carregar visitas")
             }
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Erro desconhecido");
+            setError(err instanceof Error ? err.message : "Erro desconhecido")
         } finally {
-            setLoading(false);
+            setLoading(false)
         }
-    };
+    }
 
     const handleSubmitReview = async () => {
         if (!reviewVisit || rating === 0) {
-            toast.error("Por favor, selecione uma avaliação");
-            return;
+            toast.error("Por favor, selecione uma avaliação")
+            return
         }
 
         try {
-            setSubmittingReview(true);
-            const token = localStorage.getItem("token");
+            setSubmittingReview(true)
+            const token = localStorage.getItem("token")
 
             const response = await fetch(`${API_BASE_URL}/user/review/${reviewVisit.id}`, {
                 method: "POST",
@@ -213,28 +196,28 @@ const Visits = () => {
                     rating,
                     comment: comment.trim() || undefined,
                 }),
-            });
+            })
 
             if (!response.ok) {
-                throw new Error("Erro ao enviar avaliação");
+                throw new Error("Erro ao enviar avaliação")
             }
 
-            await fetchVisits();
-            toast.success("Avaliação enviada com sucesso!");
-            setShowReviewDialog(false);
-            setReviewVisit(null);
-            setRating(0);
-            setComment("");
+            await fetchVisits()
+            toast.success("Avaliação enviada com sucesso!")
+            setShowReviewDialog(false)
+            setReviewVisit(null)
+            setRating(0)
+            setComment("")
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Erro ao enviar avaliação");
+            toast.error(err instanceof Error ? err.message : "Erro ao enviar avaliação")
         } finally {
-            setSubmittingReview(false);
+            setSubmittingReview(false)
         }
-    };
+    }
 
-    const pendingVisits = visits.filter((visit) => visit.status === "PENDING");
-    const confirmedVisits = visits.filter((visit) => visit.status === "CONFIRMED");
-    const completedVisits = visits.filter((visit) => visit.status === "COMPLETED");
+    const pendingVisits = visits.filter((visit) => visit.status === "PENDING")
+    const confirmedVisits = visits.filter((visit) => visit.status === "CONFIRMED")
+    const completedVisits = visits.filter((visit) => visit.status === "COMPLETED")
 
     if (loading) {
         return (
@@ -244,7 +227,7 @@ const Visits = () => {
                     <p className="text-muted-foreground">Carregando visitas...</p>
                 </div>
             </div>
-        );
+        )
     }
 
     if (error) {
@@ -260,7 +243,7 @@ const Visits = () => {
                     </CardContent>
                 </Card>
             </div>
-        );
+        )
     }
 
     return (
@@ -270,9 +253,7 @@ const Visits = () => {
                 {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-foreground mb-2">Minhas Visitas</h1>
-                    <p className="text-muted-foreground">
-                        Acompanhe e gerencie suas consultas agendadas
-                    </p>
+                    <p className="text-muted-foreground">Acompanhe e gerencie suas consultas agendadas</p>
                 </div>
 
                 {/* Today's Visits Section */}
@@ -299,11 +280,7 @@ const Visits = () => {
                                     <CardContent className="p-6">
                                         <div className="flex items-start gap-4 mb-4">
                                             <img
-                                                src={
-                                                    visit.nurse?.image
-                                                        ? `${API_BASE_URL}/user/file/${visit.nurse.image}`
-                                                        : "/placeholder.svg"
-                                                }
+                                                src={visit.nurse?.image ? `${API_BASE_URL}/user/file/${visit.nurse.image}` : "/placeholder.svg"}
                                                 alt={visit.nurse?.name || "Enfermeiro"}
                                                 className="w-16 h-16 rounded-full object-cover ring-2 ring-primary/20"
                                                 onError={(e) => (e.currentTarget.src = "/placeholder.svg")}
@@ -336,13 +313,11 @@ const Visits = () => {
                                             </div>
                                         </div>
 
-                                        {/* 👇 ALTERAÇÃO: Botão com ícone posicionado */}
                                         <Button
                                             onClick={() => router.push(`/visit-details/patient/${visit.id}`)}
-                                            className="w-full relative" // Adicionado 'relative'
+                                            className="w-full relative"
                                             size="sm"
                                         >
-                                            {/* Ícone posicionado absolutamente */}
                                             <Info className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2" />
                                             Ver Detalhes
                                         </Button>
@@ -360,12 +335,9 @@ const Visits = () => {
                             <div className="mx-auto w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
                                 <Calendar className="h-10 w-10 text-muted-foreground" />
                             </div>
-                            <h2 className="text-2xl font-semibold text-foreground mb-2">
-                                Nenhuma visita agendada
-                            </h2>
+                            <h2 className="text-2xl font-semibold text-foreground mb-2">Nenhuma visita agendada</h2>
                             <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                                Você ainda não tem visitas agendadas. Encontre um enfermeiro e agende sua
-                                primeira consulta!
+                                Você ainda não tem visitas agendadas. Encontre um enfermeiro e agende sua primeira consulta!
                             </p>
                             <Button onClick={() => router.push("/")} size="lg">
                                 Buscar Enfermeiros
@@ -374,13 +346,7 @@ const Visits = () => {
                     </Card>
                 ) : (
                     <Tabs
-                        defaultValue={
-                            confirmedVisits.length > 0
-                                ? "confirmed"
-                                : pendingVisits.length > 0
-                                    ? "pending"
-                                    : "completed"
-                        }
+                        defaultValue={confirmedVisits.length > 0 ? "confirmed" : pendingVisits.length > 0 ? "pending" : "completed"}
                         className="w-full"
                     >
                         <TabsList className="grid w-full grid-cols-3 mb-6 h-auto">
@@ -461,10 +427,10 @@ const Visits = () => {
                                         onReview={
                                             visit.rating === 0
                                                 ? () => {
-                                                    setReviewVisit(visit);
-                                                    setRating(0);
-                                                    setComment("");
-                                                    setShowReviewDialog(true);
+                                                    setReviewVisit(visit)
+                                                    setRating(1)
+                                                    setComment("")
+                                                    setShowReviewDialog(true)
                                                 }
                                                 : undefined
                                         }
@@ -482,14 +448,12 @@ const Visits = () => {
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>Avaliar Atendimento</DialogTitle>
-                        <DialogDescription>
-                            Como foi sua experiência com {reviewVisit?.nurse?.name}?
-                        </DialogDescription>
+                        <DialogDescription>Como foi sua experiência com {reviewVisit?.nurse?.name}?</DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-6 py-4">
                         <div>
-                            <label className="text-sm font-semibold mb-3 block">Avaliação *</label>
+                            <label className="text-sm font-semibold mb-3 block text-center">Avaliação *</label>
                             <div className="flex gap-2 justify-center">
                                 {[1, 2, 3, 4, 5].map((star) => (
                                     <button
@@ -498,11 +462,11 @@ const Visits = () => {
                                         onClick={() => setRating(star)}
                                         className="transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary rounded-full p-1"
                                     >
+                                        {/* 👇 ALTERAÇÃO: Aplicando a lógica condicional da page antiga */}
                                         <Star
                                             className="h-10 w-10"
                                             fill={star <= rating ? "hsl(var(--warning))" : "transparent"}
-                                            stroke={star <= rating ? "hsl(var(--warning))B)" : "hsl(var(--border))"}
-                                            strokeWidth={2}
+                                            strokeWidth={1.5}
                                         />
                                     </button>
                                 ))}
@@ -518,9 +482,7 @@ const Visits = () => {
                         </div>
 
                         <div>
-                            <label className="text-sm font-semibold mb-2 block">
-                                Comentário (opcional)
-                            </label>
+                            <label className="text-sm font-semibold mb-2 block">Comentário (opcional)</label>
                             <Select value={comment} onValueChange={setComment}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Selecione um comentário..." />
@@ -540,24 +502,18 @@ const Visits = () => {
                         <Button
                             variant="outline"
                             onClick={() => {
-                                setShowReviewDialog(false);
-                                setReviewVisit(null);
-                                setRating(0);
-                                setComment("");
+                                setShowReviewDialog(false)
+                                setReviewVisit(null)
+                                setRating(0)
+                                setComment("")
                             }}
                             disabled={submittingReview}
                         >
                             Cancelar
                         </Button>
-                        {/* 👇 ALTERAÇÃO: Botão de Envio do Review */}
-                        <Button
-                            onClick={handleSubmitReview}
-                            disabled={submittingReview || rating === 0}
-                            className="relative" // Adicionado 'relative'
-                        >
+                        <Button onClick={handleSubmitReview} disabled={submittingReview || rating === 0} className="relative">
                             {submittingReview ? (
                                 <>
-                                    {/* Ícone posicionado absolutamente */}
                                     <Loader2 className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 animate-spin" />
                                     Enviando...
                                 </>
@@ -569,27 +525,20 @@ const Visits = () => {
                 </DialogContent>
             </Dialog>
         </div>
-    );
-};
+    )
+}
 
 // --- Componente VisitCard ---
 interface VisitCardProps {
-    visit: Visit;
-    onViewDetails: () => void;
-    onViewProfile?: () => void;
-    onChat?: () => void;
-    onReview?: () => void;
-    rating?: number;
+    visit: Visit
+    onViewDetails: () => void
+    onViewProfile?: () => void
+    onChat?: () => void
+    onReview?: () => void
+    rating?: number
 }
 
-const VisitCard = ({
-    visit,
-    onViewDetails,
-    onViewProfile,
-    onChat,
-    onReview,
-    rating,
-}: VisitCardProps) => {
+const VisitCard = ({ visit, onViewDetails, onViewProfile, onChat, onReview, rating }: VisitCardProps) => {
     return (
         <Card className="hover:shadow-md transition-shadow">
             <CardContent className="p-6">
@@ -597,11 +546,7 @@ const VisitCard = ({
                     {/* Nurse Info */}
                     <div className="flex items-start gap-4 flex-1">
                         <img
-                            src={
-                                visit.nurse?.image
-                                    ? `${API_BASE_URL}/user/file/${visit.nurse.image}`
-                                    : "/placeholder.svg"
-                            }
+                            src={visit.nurse?.image ? `${API_BASE_URL}/user/file/${visit.nurse.image}` : "/placeholder.svg"}
                             alt={visit.nurse?.name || "Enfermeiro"}
                             className="w-20 h-20 rounded-full object-cover ring-2 ring-border"
                             onError={(e) => (e.currentTarget.src = "/placeholder.svg")}
@@ -611,13 +556,9 @@ const VisitCard = ({
                                 <h3 className="font-semibold text-lg text-foreground">
                                     {visit.nurse?.name || "Enfermeiro não especificado"}
                                 </h3>
-                                <Badge variant={getStatusVariant(visit.status)}>
-                                    {getStatusLabel(visit.status)}
-                                </Badge>
+                                <Badge variant={getStatusVariant(visit.status)}>{getStatusLabel(visit.status)}</Badge>
                             </div>
-                            <p className="text-sm text-primary font-medium mb-4">
-                                {visit.nurse?.specialization || "Enfermagem"}
-                            </p>
+                            <p className="text-sm text-primary font-medium mb-4">{visit.nurse?.specialization || "Enfermagem"}</p>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                                 <div className="flex items-center gap-2">
@@ -632,16 +573,12 @@ const VisitCard = ({
 
                             <div className="mt-3 space-y-2">
                                 <div>
-                                    <span className="text-sm font-semibold text-muted-foreground">
-                                        Motivo:{" "}
-                                    </span>
+                                    <span className="text-sm font-semibold text-muted-foreground">Motivo: </span>
                                     <span className="text-sm">{visit.reason}</span>
                                 </div>
                                 {visit.description && (
                                     <div>
-                                        <span className="text-sm font-semibold text-muted-foreground">
-                                            Descrição:{" "}
-                                        </span>
+                                        <span className="text-sm font-semibold text-muted-foreground">Descrição: </span>
                                         <span className="text-sm">{visit.description}</span>
                                     </div>
                                 )}
@@ -650,17 +587,11 @@ const VisitCard = ({
                     </div>
 
                     {/* Actions */}
-                    {/* 👇 ALTERAÇÃO: Aplicado layout 'relative' + 'absolute' em todos os botões */}
                     <div className="flex flex-col gap-2 sm:w-48">
                         {visit.status === "CONFIRMED" && (
                             <>
                                 {onViewProfile && (
-                                    <Button
-                                        onClick={onViewProfile}
-                                        variant="default"
-                                        size="sm"
-                                        className="relative"
-                                    >
+                                    <Button onClick={onViewProfile} variant="default" size="sm" className="relative">
                                         <User className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2" />
                                         Ver Perfil
                                     </Button>
@@ -670,7 +601,7 @@ const VisitCard = ({
                                         onClick={onChat}
                                         variant="outline"
                                         size="sm"
-                                        className="relative justify-center"
+                                        className="relative justify-center bg-transparent"
                                     >
                                         <MessageCircle className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2" />
                                         Chat
@@ -683,7 +614,7 @@ const VisitCard = ({
                             onClick={onViewDetails}
                             variant="outline"
                             size="sm"
-                            className="relative justify-center"
+                            className="relative justify-center bg-transparent"
                         >
                             <Info className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2" />
                             Ver Detalhes
@@ -693,19 +624,13 @@ const VisitCard = ({
                             <>
                                 {rating && rating > 0 ? (
                                     <div className="flex flex-col items-center gap-2 p-3 border rounded-md bg-muted/30">
-                                        <span className="text-xs font-semibold text-muted-foreground">
-                                            Sua Avaliação
-                                        </span>
+                                        <span className="text-xs font-semibold text-muted-foreground">Sua Avaliação</span>
                                         <div className="flex gap-1">
                                             {[1, 2, 3, 4, 5].map((star) => (
                                                 <Star
                                                     key={star}
                                                     className="h-4 w-4"
                                                     fill={star <= rating ? "hsl(var(--warning))" : "transparent"}
-                                                    stroke={
-                                                        star <= rating ? "hsl(var(--warning))" : "hsl(var(--border))"
-                                                    }
-                                                    strokeWidth={2}
                                                 />
                                             ))}
                                         </div>
@@ -724,27 +649,25 @@ const VisitCard = ({
                 </div>
             </CardContent>
         </Card>
-    );
-};
+    )
+}
 
 // --- Componente EmptyState ---
 interface EmptyStateProps {
-    icon: React.ReactNode;
-    title: string;
-    description: string;
+    icon: React.ReactNode
+    title: string
+    description: string
 }
 
 const EmptyState = ({ icon, title, description }: EmptyStateProps) => (
     <Card>
         <CardContent className="p-12 text-center">
-            <div className="mx-auto w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
-                {icon}
-            </div>
+            <div className="mx-auto w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">{icon}</div>
             <h2 className="text-xl font-semibold text-foreground mb-2">{title}</h2>
             <p className="text-muted-foreground max-w-md mx-auto">{description}</p>
         </CardContent>
     </Card>
-);
+)
 
 // --- Opções de Comentário ---
 const reviewCommentOptions = [
@@ -775,6 +698,6 @@ const reviewCommentOptions = [
     "Profissional pouco preparado para a situação",
     "Serviço demorado e pouco eficiente",
     "Atendimento ruim, não recomendo",
-];
+]
 
-export default Visits;
+export default Visits
