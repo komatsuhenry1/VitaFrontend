@@ -15,8 +15,6 @@ import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_51SQAOzEYds56Ja3VWP3pa9wykrXuHW0CVYhFEBoLLwQvXJwCSEeK6O3dcubKnuvdlSoe7YxzBdaf7PCA9t0SMkgg00458FviHW');
 
-// --- MUDANÇA 1: Atualizar a interface BookingData ---
-// Adicionamos os campos de endereço que vêm do checkout.tsx
 interface BookingData {
     nurseId: string;
     nurseName: string;
@@ -26,21 +24,17 @@ interface BookingData {
     message?: string;
     visitType: string;
     value: number;
-    // Campos de endereço adicionados:
     cep: string;
     street: string;
     number: string;
     complement: string;
     neighborhood: string;
 }
-// --- Fim da Mudança 1 ---
-
 
 // -----------------------------------------------------------------
 // COMPONENTE INTERNO PARA O FORMULÁRIO
 // -----------------------------------------------------------------
 
-// Corrigido o 'any' da prop
 function CheckoutForm({ bookingData }: { bookingData: BookingData }) {
     const stripe = useStripe();
     const elements = useElements();
@@ -49,6 +43,7 @@ function CheckoutForm({ bookingData }: { bookingData: BookingData }) {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
 
+    // --- MUDANÇA: Função handlePayment RESTAURADA ---
     const handlePayment = async (event: React.FormEvent) => {
         event.preventDefault();
         if (!stripe || !elements || !bookingData) {
@@ -58,9 +53,7 @@ function CheckoutForm({ bookingData }: { bookingData: BookingData }) {
         setLoading(true);
         setMessage(null);
 
-        // ---------------------------------------------------------------
         // ETAPA A: CONFIRMAR O PAGAMENTO COM O STRIPE
-        // ---------------------------------------------------------------
         const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
             elements,
             redirect: "if_required",
@@ -72,39 +65,33 @@ function CheckoutForm({ bookingData }: { bookingData: BookingData }) {
             return;
         }
 
-        // ---------------------------------------------------------------
         // ETAPA B: PAGAMENTO BEM-SUCEDIDO! CRIAR A VISITA NO NOSSO BANCO
-        // ---------------------------------------------------------------
+        // (Esta é a lógica que tínhamos antes, agora correta)
         if (paymentIntent && paymentIntent.status === "succeeded") {
             try {
                 const dateTimeString = `${bookingData.selectedDate}T${bookingData.selectedTime}:00Z`;
 
-                // --- MUDANÇA 2: Adicionar os campos de endereço ao Request Body ---
+                // Monta o corpo da requisição exatamente como o backend espera
                 const requestBody = {
                     description: bookingData.message || "Consulta de enfermagem",
                     reason: bookingData.reason,
-
-                    // Campos de endereço que estavam faltando:
                     cep: bookingData.cep,
                     street: bookingData.street,
                     number: bookingData.number,
                     complement: bookingData.complement,
                     neighborhood: bookingData.neighborhood,
-
-                    // Restante dos dados
-                    visit_type: bookingData.visitType,
                     nurse_id: bookingData.nurseId,
-                    date: dateTimeString,
                     value: bookingData.value,
-                    // payment_intent_id: paymentIntent.id // Você tinha isso, mas não está no DTO que você me mostrou. Se precisar, descomente.
+                    visit_type: bookingData.visitType,
+                    date: dateTimeString,
+
+                    // AQUI ESTÁ A CHAVE: Envie o ID do pagamento
+                    payment_intent_id: paymentIntent.id
                 };
-                // --- Fim da MudANÇA 2 ---
 
                 const token = localStorage.getItem("token");
 
-                // ATENÇÃO: Verifique o endpoint. No seu código Go o handler é 'VisitSolicitation'
-                // mas aqui você estava chamando '/user/visit'. 
-                // Ajustei para o endpoint que você me mostrou antes:
+                // Chama o endpoint de criação da visita
                 const response = await fetch(`${API_BASE_URL}/user/visit`, {
                     method: "POST",
                     headers: {
@@ -119,14 +106,15 @@ function CheckoutForm({ bookingData }: { bookingData: BookingData }) {
                 if (response.ok && result.success) {
                     toast.success("Pagamento realizado e visita solicitada com sucesso!");
                     sessionStorage.removeItem("bookingData");
-                    // Ajustei para /dashboard/patient que é mais comum
                     router.push("/visits/patient");
                 } else {
-                    // Isso vai mostrar o erro do backend (ex: "CEP is required")
+                    // Se o backend falhar (ex: validação), mostra o erro
                     throw new Error(result.error || "Erro ao agendar visita após o pagamento.");
                 }
 
             } catch (err) {
+                // Se a criação da visita falhar, mostramos um erro.
+                // O pagamento foi feito, mas o agendamento falhou.
                 setMessage(err instanceof Error ? err.message : "Pagamento recebido, mas falha ao salvar o agendamento. Contate o suporte.");
                 toast.error(err instanceof Error ? err.message : "Pagamento recebido, mas falha ao salvar o agendamento.");
             }
@@ -134,6 +122,7 @@ function CheckoutForm({ bookingData }: { bookingData: BookingData }) {
         } else {
             setMessage("Ocorreu um erro inesperado no pagamento.");
         }
+        // --- FIM DA MUDANÇA ---
 
         setLoading(false);
     };
@@ -168,32 +157,35 @@ function CheckoutForm({ bookingData }: { bookingData: BookingData }) {
 export default function PaymentPage() {
     const params = useParams();
     const router = useRouter();
+    // --- MUDANÇA: Revertido de 'visitId' para 'nurseId' ---
+    // A URL desta página contém o ID do enfermeiro, não da visita
     const nurseId = params.id as string;
+    // --- FIM DA MUDANÇA ---
 
-    // O useState agora usa a interface `BookingData` atualizada
     const [bookingData, setBookingData] = useState<BookingData | null>(null);
     const [clientSecret, setClientSecret] = useState<string | null>(null);
 
-    // Efeito para carregar dados do agendamento
+    // Efeito para carregar dados do agendamento (do sessionStorage)
     useEffect(() => {
         const data = sessionStorage.getItem("bookingData");
         if (!data) {
             toast.error("Dados do agendamento não encontrados");
+            // --- MUDANÇA: Voltar para a página do enfermeiro ---
             router.push(`/nurse-profile/${nurseId}`);
+            // --- FIM DA MUDANÇA ---
             return;
         }
-
-        // O JSON.parse agora entende que os dados de endereço 
-        // fazem parte do objeto BookingData
         setBookingData(JSON.parse(data));
-    }, [nurseId, router]);
+    }, [nurseId, router]); // <-- nurseId de volta ao array de dependência
 
     // Efeito para buscar o CLIENT SECRET
     useEffect(() => {
+        // --- MUDANÇA: Removido 'visitId' da condição ---
         if (bookingData && bookingData.value > 0) {
             const fetchClientSecret = async () => {
                 const token = localStorage.getItem("token");
                 try {
+                    // --- MUDANÇA: URL revertida para /payment/create-intent (sem ID) ---
                     const response = await fetch(`${API_BASE_URL}/payment/create-intent`, {
                         method: "POST",
                         headers: {
@@ -202,6 +194,7 @@ export default function PaymentPage() {
                         },
                         body: JSON.stringify({ value: bookingData.value }),
                     });
+                    // --- FIM DA MUDANÇA ---
 
                     const result = await response.json();
 
@@ -218,7 +211,8 @@ export default function PaymentPage() {
 
             fetchClientSecret();
         }
-    }, [bookingData]); // Roda quando 'bookingData' for preenchido
+    }, [bookingData]); // <-- Array de dependência revertido
+    // --- FIM DA MUDANÇA ---
 
     const options = clientSecret
         ? {
@@ -276,7 +270,6 @@ export default function PaymentPage() {
                                 <span className="text-gray-600">Tipo:</span>
                                 <span className="font-semibold capitalize">{bookingData.visitType}</span>
                             </div>
-                            {/* Mostra o endereço da visita no resumo */}
                             <div className="flex justify-between pt-2 border-t">
                                 <span className="text-gray-600">Local:</span>
                                 <span className="font-semibold text-right">{`${bookingData.street}, ${bookingData.number} - ${bookingData.neighborhood}`}</span>
