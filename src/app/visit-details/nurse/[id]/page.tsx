@@ -36,6 +36,9 @@ import {
     Loader2,
     Shield,
     AlertTriangle,
+    PlusCircle,
+    XCircle,
+    Pill,
 } from "lucide-react"
 import { toast } from "sonner"
 import dynamic from "next/dynamic"
@@ -51,6 +54,7 @@ interface VisitDetails {
     description: string
     reason: string
     cancel_reason?: string | null
+    prescriptions?: string[]
     visit_value: number
     visit_type: string
     visit_date: string
@@ -102,6 +106,9 @@ export default function VisitDetailsPage() {
     const [actionLoading, setActionLoading] = useState(false)
     const [confirmationCode, setConfirmationCode] = useState("")
     const [codeLoading, setCodeLoading] = useState(false)
+    const [prescriptionInput, setPrescriptionInput] = useState("")
+    const [prescriptionList, setPrescriptionList] = useState<string[]>([])
+    const [prescriptionLoading, setPrescriptionLoading] = useState(false)
 
     const AddressMapWithNoSSR = useMemo(
         () =>
@@ -158,6 +165,7 @@ export default function VisitDetailsPage() {
                     if (fetchedPatient.profile_image_id === "") fetchedPatient.profile_image_id = null
                     setVisit(fetchedVisit)
                     setPatient(fetchedPatient)
+                    setPrescriptionList(fetchedVisit.prescriptions || [])
                 } else {
                     throw new Error(result.message || "Dados da visita ou paciente não encontrados.")
                 }
@@ -313,6 +321,72 @@ export default function VisitDetailsPage() {
             toast.error("Erro ao enviar alerta de emergência. Tente novamente.")
         } finally {
             setActionLoading(false)
+        }
+    }
+
+    const handleAddPrescription = () => {
+        if (!prescriptionInput.trim()) {
+            toast.error("Digite uma prescrição válida")
+            return
+        }
+        if (prescriptionList.includes(prescriptionInput.trim())) {
+            toast.error("Essa prescrição já foi adicionada")
+            return
+        }
+        setPrescriptionList([...prescriptionList, prescriptionInput.trim()])
+        setPrescriptionInput("")
+        toast.success("Prescrição adicionada à lista")
+    }
+
+    const handleRemovePrescription = (index: number) => {
+        setPrescriptionList(prescriptionList.filter((_, i) => i !== index))
+        toast.success("Prescrição removida da lista")
+    }
+
+    const handleSubmitPrescriptions = async () => {
+        if (!visit) return
+        if (prescriptionList.length === 0) {
+            toast.error("Adicione pelo menos uma prescrição")
+            return
+        }
+
+        try {
+            setPrescriptionLoading(true)
+            const token = localStorage.getItem("token")
+            if (!token) {
+                toast.error("Erro de autenticação. Faça login novamente.")
+                return
+            }
+
+            const response = await fetch(`${API_BASE_URL}/nurse/prescription/${visit.id}`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ prescription_list: prescriptionList }),
+            })
+
+            const result = await response.json()
+
+            if (!response.ok) {
+                throw new Error(result.message || `Erro ${response.status}: Falha ao enviar prescrições.`)
+            }
+
+            if (result.success) {
+                toast.success(result.message || "Prescrições enviadas com sucesso!")
+                // Update visit with new prescriptions
+                if (result.data?.visit) {
+                    setVisit(result.data.visit)
+                }
+            } else {
+                throw new Error(result.message || "Erro ao enviar prescrições.")
+            }
+        } catch (error) {
+            console.error("Submit prescriptions error:", error)
+            toast.error(error instanceof Error ? error.message : "Erro ao enviar prescrições. Tente novamente.")
+        } finally {
+            setPrescriptionLoading(false)
         }
     }
 
@@ -680,6 +754,157 @@ export default function VisitDetailsPage() {
                         </CardContent>
                     </Card>
                 </div>
+
+                {visit.status === "CONFIRMED" && (
+                    <Card
+                        style={{
+                            marginBottom: "1.5rem",
+                            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.07)",
+                            border: "2px solid #0891b2",
+                            background: "linear-gradient(135deg, #ffffff 0%, #ecfeff 100%)",
+                        }}
+                    >
+                        <CardHeader style={{ borderBottom: "1px solid #cffafe" }}>
+                            <CardTitle style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#1f2937" }}>
+                                <Pill className="h-6 w-6" style={{ color: "#0891b2" }} />
+                                Prescrições Médicas
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent style={{ padding: "2rem" }}>
+                            {prescriptionList.length > 0 && (
+                                <div style={{ marginBottom: "2rem" }}>
+                                    <h3
+                                        style={{
+                                            fontSize: "1rem",
+                                            fontWeight: "600",
+                                            color: "#6b7280",
+                                            marginBottom: "1rem",
+                                            textTransform: "uppercase",
+                                        }}
+                                    >
+                                        Prescrições Adicionadas
+                                    </h3>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                                        {prescriptionList.map((prescription, index) => (
+                                            <div
+                                                key={index}
+                                                style={{
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "space-between",
+                                                    padding: "0.75rem 1rem",
+                                                    backgroundColor: "white",
+                                                    borderRadius: "0.5rem",
+                                                    border: "1px solid #e5e7eb",
+                                                    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+                                                }}
+                                            >
+                                                <span style={{ fontSize: "1rem", color: "#1f2937", fontWeight: "500" }}>{prescription}</span>
+                                                <Button
+                                                    onClick={() => handleRemovePrescription(index)}
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    style={{ color: "#dc2626" }}
+                                                >
+                                                    <XCircle className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div style={{ marginBottom: "1.5rem" }}>
+                                <label
+                                    htmlFor="prescription-input"
+                                    style={{
+                                        display: "block",
+                                        fontSize: "0.875rem",
+                                        fontWeight: "600",
+                                        color: "#6b7280",
+                                        marginBottom: "0.5rem",
+                                        textTransform: "uppercase",
+                                    }}
+                                >
+                                    Adicionar Nova Prescrição
+                                </label>
+                                <div style={{ display: "flex", gap: "0.75rem" }}>
+                                    <Input
+                                        id="prescription-input"
+                                        type="text"
+                                        placeholder="Digite a prescrição (ex: fisioterapia, musculação)"
+                                        value={prescriptionInput}
+                                        onChange={(e) => setPrescriptionInput(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                                e.preventDefault()
+                                                handleAddPrescription()
+                                            }
+                                        }}
+                                        style={{
+                                            flex: 1,
+                                            padding: "0.75rem",
+                                            border: "2px solid #e5e7eb",
+                                            borderRadius: "0.5rem",
+                                            fontSize: "1rem",
+                                        }}
+                                        disabled={prescriptionLoading}
+                                    />
+                                    <Button
+                                        onClick={handleAddPrescription}
+                                        disabled={prescriptionLoading}
+                                        style={{
+                                            backgroundColor: "#0891b2",
+                                            color: "white",
+                                            padding: "0.75rem 1.5rem",
+                                            fontWeight: "600",
+                                            borderRadius: "0.5rem",
+                                        }}
+                                    >
+                                        <PlusCircle className="h-4 w-4 mr-2" />
+                                        Adicionar
+                                    </Button>
+                                </div>
+                                <p
+                                    style={{
+                                        fontSize: "0.875rem",
+                                        color: "#6b7280",
+                                        marginTop: "0.5rem",
+                                    }}
+                                >
+                                    Digite uma prescrição e clique em Adicionar ou pressione Enter
+                                </p>
+                            </div>
+
+                            <Button
+                                onClick={handleSubmitPrescriptions}
+                                disabled={prescriptionList.length === 0 || prescriptionLoading}
+                                style={{
+                                    backgroundColor: "#0891b2",
+                                    color: "white",
+                                    padding: "1rem 2rem",
+                                    fontSize: "1.125rem",
+                                    fontWeight: "700",
+                                    borderRadius: "0.75rem",
+                                    boxShadow: "0 4px 6px rgba(8, 145, 178, 0.3)",
+                                    width: "100%",
+                                }}
+                            >
+                                {prescriptionLoading ? (
+                                    <>
+                                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                                        Enviando Prescrições...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Pill className="h-5 w-5 mr-2" />
+                                        Enviar Prescrições
+                                    </>
+                                )}
+                            </Button>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {visit.status === "CONFIRMED" && (
                     <Card
