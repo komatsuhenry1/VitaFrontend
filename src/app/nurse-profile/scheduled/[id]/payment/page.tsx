@@ -211,8 +211,7 @@ export default function PaymentPage() {
 
             fetchClientSecret();
         }
-    }, [bookingData]); // <-- Array de dependência revertido
-    // --- FIM DA MUDANÇA ---
+    }, [bookingData]);
 
     const options = clientSecret
         ? {
