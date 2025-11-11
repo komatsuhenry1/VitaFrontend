@@ -755,7 +755,7 @@ export default function VisitDetailsPage() {
                     </Card>
                 </div>
 
-                {visit.status === "CONFIRMED" && (
+                {(visit.status === "CONFIRMED" || visit.status === "COMPLETED") && (
                     <Card
                         style={{
                             marginBottom: "1.5rem",
@@ -764,9 +764,11 @@ export default function VisitDetailsPage() {
                             background: "linear-gradient(135deg, #ffffff 0%, #ecfeff 100%)",
                         }}
                     >
-                        <CardHeader style={{ borderBottom: "1px solid #cffafe" }}>
-                            <CardTitle style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#1f2937" }}>
-                                <Pill className="h-6 w-6" style={{ color: "#0891b2" }} />
+                        <CardHeader style={{ borderBottom: "1px solid #cffafe", padding: "1.5rem" }}>
+                            <CardTitle
+                                style={{ display: "flex", alignItems: "center", gap: "0.75rem", color: "#0891b2", fontSize: "1.25rem" }}
+                            >
+                                <Pill className="h-6 w-6" />
                                 Prescrições Médicas
                             </CardTitle>
                         </CardHeader>
@@ -775,16 +777,17 @@ export default function VisitDetailsPage() {
                                 <div style={{ marginBottom: "2rem" }}>
                                     <h3
                                         style={{
-                                            fontSize: "1rem",
+                                            fontSize: "0.875rem",
                                             fontWeight: "600",
-                                            color: "#6b7280",
+                                            color: "#0891b2",
                                             marginBottom: "1rem",
                                             textTransform: "uppercase",
+                                            letterSpacing: "0.05em",
                                         }}
                                     >
-                                        Prescrições Adicionadas
+                                        Prescrições na Lista
                                     </h3>
-                                    <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                                         {prescriptionList.map((prescription, index) => (
                                             <div
                                                 key={index}
@@ -792,21 +795,40 @@ export default function VisitDetailsPage() {
                                                     display: "flex",
                                                     alignItems: "center",
                                                     justifyContent: "space-between",
-                                                    padding: "0.75rem 1rem",
+                                                    padding: "1rem 1.25rem",
                                                     backgroundColor: "white",
-                                                    borderRadius: "0.5rem",
-                                                    border: "1px solid #e5e7eb",
-                                                    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+                                                    borderRadius: "0.75rem",
+                                                    border: "1px solid #cffafe",
+                                                    boxShadow: "0 2px 4px rgba(8, 145, 178, 0.08)",
+                                                    transition: "all 0.2s ease",
                                                 }}
                                             >
-                                                <span style={{ fontSize: "1rem", color: "#1f2937", fontWeight: "500" }}>{prescription}</span>
+                                                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                                                    <div
+                                                        style={{
+                                                            backgroundColor: "#ecfeff",
+                                                            color: "#0891b2",
+                                                            width: "2rem",
+                                                            height: "2rem",
+                                                            borderRadius: "50%",
+                                                            display: "flex",
+                                                            alignItems: "center",
+                                                            justifyContent: "center",
+                                                            fontSize: "0.875rem",
+                                                            fontWeight: "700",
+                                                        }}
+                                                    >
+                                                        {index + 1}
+                                                    </div>
+                                                    <span style={{ fontSize: "1rem", color: "#1f2937", fontWeight: "500" }}>{prescription}</span>
+                                                </div>
                                                 <Button
                                                     onClick={() => handleRemovePrescription(index)}
                                                     variant="ghost"
                                                     size="sm"
-                                                    style={{ color: "#dc2626" }}
+                                                    style={{ color: "#dc2626", padding: "0.5rem" }}
                                                 >
-                                                    <XCircle className="h-4 w-4" />
+                                                    <XCircle className="h-5 w-5" />
                                                 </Button>
                                             </div>
                                         ))}
@@ -821,18 +843,19 @@ export default function VisitDetailsPage() {
                                         display: "block",
                                         fontSize: "0.875rem",
                                         fontWeight: "600",
-                                        color: "#6b7280",
-                                        marginBottom: "0.5rem",
+                                        color: "#0891b2",
+                                        marginBottom: "0.75rem",
                                         textTransform: "uppercase",
+                                        letterSpacing: "0.05em",
                                     }}
                                 >
-                                    Adicionar Nova Prescrição
+                                    Nova Prescrição
                                 </label>
-                                <div style={{ display: "flex", gap: "0.75rem" }}>
+                                <div style={{ display: "flex", gap: "0.75rem", alignItems: "stretch" }}>
                                     <Input
                                         id="prescription-input"
                                         type="text"
-                                        placeholder="Digite a prescrição (ex: fisioterapia, musculação)"
+                                        placeholder="Ex: Fisioterapia 3x por semana, Musculação..."
                                         value={prescriptionInput}
                                         onChange={(e) => setPrescriptionInput(e.target.value)}
                                         onKeyDown={(e) => {
@@ -843,10 +866,11 @@ export default function VisitDetailsPage() {
                                         }}
                                         style={{
                                             flex: 1,
-                                            padding: "0.75rem",
-                                            border: "2px solid #e5e7eb",
-                                            borderRadius: "0.5rem",
+                                            padding: "0.875rem 1rem",
+                                            border: "2px solid #cffafe",
+                                            borderRadius: "0.75rem",
                                             fontSize: "1rem",
+                                            transition: "all 0.2s ease",
                                         }}
                                         disabled={prescriptionLoading}
                                     />
@@ -856,23 +880,26 @@ export default function VisitDetailsPage() {
                                         style={{
                                             backgroundColor: "#0891b2",
                                             color: "white",
-                                            padding: "0.75rem 1.5rem",
+                                            padding: "0.875rem 1.75rem",
                                             fontWeight: "600",
-                                            borderRadius: "0.5rem",
+                                            borderRadius: "0.75rem",
+                                            boxShadow: "0 2px 4px rgba(8, 145, 178, 0.2)",
+                                            transition: "all 0.2s ease",
                                         }}
                                     >
-                                        <PlusCircle className="h-4 w-4 mr-2" />
+                                        <PlusCircle className="h-5 w-5 mr-2" />
                                         Adicionar
                                     </Button>
                                 </div>
                                 <p
                                     style={{
-                                        fontSize: "0.875rem",
+                                        fontSize: "0.8125rem",
                                         color: "#6b7280",
-                                        marginTop: "0.5rem",
+                                        marginTop: "0.625rem",
+                                        fontStyle: "italic",
                                     }}
                                 >
-                                    Digite uma prescrição e clique em Adicionar ou pressione Enter
+                                    Pressione Enter ou clique em Adicionar para incluir na lista
                                 </p>
                             </div>
 
@@ -880,14 +907,16 @@ export default function VisitDetailsPage() {
                                 onClick={handleSubmitPrescriptions}
                                 disabled={prescriptionList.length === 0 || prescriptionLoading}
                                 style={{
-                                    backgroundColor: "#0891b2",
+                                    backgroundColor: prescriptionList.length === 0 ? "#94a3b8" : "#0891b2",
                                     color: "white",
-                                    padding: "1rem 2rem",
-                                    fontSize: "1.125rem",
+                                    padding: "1.125rem 2rem",
+                                    fontSize: "1.0625rem",
                                     fontWeight: "700",
-                                    borderRadius: "0.75rem",
-                                    boxShadow: "0 4px 6px rgba(8, 145, 178, 0.3)",
+                                    borderRadius: "0.875rem",
+                                    boxShadow: prescriptionList.length === 0 ? "none" : "0 4px 8px rgba(8, 145, 178, 0.25)",
                                     width: "100%",
+                                    transition: "all 0.2s ease",
+                                    cursor: prescriptionList.length === 0 ? "not-allowed" : "pointer",
                                 }}
                             >
                                 {prescriptionLoading ? (
@@ -898,7 +927,7 @@ export default function VisitDetailsPage() {
                                 ) : (
                                     <>
                                         <Pill className="h-5 w-5 mr-2" />
-                                        Enviar Prescrições
+                                        Enviar Prescrição
                                     </>
                                 )}
                             </Button>
