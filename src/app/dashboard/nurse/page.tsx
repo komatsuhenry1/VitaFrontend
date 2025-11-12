@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react" // <-- MUDANÇA: Adicionado 'useRef'
+import { useState, useEffect, useRef } from "react" 
 import { Header } from "@/components/Header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -16,6 +16,7 @@ import { toast } from "sonner"
 import { Footer } from "@/components/Footer"
 
 interface DashboardStats {
+// ... (interfaces)
   patients_attended: number
   appointments_today: number
   average_rating: number
@@ -23,6 +24,7 @@ interface DashboardStats {
 }
 
 interface Visit {
+// ... (interfaces)
   id: string
   description: string
   reason: string
@@ -37,6 +39,7 @@ interface Visit {
 }
 
 interface Profile {
+// ... (interfaces)
   name: string
   email: string
   phone: string
@@ -47,6 +50,7 @@ interface Profile {
 }
 
 interface Availability {
+// ... (interfaces)
   is_available: boolean
   start_time: string
   end_time: string
@@ -54,12 +58,14 @@ interface Availability {
 }
 
 interface Review {
+// ... (interfaces)
   patient_name: string
   rating: number
   comment: string
 }
 
 interface DashboardData {
+// ... (interfaces)
   online: boolean
   stats: DashboardStats
   visits: Visit[]
@@ -70,6 +76,7 @@ interface DashboardData {
 
 // --- MUDANÇA: Interfaces adicionadas para tipar a resposta crua da API ---
 interface RawVisit {
+// ... (interfaces)
   id: string
   description: string
   reason: string
@@ -84,6 +91,7 @@ interface RawVisit {
 }
 
 interface RawDashboardData {
+// ... (interfaces)
   schedules: RawVisit[] | null
   total_patients: number
   rating: number
@@ -102,10 +110,10 @@ interface RawDashboardData {
   reviews: Review[] | null
 
   // Campos de categoria 1 (Disponibilidade)
-  qualifications: any[] | null // Se for array
-  services: any[] | null // Se for array
-  days_available: string[] | null // Se for array
-  neighborhoods: string[] | null // Se for array
+  qualifications: unknown[] | null 
+  services: unknown[] | null 
+  days_available: string[] | null 
+  neighborhoods: string[] | null 
   max_patients_per_day: number
   price: number
 
@@ -114,12 +122,8 @@ interface RawDashboardData {
 }
 // --- Fim da mudança ---
 
-interface ApiResponse {
-  data: DashboardData // Esta interface parece não ser usada, a de baixo é
-  message: string
-  success: boolean
-}
 
+// --- FUNÇÕES DE UTILIDADE (APENAS UMA VEZ) ---
 const renderStars = (rating: number) => {
   return (
     <div style={{ display: "flex", gap: "0.25rem" }}>
@@ -160,6 +164,8 @@ const heroStyle = {
   color: "white",
   padding: "5rem 0",
 }
+// --- FIM DAS FUNÇÕES DE UTILIDADE ---
+
 
 export default function NurseDashboard() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
@@ -174,7 +180,7 @@ export default function NurseDashboard() {
   // --- NOVO: Função para validar campos e mostrar Toast (Clean Code: Separação de Responsabilidades) ---
   const validateProfileCompletion = (rawData: RawDashboardData) => {
     // Categoria 1: Disponibilidade
-    const isFieldEmpty = (value: any) =>
+    const isFieldEmpty = (value: unknown) => 
       value === null ||
       value === "" ||
       (typeof value === "number" && value === 0) ||
@@ -441,6 +447,8 @@ export default function NurseDashboard() {
 
   if (isLoading) {
     return (
+// ... (restante do código JSX)
+
       <div style={{ minHeight: "100vh", backgroundColor: "#f9fafb" }}>
         <Header />
         <div
