@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Calendar, Clock, DollarSign, FileText, MapPin } from "lucide-react"
+// MUDANÇA: importado Loader2
+import { ArrowLeft, Calendar, Clock, DollarSign, FileText, MapPin, Loader2, CheckCircle, XCircle } from "lucide-react"
 import { toast } from "sonner"
 import { Footer } from "@/components/Footer"
 
@@ -29,6 +30,12 @@ interface ApiResponse {
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
+
+// NOVO: Função para formatar o CEP
+const formatCEP = (value: string) => {
+    const cleaned = value.replace(/\D/g, "")
+    return cleaned.replace(/^(\d{5})(\d{0,3})$/, "$1-$2").substring(0, 9)
+}
 
 export default function CheckoutPage() {
     const params = useParams()
@@ -52,8 +59,18 @@ export default function CheckoutPage() {
     const [number, setNumber] = useState("")
     const [complement, setComplement] = useState("")
     const [neighborhood, setNeighborhood] = useState("") // Bairro da visita
+    // NOVO: Adicionado estado para UF (Estado)
+    const [uf, setUf] = useState("")
+
+    // NOVO: Adicionado estado para Cidade (Localidade)
+    const [city, setCity] = useState("")
 
     const [formError, setFormError] = useState<string | null>(null)
+    // NOVO: Estado para o loading da busca do CEP
+    const [isCepLoading, setIsCepLoading] = useState(false)
+    // NOVO: Estado para erro de validação do CEP
+    const [cepError, setCepError] = useState<string>("")
+
 
     useEffect(() => {
         const fetchNurseData = async () => {
@@ -89,32 +106,98 @@ export default function CheckoutPage() {
         }
     }, [nurseId])
 
-    // Função para formatar o CEP enquanto o usuário digita
-    const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        let cepValue = e.target.value.replace(/\D/g, "") // Remove tudo que não é dígito
+    // NOVO: useEffect para buscar o endereço do CEP
+    useEffect(() => {
+        const cleanCep = cep.replace(/\D/g, "")
 
-        if (cepValue.length > 8) {
-            cepValue = cepValue.substring(0, 8) // Limita a 8 dígitos
+        // Se o CEP não tiver 8 dígitos, limpa os campos de endereço preenchidos automaticamente
+        if (cleanCep.length !== 8) {
+            setCepError(cleanCep.length > 0 && cleanCep.length < 8 ? "CEP incompleto" : "")
+
+            // Opcional: limpar campos se o usuário apagar o CEP
+            if (street || neighborhood || city || uf) {
+                setStreet("")
+                setNeighborhood("")
+                setCity("")
+                setUf("")
+            }
+            return
         }
 
-        cepValue = cepValue.replace(/^(\d{5})(\d)/, "$1-$2") // Adiciona o hífen (12345-678)
+        const fetchCepData = async () => {
+            setIsCepLoading(true)
+            setCepError("") // Limpa erros anteriores
 
-        setCep(cepValue)
+            try {
+                const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`)
+                if (!response.ok) throw new Error("Erro na rede ao buscar CEP")
 
-        // Opcional: Adicionar aqui uma chamada para a API ViaCEP
-        // para preencher rua e bairro automaticamente
-        // if (cepValue.length === 9) {
-        //   fetchAddressFromCep(cepValue);
-        // }
+                const data = await response.json()
+
+                if (data.erro) {
+                    // CEP não encontrado
+                    setCepError("CEP não encontrado")
+                    toast.error("CEP não encontrado", {
+                        description: "Verifique o número e tente novamente.",
+                    })
+                    setStreet("")
+                    setNeighborhood("")
+                    setCity("")
+                    setUf("")
+                } else {
+                    // Sucesso: Preenche os campos
+                    setStreet(data.logradouro || "")
+                    setNeighborhood(data.bairro || "")
+                    setCity(data.localidade || "")
+                    setUf(data.uf || "")
+                    toast.success("Endereço preenchido!")
+                    // Foca no campo "número" para o usuário
+                    document.getElementById("number")?.focus()
+                }
+            } catch (error) {
+                console.error("Erro ao buscar CEP:", error)
+                setCepError("Erro ao buscar CEP")
+                toast.error("Erro ao buscar CEP", {
+                    description: "Não foi possível conectar ao serviço. Tente novamente.",
+                })
+            } finally {
+                setIsCepLoading(false)
+            }
+        }
+
+        // Atraso para evitar muitas requisições enquanto digita (debounce)
+        const timer = setTimeout(() => {
+            fetchCepData()
+        }, 500)
+
+        // Limpa o timer se o CEP mudar novamente
+        return () => clearTimeout(timer)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [cep]) // Dependência no estado do CEP
+
+    // Função para formatar o CEP enquanto o usuário digita
+    const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        // NOVO: Uso da função formatCEP
+        const formattedValue = formatCEP(e.target.value)
+        setCep(formattedValue)
     }
 
+    // NOVO: Variável de controle para desabilitar campos preenchidos automaticamente
+    // Desabilitado se estiver carregando OU se a rua foi preenchida E não houver erro de CEP.
+    const isAddressDisabled = isCepLoading || (street.length > 0 && !cepError)
 
     const handleContinueToPayment = () => {
         setFormError(null) // Limpa erros anteriores
 
         // Validação de todos os campos obrigatórios
-        if (!selectedDate || !selectedTime || !value || !reason || !cep || !street || !number || !neighborhood) {
+        if (!selectedDate || !selectedTime || !value || !reason || !cep || !street || !number || !neighborhood || !city || !uf) {
             setFormError("Por favor, preencha todos os campos obrigatórios (*).")
+            return
+        }
+
+        // NOVO: Validação do CEP deve ser feita antes
+        if (cepError || cep.replace(/\D/g, "").length !== 8) {
+            setFormError("Por favor, corrija o CEP antes de continuar.")
             return
         }
 
@@ -136,11 +219,13 @@ export default function CheckoutPage() {
             value: numericValue,
 
             // Campos de endereço adicionados
-            cep,
+            cep: cep.replace(/\D/g, ""), // Limpa o CEP para envio
             street,
             number,
             complement,
             neighborhood,
+            city, // NOVO
+            uf, // NOVO
         }
 
         // Salva no sessionStorage para a página de pagamento usar
@@ -333,22 +418,83 @@ export default function CheckoutPage() {
                                                 <MapPin className="h-4 w-4 text-green-700" />
                                                 CEP *
                                             </label>
-                                            <Input
-                                                placeholder="00000-000"
-                                                value={cep}
-                                                onChange={handleCepChange} // Usei a nova função com máscara
-                                                maxLength={9} // 8 dígitos + 1 hífen
-                                            />
+                                            {/* NOVO: Lógica de ícones de loading/validação */}
+                                            <div className="relative">
+                                                <Input
+                                                    id="cep"
+                                                    placeholder="00000-000"
+                                                    value={cep}
+                                                    onChange={handleCepChange}
+                                                    maxLength={9} // 8 dígitos + 1 hífen
+                                                    className={cepError ? "border-red-500" : cep.replace(/\D/g, "").length === 8 && !isCepLoading ? "border-green-500" : ""}
+                                                    disabled={isCepLoading}
+                                                />
+                                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                                    {isCepLoading ? (
+                                                        <Loader2 className="h-5 w-5 text-green-700 animate-spin" />
+                                                    ) : cep.replace(/\D/g, "").length === 8 ? (
+                                                        cepError ? (
+                                                            <XCircle className="h-5 w-5 text-red-500" />
+                                                        ) : (
+                                                            <CheckCircle className="h-5 w-5 text-green-500" />
+                                                        )
+                                                    ) : null}
+                                                </div>
+                                            </div>
+                                            {cepError && <p className="text-xs text-red-500 mt-1">{cepError}</p>}
                                         </div>
 
+                                        <div className="grid md:grid-cols-2 gap-4">
+                                            {/* NOVO: Campo de UF adicionado */}
+                                            <div className="space-y-2">
+                                                <label className="block text-sm font-semibold mb-2">Estado (UF) *</label>
+                                                <Input
+                                                    placeholder="Preenchido automaticamente"
+                                                    value={uf}
+                                                    onChange={(e) => setUf(e.target.value)}
+                                                    required
+                                                    disabled={isAddressDisabled}
+                                                    className="disabled:opacity-100 disabled:cursor-default"
+                                                />
+                                            </div>
+                                            {/* NOVO: Campo de Cidade adicionado */}
+                                            <div className="space-y-2">
+                                                <label className="block text-sm font-semibold mb-2">Cidade *</label>
+                                                <Input
+                                                    placeholder="Preenchido automaticamente"
+                                                    value={city}
+                                                    onChange={(e) => setCity(e.target.value)}
+                                                    required
+                                                    disabled={isAddressDisabled}
+                                                    className="disabled:opacity-100 disabled:cursor-default"
+                                                />
+                                            </div>
+                                        </div>
+
+
                                         <div className="grid md:grid-cols-3 gap-4">
+                                            {/* NOVO: Campo Rua desabilitado se preenchido */}
                                             <div className="md:col-span-2">
                                                 <label className="block text-sm font-semibold mb-2">Rua *</label>
-                                                <Input placeholder="Nome da rua" value={street} onChange={(e) => setStreet(e.target.value)} />
+                                                <Input
+                                                    id="street"
+                                                    placeholder="Preenchido automaticamente"
+                                                    value={street}
+                                                    onChange={(e) => setStreet(e.target.value)}
+                                                    required
+                                                    disabled={isAddressDisabled}
+                                                    className="disabled:opacity-100 disabled:cursor-default"
+                                                />
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-semibold mb-2">Número *</label>
-                                                <Input placeholder="123" value={number} onChange={(e) => setNumber(e.target.value)} />
+                                                <Input
+                                                    id="number"
+                                                    placeholder="123"
+                                                    value={number}
+                                                    onChange={(e) => setNumber(e.target.value)}
+                                                    required
+                                                />
                                             </div>
                                         </div>
 
@@ -361,12 +507,17 @@ export default function CheckoutPage() {
                                                     onChange={(e) => setComplement(e.target.value)}
                                                 />
                                             </div>
+                                            {/* NOVO: Campo Bairro desabilitado se preenchido */}
                                             <div>
                                                 <label className="block text-sm font-semibold mb-2">Bairro *</label>
                                                 <Input
-                                                    placeholder="Nome do bairro"
+                                                    id="neighborhood"
+                                                    placeholder="Preenchido automaticamente"
                                                     value={neighborhood}
                                                     onChange={(e) => setNeighborhood(e.target.value)}
+                                                    required
+                                                    disabled={isAddressDisabled}
+                                                    className="disabled:opacity-100 disabled:cursor-default"
                                                 />
                                             </div>
                                         </div>
@@ -382,7 +533,7 @@ export default function CheckoutPage() {
                                         onClick={handleContinueToPayment}
                                         className="flex-1 bg-green-700 hover:bg-green-800 text-white"
                                         disabled={
-                                            !selectedDate || !selectedTime || !value || !reason || !cep || !street || !number || !neighborhood
+                                            !selectedDate || !selectedTime || !value || !reason || !cep || !street || !number || !neighborhood || isCepLoading
                                         }
                                     >
                                         Continuar para Pagamento
