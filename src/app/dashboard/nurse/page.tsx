@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react" // <-- MUDANÇA: Adicionado 'useRef'
 import { Header } from "@/components/Header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -84,7 +84,7 @@ interface RawVisit {
 }
 
 interface RawDashboardData {
-  schedules: RawVisit[]
+  schedules: RawVisit[] | null
   total_patients: number
   rating: number
   earnings: number
@@ -96,10 +96,21 @@ interface RawDashboardData {
   department: string
   bio: string
   online: boolean
-  start_time?: string // Opcional
-  end_time?: string // Opcional
+  start_time: string | null // Ajustado para ser string ou null/vazio
+  end_time: string | null // Ajustado para ser string ou null/vazio
   specialization: string
-  reviews: Review[]
+  reviews: Review[] | null
+
+  // Campos de categoria 1 (Disponibilidade)
+  qualifications: any[] | null // Se for array
+  services: any[] | null // Se for array
+  days_available: string[] | null // Se for array
+  neighborhoods: string[] | null // Se for array
+  max_patients_per_day: number
+  price: number
+
+  // Campos de categoria 2 (Pagamento)
+  stripe_account_id: string | null
 }
 // --- Fim da mudança ---
 
@@ -157,6 +168,88 @@ export default function NurseDashboard() {
   const router = useRouter()
   const { isOnline, isConnecting, connectWebSocket, disconnectWebSocket } = useWebSocket()
 
+  // <-- MUDANÇA: NOVO useRef para rastrear o ID do toast
+  const toastRef = useRef<string | number | undefined>(undefined)
+
+  // --- NOVO: Função para validar campos e mostrar Toast (Clean Code: Separação de Responsabilidades) ---
+  const validateProfileCompletion = (rawData: RawDashboardData) => {
+    // Categoria 1: Disponibilidade
+    const isFieldEmpty = (value: any) =>
+      value === null ||
+      value === "" ||
+      (typeof value === "number" && value === 0) ||
+      (Array.isArray(value) && value.length === 0) ||
+      (typeof value === 'object' && !Array.isArray(value) && value !== null && Object.keys(value).length === 0)
+
+    const availabilityFields: (keyof RawDashboardData)[] = [
+      "department",
+      "bio",
+      "specialization",
+      "max_patients_per_day",
+      "price",
+      "start_time",
+      "end_time",
+      "days_available",
+      "neighborhoods",
+      "qualifications",
+      "services",
+    ]
+
+    const hasIncompleteAvailability = availabilityFields.some(key => isFieldEmpty(rawData[key]))
+
+    // Categoria 2: Pagamento
+    const hasIncompletePayment = isFieldEmpty(rawData.stripe_account_id)
+
+    if (toastRef.current) {
+      toast.dismiss(toastRef.current)
+    }
+
+    if (hasIncompleteAvailability && hasIncompletePayment) {
+      // Caso 1: Ambos vazios (usando JSX para o negrito)
+      toastRef.current = toast.warning(
+        <>
+          ⚠️ Preencha seus dados de <strong style={{ fontWeight: 700 }}>Disponibilidade</strong> E <strong style={{ fontWeight: 700 }}>Pagamento</strong> para os pacientes poderem solicitar seu serviço.
+        </>,
+        {
+          duration: Infinity,
+          action: {
+            label: "Entendido",
+            onClick: () => toast.dismiss(toastRef.current),
+          },
+        }
+      )
+    } else if (hasIncompleteAvailability) {
+      // Caso 2: Disponibilidade vazia (usando JSX para o negrito)
+      toastRef.current = toast.warning(
+        <>
+          📅 Preencha seus dados de <strong style={{ fontWeight: 700 }}>Disponibilidade</strong> para os pacientes poderem solicitar seu serviço.
+        </>,
+        {
+          duration: Infinity,
+          action: {
+            label: "Preencher Disponibilidade",
+            onClick: () => router.push("/availability"),
+          },
+        }
+      )
+    } else if (hasIncompletePayment) {
+      // Caso 3: Pagamento vazio (usando JSX para o negrito)
+      toastRef.current = toast.warning(
+        <>
+          💰 Preencha seus dados de <strong style={{ fontWeight: 700 }}>Pagamento</strong> para os pacientes poderem solicitar seu serviço.
+        </>,
+        {
+          duration: Infinity,
+          action: {
+            label: "Preencher Pagamento",
+            onClick: () => router.push("/nurse-profile/my-profile"),
+          },
+        }
+      )
+    }
+  }
+  // --- Fim da Função de Validação ---
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
@@ -175,21 +268,22 @@ export default function NurseDashboard() {
 
         if (response.ok) {
           const apiResponse = await response.json()
-          // --- MUDANÇA: Substituído 'any' por 'RawDashboardData' ---
           const rawData = apiResponse.data as RawDashboardData
+
+          // <-- MUDANÇA: Chamada da nova função de validação
+          validateProfileCompletion(rawData)
 
           // --- Início da Lógica de Mapeamento (Mantida) ---
 
-          // --- MUDANÇA CORRIGIDA AQUI ---
-          // Adicionado '|| []' para tratar o caso de 'schedules' ser null
+          // Mapeamento de visitas
           const mappedVisits: Visit[] = (rawData.schedules || []).map((visit: RawVisit) => ({
             id: visit.id,
             description: visit.description,
             reason: visit.reason,
             visit_type: visit.visit_type,
-            visit_value: visit.value, // Mapeado de 'value'
+            visit_value: visit.value,
             created_at: visit.created_at,
-            date: visit.visit_date, // Mapeado de 'visit_date'
+            date: visit.visit_date,
             status: visit.status,
             patient_name: visit.patient_name,
             patient_id: visit.patient_id,
@@ -214,13 +308,13 @@ export default function NurseDashboard() {
             email: rawData.email || "",
             phone: rawData.phone,
             coren: rawData.coren,
-            experience_years: rawData.experience, // Mapeado de 'experience'
+            experience_years: rawData.experience,
             department: rawData.department,
             bio: rawData.bio,
           }
 
           const mappedAvailability: Availability = {
-            is_available: rawData.online, // Mapeado de 'online'
+            is_available: rawData.online,
             start_time: rawData.start_time || "N/A",
             end_time: rawData.end_time || "N/A",
             specialization: rawData.specialization,
@@ -232,7 +326,6 @@ export default function NurseDashboard() {
             visits: mappedVisits,
             profile: mappedProfile,
             availability: mappedAvailability,
-            // --- MUDANÇA: Adicionado '|| []' aqui também por segurança ---
             reviews: rawData.reviews || [],
           }
           // --- Fim da Lógica de Mapeamento ---
@@ -254,7 +347,7 @@ export default function NurseDashboard() {
     }
 
     fetchDashboardData()
-  }, [router])
+  }, [router]) // Dependência 'router' é importante para o redirecionamento/validação
 
   const handleToggleOnline = async () => {
     const token = localStorage.getItem("token")
@@ -1045,9 +1138,6 @@ export default function NurseDashboard() {
                             borderLeft: "3px solid #fbbf24",
                           }}
                         >
-                          {/* --- MUDANÇA AQUI ---
-                            Substituí as aspas literais por entidades HTML
-                          */}
                           &ldquo;{review.comment}&rdquo;
                         </p>
                       </div>

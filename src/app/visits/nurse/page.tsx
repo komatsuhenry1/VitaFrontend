@@ -999,7 +999,7 @@ const VisitCard = ({
                             variant="outline"
                             size="sm"
                             className="relative justify-center pl-6" // <-- adiciona espaço pro texto
-                            >
+                        >
                             {/* Ícone posicionado absolutamente */}
                             <User className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2" />
                             Ver Paciente
@@ -1010,7 +1010,7 @@ const VisitCard = ({
                             variant="outline"
                             size="sm"
                             className="relative justify-center" // <-- adiciona espaço pro texto
-                            >
+                        >
                             <MessageCircle className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2" />
                             Chat
                         </Button>

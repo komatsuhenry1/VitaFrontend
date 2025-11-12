@@ -114,18 +114,18 @@ export default function NurseAvailabilityPage() {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    start_time: availabilityForm.start_time,
-                    end_time: availabilityForm.end_time,
-                    specialization: availabilityForm.specialization,
-                    price: availabilityForm.price_per_hour,
-                    max_patients_per_day: availabilityForm.max_patients_per_day,
-                    days_available: availabilityForm.days_available,
-                    online: availability,
-                    services: services,
-                    qualifications: qualifications,
-                    available_neighborhoods: neighborhoods,
-                    bio: availabilityForm.bio,
-                    department: availabilityForm.department,
+                    start_time: availabilityForm.start_time, //
+                    end_time: availabilityForm.end_time, //
+                    specialization: availabilityForm.specialization, //
+                    price: availabilityForm.price_per_hour, //
+                    max_patients_per_day: availabilityForm.max_patients_per_day, // 
+                    days_available: availabilityForm.days_available, //
+                    online: availability, // 
+                    services: services, // 
+                    qualifications: qualifications,  // 
+                    available_neighborhoods: neighborhoods, // 
+                    bio: availabilityForm.bio, // 
+                    department: availabilityForm.department, //
                 }),
             })
 
