@@ -108,7 +108,6 @@ const AdminDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       const token = localStorage.getItem("token")
-
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081/api/v1"
 
       const response = await fetch(`${API_BASE_URL}/admin/dashboard`, {
@@ -118,19 +117,42 @@ const AdminDashboard = () => {
           Authorization: `Bearer ${token}`,
         },
       })
+
+      // [MUDANÇA] Adicionada verificação de 'response.ok'
+      // Isso captura erros de rede ou de servidor (4xx, 5xx)
+      // antes de tentar processar o JSON.
+      if (!response.ok) {
+        // Você pode tentar ler a mensagem de erro da API se ela enviar um JSON
+        let errorMsg = "Falha ao carregar dados do dashboard."
+        try {
+          const errorResult = await response.json()
+          if (errorResult && errorResult.message) {
+            errorMsg = errorResult.message
+          }
+        } catch (e) {
+          // Ignora se o corpo não for JSON
+        }
+        throw new Error(errorMsg)
+      }
+
       const result = await response.json()
 
       if (result.success) {
         setDashboardData(result.data)
+      } else {
+        // [MUDANÇA] Lança um erro se a API retornar success: false
+        // Isso será capturado pelo bloco catch.
+        throw new Error(result.message || "Erro nos dados recebidos do dashboard.")
       }
     } catch (error) {
       console.error("Erro ao carregar dados do dashboard:", error)
-      toast.error("Erro ao carregar dados do dashboard. Tente novamente.")
+      // Mostra a mensagem de erro específica no toast
+      toast.error(error instanceof Error ? error.message : "Erro ao carregar dados. Tente novamente.")
     } finally {
       setLoading(false)
     }
   }
-
+  
   const fetchNurseDocuments = async (nurse: NurseInfo) => {
     setDocumentsLoading(true)
     setCurrentNurseId(nurse.id)
